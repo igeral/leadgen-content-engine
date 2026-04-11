@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { callImageAPI, IMAGE_MODELS } from '../utils/openrouter';
+import { callImageAPI, generateMultipleImages, IMAGE_MODELS } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 
 export default function ImageStudioPage({ brand, manualKey, selImgModel, live, showToast }) {
@@ -20,8 +20,11 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiModel, setAiModel] = useState(selImgModel || IMAGE_MODELS[0].id);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiProgress, setAiProgress] = useState('');
   const [aiError, setAiError] = useState('');
-  const [imgData, setImgData] = useState(null);
+  const [images, setImages] = useState([]); // array of {url, prompt, error}
+  const [selectedImg, setSelectedImg] = useState(0);
+  const [imgCount, setImgCount] = useState(5);
   const cvRef = useRef(null);
 
   const makeBranded = () => {
@@ -34,7 +37,8 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     } else {
       generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, tagLabel: multiTag, brandName: brand.name, colors: brand.colors });
     }
-    setImgData(cv.toDataURL('image/png'));
+    setImages([{ url: cv.toDataURL('image/png'), prompt: `Branded ${style} card`, error: null }]);
+    setSelectedImg(0);
   };
 
   const makeAI = async () => {
@@ -42,15 +46,37 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     if (!aiPrompt.trim()) { showToast('Enter a prompt'); return; }
     setAiLoading(true);
     setAiError('');
-    setImgData(null);
-    try {
-      const url = await callImageAPI(manualKey, aiModel, aiPrompt);
-      setImgData(url);
-      showToast('AI image generated!');
-    } catch (e) {
-      setAiError(e.message);
+    setImages([]);
+    setSelectedImg(0);
+
+    // Generate variations of the prompt
+    const prompts = [];
+    prompts.push(aiPrompt);
+    const variations = [
+      'Close-up detailed view. ',
+      'Wide-angle establishing shot. ',
+      'Minimalist flat design. ',
+      'Cinematic dramatic lighting. ',
+      'Isometric 3D illustration style. ',
+    ];
+    for (let i = 1; i < imgCount; i++) {
+      prompts.push(variations[i % variations.length] + aiPrompt);
     }
+
+    const results = await generateMultipleImages(manualKey, aiModel, prompts, (i, total) => {
+      setAiProgress(`Generating image ${i + 1} of ${total}...`);
+    });
+
+    const successful = results.filter((r) => r.url);
+    if (successful.length === 0) {
+      setAiError('All images failed. Try a different model or prompt.');
+    } else {
+      showToast(`${successful.length} images generated!`);
+    }
+    setImages(results);
+    setSelectedImg(0);
     setAiLoading(false);
+    setAiProgress('');
   };
 
   useEffect(() => {
@@ -63,6 +89,20 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     { l: 'Hospital Scene', p: 'Modern hospital corridor, physician in white coat walking confidently. Warm, hopeful. Natural candid composition. Landscape 16:9.' },
     { l: 'Data Viz', p: 'Clean data visualization on dark background. Upward trend line. Blue/teal palette. "Physician Demand Forecast 2024-2036". Elegant, LinkedIn-ready. 16:9.' },
   ];
+
+  const successfulImages = images.filter((i) => i.url);
+
+  const downloadAll = () => {
+    successfulImages.forEach((img, idx) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.download = `image-studio-${idx + 1}-${Date.now()}.png`;
+        a.href = img.url;
+        a.click();
+      }, idx * 300);
+    });
+    showToast(`Downloading ${successfulImages.length} images...`);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
@@ -118,9 +158,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
                 <label className="block text-sm font-medium text-gray-300">Card #</label>
                 <div className="flex gap-2">
                   {['1', '2', '3'].map((n) => (
-                    <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'tab-active' : 'tab-inactive'}`} onClick={() => setCardNum(n)}>
-                      Card {n}
-                    </button>
+                    <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'tab-active' : 'tab-inactive'}`} onClick={() => setCardNum(n)}>Card {n}</button>
                   ))}
                 </div>
                 <label className="block text-sm font-medium text-gray-300">Topic</label>
@@ -142,23 +180,28 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-300 mb-1">Image Model</label>
             <select className="input-field" value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
-              {IMAGE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
+              {IMAGE_MODELS.map((m) => (<option key={m.id} value={m.id}>{m.name}</option>))}
             </select>
 
-            <label className="block text-sm font-medium text-gray-300 mb-2">Quick Templates</label>
-            <div className="grid grid-cols-2 gap-2">
-              {QUICK_PROMPTS.map((q, i) => (
-                <button key={i} className="btn-ghost text-xs text-left py-2" onClick={() => setAiPrompt(q.p)}>{q.l}</button>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Images to Generate</label>
+            <div className="flex gap-2">
+              {[1, 3, 5].map((n) => (
+                <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${imgCount === n ? 'tab-active' : 'tab-inactive'}`} onClick={() => setImgCount(n)}>
+                  {n} {n === 1 ? 'image' : 'images'}
+                </button>
               ))}
             </div>
 
+            <label className="block text-sm font-medium text-gray-300 mb-2">Quick Templates</label>
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK_PROMPTS.map((q, i) => (<button key={i} className="btn-ghost text-xs text-left py-2" onClick={() => setAiPrompt(q.p)}>{q.l}</button>))}
+            </div>
+
             <label className="block text-sm font-medium text-gray-300 mb-1">Image Prompt</label>
-            <textarea className="input-field" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={6} placeholder="Describe the image you want..." />
+            <textarea className="input-field" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={6} placeholder="Describe the image you want... variations will be auto-generated for multiple images." />
             {aiError && <p className="text-red-400 text-sm">Error: {aiError}</p>}
             <button className="btn-primary w-full py-3" onClick={makeAI} disabled={aiLoading || !live}>
-              {aiLoading ? 'Generating AI Image...' : !live ? 'API Key Required' : '\uD83E\uDD16 Generate AI Image'}
+              {aiLoading ? (aiProgress || 'Generating...') : !live ? 'API Key Required' : `\uD83E\uDD16 Generate ${imgCount} AI Image${imgCount > 1 ? 's' : ''}`}
             </button>
             {!live && <p className="text-xs text-gray-500 text-center">Set your OpenRouter API key in .env or paste in the header bar.</p>}
           </div>
@@ -168,35 +211,78 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
       {/* Preview */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-white">Preview</h2>
-          {imgData && (
-            <button
-              className="btn-secondary text-sm"
-              onClick={() => {
-                const a = document.createElement('a');
-                a.download = `image-${Date.now()}.png`;
-                a.href = imgData;
-                a.click();
-                showToast('Downloaded!');
-              }}
-            >
-              {'\u2B07\uFE0F'} Download PNG
-            </button>
+          <h2 className="text-lg font-bold text-white">
+            Preview
+            {successfulImages.length > 1 && <span className="text-sm font-normal text-gray-400 ml-2">({successfulImages.length} images)</span>}
+          </h2>
+          {successfulImages.length > 0 && (
+            <div className="flex gap-2">
+              {successfulImages.length > 1 && (
+                <button className="btn-secondary text-sm" onClick={downloadAll}>{'\u2B07\uFE0F'} All</button>
+              )}
+              <button
+                className="btn-secondary text-sm"
+                onClick={() => {
+                  const img = images[selectedImg];
+                  if (!img?.url) return;
+                  const a = document.createElement('a');
+                  a.download = `image-${selectedImg + 1}-${Date.now()}.png`;
+                  a.href = img.url;
+                  a.click();
+                  showToast('Downloaded!');
+                }}
+              >
+                {'\u2B07\uFE0F'} Download
+              </button>
+            </div>
           )}
         </div>
         <canvas ref={cvRef} style={{ display: 'none' }} />
+
         {aiLoading ? (
           <div className="text-center py-20 text-gray-500">
             <div className="spinner mx-auto mb-4" style={{ width: 48, height: 48 }} />
-            <p className="font-medium text-gray-300">AI is generating your image...</p>
-            <p className="text-sm mt-1">10-30 seconds typically</p>
+            <p className="font-medium text-gray-300">{aiProgress || 'Generating...'}</p>
+            <p className="text-sm mt-1">{imgCount > 1 ? `Creating ${imgCount} image variations` : '10-30 seconds typically'}</p>
           </div>
-        ) : imgData ? (
-          <img src={imgData} className="w-full rounded-lg shadow-lg" alt="Preview" onError={() => { showToast('Load error'); setImgData(null); }} />
+        ) : successfulImages.length > 0 ? (
+          <div>
+            {/* Main image */}
+            <div className="relative mb-3">
+              <img src={images[selectedImg]?.url} className="w-full rounded-lg shadow-lg" alt="Preview" onError={() => { showToast('Load error'); }} />
+              {successfulImages.length > 1 && (
+                <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">
+                  {selectedImg + 1} / {successfulImages.length}
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {images.length > 1 && (
+              <div className="grid grid-cols-5 gap-2">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${
+                      selectedImg === i ? 'border-blue-500' : 'border-gray-600 hover:border-gray-400'
+                    } ${!img.url ? 'opacity-40' : ''}`}
+                    onClick={() => img.url && setSelectedImg(i)}
+                    disabled={!img.url}
+                  >
+                    {img.url ? (
+                      <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i + 1}`} />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">{'\u2717'}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
           <div className="text-center py-20 text-gray-500">
             <div className="text-5xl mb-3">{tab === 'ai' ? '\uD83E\uDD16' : '\uD83C\uDFA8'}</div>
-            <p>Click Generate to create your image</p>
+            <p>Click Generate to create your images</p>
           </div>
         )}
       </div>

@@ -25,24 +25,29 @@ export const TEXT_MODELS = [
 
 // ─── IMAGE MODELS ───
 export const IMAGE_MODELS = [
-  { id: 'openai/gpt-image-1', name: 'GPT Image 1 (Best quality)', modalities: ['text', 'image'] },
-  { id: 'google/gemini-2.5-flash-preview:image-generation', name: 'Gemini Flash Image (Fast + cheap)', modalities: ['text', 'image'] },
+  { id: 'openai/gpt-image-1', name: 'GPT Image 1 (Best quality)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-2.5-flash-preview:image-generation', name: 'Gemini Flash Image (Fast + cheap)', modalities: ['image', 'text'] },
   { id: 'black-forest-labs/flux-1.1-pro', name: 'FLUX 1.1 Pro (Photorealistic)', modalities: ['image'] },
   { id: 'black-forest-labs/flux-schnell', name: 'FLUX Schnell (Fastest)', modalities: ['image'] },
   { id: 'stability/stable-diffusion-3.5-large', name: 'Stable Diffusion 3.5 Large', modalities: ['image'] },
 ];
+
+// ─── SHARED HEADERS ───
+function apiHeaders(key) {
+  return {
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    'HTTP-Referer': window.location.href,
+    'X-Title': 'LeadGen Content Engine',
+  };
+}
 
 // ─── TEXT GENERATION ───
 export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
   const key = getApiKey(manualKey);
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'LeadGen Content Engine',
-    },
+    headers: apiHeaders(key),
     body: JSON.stringify({
       model,
       messages: [
@@ -60,58 +65,168 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
   return (await resp.json()).choices[0].message.content;
 }
 
-// ─── IMAGE GENERATION ───
-export async function callImageAPI(manualKey, model, prompt) {
-  const key = getApiKey(manualKey);
-  const mc = IMAGE_MODELS.find((m) => m.id === model) || IMAGE_MODELS[0];
-  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'LeadGen Content Engine',
-    },
-    body: JSON.stringify({
-      model: mc.id,
-      messages: [{ role: 'user', content: prompt }],
-      modalities: mc.modalities,
-      image_config: { aspect_ratio: '16:9' },
-    }),
-  });
-  if (!resp.ok) {
-    const e = await resp.json().catch(() => ({}));
-    throw new Error(e.error?.message || `Image API error: ${resp.status}`);
-  }
-  const data = await resp.json();
-  const content = data.choices?.[0]?.message?.content;
+// ─── EXTRACT IMAGE URL FROM RESPONSE ───
+function extractImageUrl(data) {
+  const msg = data.choices?.[0]?.message;
+  const content = msg?.content;
 
-  // Handle string responses (markdown images, bare URLs, base64)
-  if (typeof content === 'string') {
-    const md = content.match(/!\[.*?\]\((.*?)\)/);
-    if (md) return md[1];
-    const url = content.match(/(https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp)[^\s"']*)/i);
-    if (url) return url[1];
-    const b64 = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-    if (b64) return b64[0];
-  }
-
-  // Handle structured content arrays
-  if (Array.isArray(content)) {
-    for (const p of content) {
-      if (p.type === 'image_url') return p.image_url?.url || p.url;
-      if (p.type === 'image' && p.source?.data) {
-        return `data:${p.source.media_type || 'image/png'};base64,${p.source.data}`;
-      }
-    }
-  }
-
-  // Handle native_images
+  // 1. Check native_images first (most reliable)
   if (data.choices?.[0]?.native_images?.length > 0) {
     return data.choices[0].native_images[0];
   }
 
+  // 2. Check message-level images array
+  if (msg?.images?.length > 0) {
+    return msg.images[0];
+  }
+
+  // 3. Handle structured content arrays
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (part.type === 'image_url' && (part.image_url?.url || part.url)) {
+        return part.image_url?.url || part.url;
+      }
+      if (part.type === 'image') {
+        if (part.source?.data) {
+          return `data:${part.source.media_type || 'image/png'};base64,${part.source.data}`;
+        }
+        if (part.image_url?.url) return part.image_url.url;
+        if (part.url) return part.url;
+      }
+    }
+  }
+
+  // 4. Handle string responses
+  if (typeof content === 'string') {
+    // Markdown image
+    const md = content.match(/!\[.*?\]\((.*?)\)/);
+    if (md) return md[1];
+    // Base64 data URI
+    const b64 = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+    if (b64) return b64[0];
+    // Any URL with image extension
+    const extUrl = content.match(/(https?:\/\/[^\s"'\)]+\.(png|jpg|jpeg|webp|gif)[^\s"'\)]*)/i);
+    if (extUrl) return extUrl[1];
+    // OpenRouter/OpenAI generation URLs (no extension but valid image)
+    const genUrl = content.match(/(https?:\/\/[^\s"'\)]+\/(generation|image|img)[^\s"'\)]*)/i);
+    if (genUrl) return genUrl[1];
+    // Any https URL on its own line (likely an image URL)
+    const lineUrl = content.trim().match(/^(https?:\/\/[^\s]+)$/m);
+    if (lineUrl) return lineUrl[1];
+  }
+
+  return null;
+}
+
+// ─── SINGLE IMAGE GENERATION ───
+export async function callImageAPI(manualKey, model, prompt) {
+  const key = getApiKey(manualKey);
+  const mc = IMAGE_MODELS.find((m) => m.id === model) || IMAGE_MODELS[0];
+
+  const body = {
+    model: mc.id,
+    messages: [{ role: 'user', content: prompt }],
+    modalities: mc.modalities,
+  };
+  // Only add image_config for models that support it
+  if (mc.modalities.includes('text')) {
+    body.image_config = { aspect_ratio: '16:9' };
+  }
+
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: apiHeaders(key),
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || `Image API error: ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  const url = extractImageUrl(data);
+  if (url) return url;
+
+  // Debug: log what we got back so user can report
+  console.error('[LeadGen] Image response format unrecognized:', JSON.stringify(data).substring(0, 500));
   throw new Error('No image in response. Try a different model.');
+}
+
+// ─── GENERATE MULTIPLE CONTENT-MATCHED IMAGE PROMPTS ───
+export async function generateImagePrompts(manualKey, textModel, postText, brand, count = 5) {
+  const key = getApiKey(manualKey);
+  const prompt = `You are a social media visual strategist. Based on the post below, generate exactly ${count} different image descriptions for AI image generation. Each image must directly illustrate a different aspect of the post content.
+
+POST:
+${postText}
+
+BRAND: ${brand.name || 'B2B Company'}
+BRAND COLORS: navy (#1a365d), steel blue (#2c5282), accent blue (#3182ce)
+
+RULES:
+- Each description must be a specific, detailed image generation prompt (2-3 sentences)
+- Images must be professional, modern, corporate — suitable for LinkedIn/Facebook
+- Each image should cover a DIFFERENT angle/message from the post
+- Include composition, mood, color palette, and style details
+- Format: 16:9 landscape, clean and modern
+- No text overlay in images — purely visual
+- No stock photo cliches (no handshakes, no pointing at screens)
+- Types to mix: data visualizations, professional scenes, conceptual illustrations, environmental shots, abstract representations
+
+Return ONLY a JSON array of ${count} strings. No commentary, no markdown, no code blocks. Example:
+["prompt 1", "prompt 2", "prompt 3", "prompt 4", "prompt 5"]`;
+
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: apiHeaders(key),
+    body: JSON.stringify({
+      model: textModel,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.9,
+      max_tokens: 1500,
+    }),
+  });
+
+  if (!resp.ok) {
+    throw new Error('Failed to generate image prompts');
+  }
+
+  const data = await resp.json();
+  let raw = data.choices?.[0]?.message?.content || '';
+
+  // Strip markdown code blocks if present
+  raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+  try {
+    const prompts = JSON.parse(raw);
+    if (Array.isArray(prompts) && prompts.length >= 1) {
+      return prompts.slice(0, count);
+    }
+  } catch {
+    // Fallback: try to extract quoted strings
+    const matches = raw.match(/"([^"]{20,})"/g);
+    if (matches && matches.length >= 1) {
+      return matches.slice(0, count).map((s) => s.replace(/^"|"$/g, ''));
+    }
+  }
+
+  throw new Error('Could not parse image prompts from AI response');
+}
+
+// ─── BATCH IMAGE GENERATION ───
+export async function generateMultipleImages(manualKey, imageModel, prompts, onProgress) {
+  const results = [];
+  for (let i = 0; i < prompts.length; i++) {
+    if (onProgress) onProgress(i, prompts.length);
+    try {
+      const url = await callImageAPI(manualKey, imageModel, prompts[i]);
+      results.push({ url, prompt: prompts[i], error: null });
+    } catch (e) {
+      results.push({ url: null, prompt: prompts[i], error: e.message });
+    }
+  }
+  return results;
 }
 
 // ─── PROMPT BUILDERS ───

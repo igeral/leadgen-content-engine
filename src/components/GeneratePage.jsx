@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
-import { callOpenRouter, callImageAPI, buildSystemPrompt, buildUserPrompt, buildImagePrompt } from '../utils/openrouter';
+import { callOpenRouter, callImageAPI, generateImagePrompts, generateMultipleImages, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
+
+const IMAGE_COUNT = 5;
 
 export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
   const [platform, setPlatform] = useState('LinkedIn');
@@ -13,71 +15,113 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [post, setPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
+  const [imgProgress, setImgProgress] = useState('');
   const [error, setError] = useState('');
-  const [imgData, setImgData] = useState(null);
+  const [images, setImages] = useState([]); // array of {url, prompt, error}
+  const [selectedImg, setSelectedImg] = useState(0);
   const cvRef = useRef(null);
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
 
-  const makeBrandedImg = (style) => {
+  // ─── BRANDED CARD GENERATORS ───
+  const makeBrandedImages = () => {
     const cv = cvRef.current;
     if (!cv) return;
-    if (style === 'stat') {
-      const dp = brand.dataPoints?.length
-        ? brand.dataPoints[Math.floor(Math.random() * brand.dataPoints.length)]
-        : '86,000 projected physician shortage';
-      const m = dp.match(/^([\$\d,\.%\+]+)\s*(.*)/);
-      generateStatCard(cv, {
-        stat: m ? m[1] : dp.split(' ')[0],
-        label: m ? m[2] : dp,
-        category: pillar.name,
-        brandName: brand.name,
-        tagline: brand.tagline,
-        colors: brand.colors,
-      });
-    } else if (style === 'quote') {
-      generateQuoteCard(cv, {
-        quote: topic || "A strong locum tenens strategy is not a backup plan. It's a competitive advantage.",
-        context: 'Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.',
-        closingLine: 'Pay less. Every time.',
-        brandName: brand.name,
-        role: brand.tagline,
-        tagline: brand.tagline,
-        colors: brand.colors,
-      });
+    const results = [];
+    const dp = brand.dataPoints || [];
+
+    // Generate 5 different branded cards based on style
+    if (imageStyle === 'stat') {
+      const usedDp = dp.length > 0 ? dp : [
+        '86,000 projected physician shortage by 2036',
+        '$1M+ lost annually per unfilled physician position',
+        '65% of hospitals below capacity due to staffing',
+        '6-12 months average permanent physician search',
+        '60% rural physician shortage vs 10% urban',
+      ];
+      for (let i = 0; i < Math.min(IMAGE_COUNT, usedDp.length); i++) {
+        const d = usedDp[i];
+        const m = d.match(/^([\$\d,\.%\+]+)\s*(.*)/);
+        generateStatCard(cv, {
+          stat: m ? m[1] : d.split(' ')[0],
+          label: m ? m[2] : d,
+          category: pillar.name,
+          brandName: brand.name,
+          tagline: brand.tagline,
+          subtitle: `Source: Industry Data · ${pillar.name}`,
+          colors: brand.colors,
+        });
+        results.push({ url: cv.toDataURL('image/png'), prompt: `Stat card: ${d}`, error: null });
+      }
+    } else if (imageStyle === 'quote') {
+      const quotes = [
+        { quote: topic || "A strong locum tenens strategy is not a backup plan. It's a competitive advantage.", context: 'Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.', closing: 'Pay less. Every time.' },
+        { quote: 'The physician shortage isn\'t coming. It\'s here.', context: '86,000 fewer physicians by 2036.\nRural hospitals hit hardest.\nEvery unfilled position costs $1M+.', closing: 'Plan now or pay later.' },
+        { quote: 'Proactive beats reactive. Every. Single. Time.', context: 'Coverage risk calendars.\nPre-credentialed physicians.\nPartners who know your facility.', closing: 'That\'s infrastructure.' },
+        { quote: 'Your staffing problem is a timing problem.', context: 'Retirements are predictable.\nSeasonal surges are predictable.\nRecruitment timelines are predictable.', closing: 'So why are we still scrambling?' },
+        { quote: 'The best time to plan for a coverage gap is before it exists.', context: '5-step proactive framework.\nSpecialty risk matrix.\nCredentialing timeline templates.', closing: 'Start today.' },
+      ];
+      for (let i = 0; i < IMAGE_COUNT; i++) {
+        const q = quotes[i % quotes.length];
+        generateQuoteCard(cv, { quote: q.quote, context: q.context, closingLine: q.closing, brandName: brand.name, role: brand.tagline, tagline: brand.tagline, colors: brand.colors });
+        results.push({ url: cv.toDataURL('image/png'), prompt: `Quote card: ${q.quote}`, error: null });
+      }
     } else {
-      generateMultiCard(cv, {
-        cardNumber: '1',
-        totalCards: '3',
-        topicLabel: 'THE COST OF DOING NOTHING',
-        title: '$1M+',
-        subtitle: 'Lost annually per unfilled physician position.',
-        subSubtitle: "That's lost billings, diverted patients, overtime premiums.",
-        tagLabel: pillar.name,
-        brandName: brand.name,
-        colors: brand.colors,
-      });
+      const cards = [
+        { num: '1', topic: 'THE COST OF DOING NOTHING', title: '$1M+', sub: 'Lost annually per unfilled physician position.', subSub: "That's lost billings, diverted patients, overtime premiums." },
+        { num: '2', topic: 'THE SHORTAGE IS HERE', title: '86,000', sub: 'Projected physician shortage by 2036.', subSub: 'Rural hospitals face 60% shortfall vs 10% urban.' },
+        { num: '3', topic: 'THE PROACTIVE FIX', title: '5 Steps', sub: 'Build your coverage infrastructure now.', subSub: 'Risk calendars. Pre-credentialing. Locum integration.' },
+        { num: '1', topic: 'REACTIVE VS PROACTIVE', title: 'Higher Rates', sub: 'Reactive staffing always costs more.', subSub: 'Urgency = premium pricing. Planning = controlled costs.' },
+        { num: '2', topic: 'THE MATCH ISN\'T ENOUGH', title: '41,482', sub: 'Positions filled in 2026 Match.', subSub: 'Still not enough to fix the 86,000 deficit.' },
+      ];
+      for (let i = 0; i < IMAGE_COUNT; i++) {
+        const c = cards[i % cards.length];
+        generateMultiCard(cv, { cardNumber: c.num, totalCards: '3', topicLabel: c.topic, title: c.title, subtitle: c.sub, subSubtitle: c.subSub, tagLabel: pillar.name, brandName: brand.name, colors: brand.colors });
+        results.push({ url: cv.toDataURL('image/png'), prompt: `Multi card ${c.num}: ${c.topic}`, error: null });
+      }
     }
-    setImgData(cv.toDataURL('image/png'));
+    setImages(results);
+    setSelectedImg(0);
   };
 
-  const makeAIImg = async () => {
+  // ─── AI IMAGE GENERATION (content-matched) ───
+  const makeAIImages = async (postText) => {
     setImgLoading(true);
+    setImgProgress('Analyzing content for image prompts...');
+    setImages([]);
     try {
-      const url = await callImageAPI(manualKey, selImgModel, buildImagePrompt(brand, pillar, imageStyle));
-      setImgData(url);
-      showToast('AI image generated!');
-    } catch {
-      showToast('AI image failed — using branded card');
-      makeBrandedImg(imageStyle);
+      // Step 1: Use text AI to generate content-matched image prompts
+      const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
+
+      // Step 2: Generate images from those prompts
+      const results = await generateMultipleImages(manualKey, selImgModel, prompts, (i, total) => {
+        setImgProgress(`Generating image ${i + 1} of ${total}...`);
+      });
+
+      const successful = results.filter((r) => r.url);
+      if (successful.length === 0) {
+        showToast('AI images failed — using branded cards');
+        makeBrandedImages();
+      } else {
+        setImages(results);
+        setSelectedImg(0);
+        showToast(`${successful.length} AI images generated!`);
+      }
+    } catch (e) {
+      console.error('[LeadGen] Multi-image generation failed:', e);
+      showToast('AI images failed — using branded cards');
+      makeBrandedImages();
     }
     setImgLoading(false);
+    setImgProgress('');
   };
 
+  // ─── MAIN GENERATE ───
   const generate = async () => {
     setLoading(true);
     setError('');
     setPost('');
-    setImgData(null);
+    setImages([]);
+    setSelectedImg(0);
     try {
       let txt;
       if (live) {
@@ -90,8 +134,12 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       }
       setPost(txt);
       setLoading(false);
-      if (imageMode === 'ai' && live) await makeAIImg();
-      else makeBrandedImg(imageStyle);
+
+      if (imageMode === 'ai' && live) {
+        await makeAIImages(txt);
+      } else {
+        makeBrandedImages();
+      }
     } catch (e) {
       setError(e.message);
       setLoading(false);
@@ -100,6 +148,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   const savePost = () => {
     if (!post) return;
+    const currentImg = images[selectedImg]?.url || null;
     setSavedPosts((p) => [
       ...p,
       {
@@ -109,11 +158,32 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         pillar: pillar.name,
         imageStyle,
         imageMode,
-        imageData: imgData,
+        imageData: currentImg,
+        allImages: images.filter((i) => i.url).map((i) => i.url),
         createdAt: new Date().toLocaleString(),
       },
     ]);
     showToast('Post saved!');
+  };
+
+  const downloadImage = (url, idx) => {
+    const a = document.createElement('a');
+    a.download = `${brand.name || 'post'}-${imageStyle}-${idx + 1}-${Date.now()}.png`;
+    a.href = url;
+    a.click();
+    showToast('Downloaded!');
+  };
+
+  const downloadAll = () => {
+    images.filter((i) => i.url).forEach((img, idx) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.download = `${brand.name || 'post'}-${imageStyle}-${idx + 1}-${Date.now()}.png`;
+        a.href = img.url;
+        a.click();
+      }, idx * 300);
+    });
+    showToast(`Downloading ${images.filter((i) => i.url).length} images...`);
   };
 
   const IMAGE_STYLES = [
@@ -121,6 +191,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     { id: 'quote', l: '\uD83D\uDCAC Quote Card', d: 'Perspective' },
     { id: 'multi', l: '\uD83D\uDCD1 Multi-Set', d: '3 images' },
   ];
+
+  const successfulImages = images.filter((i) => i.url);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
@@ -132,11 +204,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Platform */}
           <div className="flex gap-2 mb-4">
             {['LinkedIn', 'Facebook'].map((p) => (
-              <button
-                key={p}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${platform === p ? 'tab-active' : 'tab-inactive'}`}
-                onClick={() => setPlatform(p)}
-              >
+              <button key={p} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${platform === p ? 'tab-active' : 'tab-inactive'}`} onClick={() => setPlatform(p)}>
                 {p === 'LinkedIn' ? '\uD83D\uDCBC' : '\uD83D\uDC65'} {p}
               </button>
             ))}
@@ -174,13 +242,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           </div>
 
           {/* Image mode */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} images per post)</label>
           <div className="flex gap-2 mb-4">
             <button
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`}
               onClick={() => setImageMode('branded')}
             >
-              <div className="font-semibold">{'\uD83C\uDFA8'} Branded Card</div>
+              <div className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</div>
               <div className="text-xs opacity-70 mt-0.5">Canvas-based, instant</div>
             </button>
             <button
@@ -188,16 +256,18 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               onClick={() => setImageMode('ai')}
             >
               <div className="font-semibold">{'\uD83E\uDD16'} AI Generated</div>
-              <div className="text-xs opacity-70 mt-0.5">{live ? 'FLUX, Gemini, GPT Image' : 'Requires API key'}</div>
+              <div className="text-xs opacity-70 mt-0.5">{live ? 'Content-matched AI images' : 'Requires API key'}</div>
             </button>
           </div>
 
           {/* Generate button */}
-          <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading}>
+          <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading}>
             {loading ? (
-              <><span className="spinner" /> Generating...</>
+              <><span className="spinner" /> Generating post...</>
+            ) : imgLoading ? (
+              <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
             ) : (
-              <>{'\u26A1'} Generate Post + Image</>
+              <>{'\u26A1'} Generate Post + {IMAGE_COUNT} Images</>
             )}
           </button>
           {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}
@@ -210,8 +280,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="space-y-1">
               {brand.dataPoints.map((dp, i) => (
                 <div key={i} className="text-xs text-gray-400 flex items-start gap-2">
-                  <span className="text-blue-400 mt-0.5">{'\u2192'}</span>
-                  {dp}
+                  <span className="text-blue-400 mt-0.5">{'\u2192'}</span>{dp}
                 </div>
               ))}
             </div>
@@ -229,7 +298,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               <div className="flex gap-2">
                 <button className="btn-secondary text-sm" onClick={() => { navigator.clipboard.writeText(post); showToast('Post copied!'); }}>{'\uD83D\uDCCB'} Copy</button>
                 <button className="btn-secondary text-sm" onClick={savePost}>{'\uD83D\uDCBE'} Save</button>
-                <button className="btn-ghost text-sm" onClick={generate} disabled={loading}>{'\uD83D\uDD04'} Regen</button>
+                <button className="btn-ghost text-sm" onClick={generate} disabled={loading || imgLoading}>{'\uD83D\uDD04'} Regen</button>
               </div>
             )}
           </div>
@@ -255,53 +324,104 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           )}
         </div>
 
-        {/* Image preview */}
+        {/* Image gallery */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-white">{imageMode === 'ai' ? '\uD83E\uDD16 AI Image' : '\uD83D\uDDBC Branded Image'}</h2>
-            {imgData && (
+            <h2 className="text-lg font-bold text-white">
+              {imageMode === 'ai' ? '\uD83E\uDD16' : '\uD83D\uDDBC'} Images
+              {successfulImages.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">({successfulImages.length}/{IMAGE_COUNT})</span>}
+            </h2>
+            {successfulImages.length > 0 && (
               <div className="flex gap-2">
+                <button className="btn-secondary text-sm" onClick={downloadAll}>{'\u2B07\uFE0F'} Download All</button>
                 {imageMode === 'ai' && live && post && (
-                  <button className="btn-secondary text-sm" onClick={makeAIImg} disabled={imgLoading}>
-                    {imgLoading ? '...' : '\uD83D\uDD04 Regen AI'}
-                  </button>
+                  <button className="btn-ghost text-sm" onClick={() => makeAIImages(post)} disabled={imgLoading}>{'\uD83D\uDD04'} Regen All</button>
                 )}
-                <button className="btn-secondary text-sm" onClick={() => { makeBrandedImg(imageStyle); showToast('Branded card!'); }}>
-                  {'\uD83C\uDFA8'} Branded
-                </button>
-                <button
-                  className="btn-secondary text-sm"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.download = `${brand.name || 'post'}-${imageStyle}-${Date.now()}.png`;
-                    a.href = imgData;
-                    a.click();
-                    showToast('Downloaded!');
-                  }}
-                >
-                  {'\u2B07\uFE0F'} Download
-                </button>
               </div>
             )}
           </div>
+
           <canvas ref={cvRef} style={{ display: 'none' }} />
+
           {imgLoading ? (
             <div className="text-center py-16 text-gray-500">
               <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
-              <p className="font-medium text-gray-300">Generating AI image...</p>
-              <p className="text-sm">This may take 10-30 seconds</p>
+              <p className="font-medium text-gray-300">{imgProgress || 'Generating images...'}</p>
+              <p className="text-sm mt-1">AI is creating {IMAGE_COUNT} content-matched images</p>
+              {/* Progress dots */}
+              <div className="flex justify-center gap-2 mt-4">
+                {Array.from({ length: IMAGE_COUNT }).map((_, i) => (
+                  <div key={i} className={`w-3 h-3 rounded-full transition-all ${
+                    imgProgress.includes(`${i + 1}`) ? 'bg-blue-500 animate-pulse' :
+                    imgProgress.includes(`${i + 2}`) || imgProgress.includes('Analyzing') ? 'bg-gray-600' : 'bg-green-500'
+                  }`} />
+                ))}
+              </div>
             </div>
-          ) : imgData ? (
-            <img
-              src={imgData}
-              className="w-full rounded-lg shadow-lg"
-              alt="Generated image"
-              onError={() => { showToast('Image load error'); makeBrandedImg(imageStyle); }}
-            />
+          ) : successfulImages.length > 0 ? (
+            <div>
+              {/* Main selected image */}
+              <div className="relative mb-3">
+                <img
+                  src={images[selectedImg]?.url}
+                  className="w-full rounded-lg shadow-lg"
+                  alt={`Generated image ${selectedImg + 1}`}
+                  onError={() => {
+                    showToast('Image load error');
+                    const updated = [...images];
+                    updated[selectedImg] = { ...updated[selectedImg], url: null, error: 'Load failed' };
+                    setImages(updated);
+                  }}
+                />
+                <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">
+                  {selectedImg + 1} / {successfulImages.length}
+                </div>
+                <button
+                  className="absolute top-2 right-2 btn-secondary text-xs"
+                  onClick={() => downloadImage(images[selectedImg].url, selectedImg)}
+                >
+                  {'\u2B07\uFE0F'}
+                </button>
+              </div>
+
+              {/* Thumbnail strip */}
+              <div className="grid grid-cols-5 gap-2">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${
+                      selectedImg === i ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-gray-600 hover:border-gray-400'
+                    } ${!img.url ? 'opacity-40' : ''}`}
+                    onClick={() => img.url && setSelectedImg(i)}
+                    disabled={!img.url}
+                  >
+                    {img.url ? (
+                      <img src={img.url} className="w-full h-full object-cover" alt={`Thumbnail ${i + 1}`} />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">
+                        {'\u2717'}
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-0.5">
+                      {i + 1}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Prompt info for selected image */}
+              {images[selectedImg]?.prompt && (
+                <div className="mt-3 p-2 bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-400 truncate" title={images[selectedImg].prompt}>
+                    {'\uD83C\uDFA8'} {images[selectedImg].prompt}
+                  </p>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="text-center py-12 text-gray-500">
               <div className="text-4xl mb-3">{'\uD83D\uDDBC'}</div>
-              <p>Image generates with your post</p>
+              <p>{IMAGE_COUNT} images will be generated with your post</p>
             </div>
           )}
         </div>
