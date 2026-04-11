@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { callOpenRouter, callImageAPI, generateImagePrompts, generateMultipleImages, buildSystemPrompt, buildUserPrompt, IMAGE_MODELS } from '../utils/openrouter';
+import { callOpenRouter, callImageAPI, generateImagePrompts, generateMultipleImages, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt, IMAGE_MODELS } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
@@ -13,14 +13,7 @@ function FormattedPost({ text }) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-
-    // Empty line = paragraph break
-    if (line.trim() === '') {
-      elements.push(<div key={i} className="h-2" />);
-      continue;
-    }
-
-    // Bullet points: lines starting with →, -, •, *, or numbered (1. 2. etc)
+    if (line.trim() === '') { elements.push(<div key={i} className="h-2" />); continue; }
     const bulletMatch = line.match(/^\s*([\u2192\u2022\-\*]|\d+[\.\)])\s+(.*)/);
     if (bulletMatch) {
       const marker = bulletMatch[1];
@@ -33,23 +26,17 @@ function FormattedPost({ text }) {
       );
       continue;
     }
-
-    // Regular line with inline formatting
     elements.push(<p key={i} className="py-0.5">{renderInline(line)}</p>);
   }
-
   return <>{elements}</>;
 }
 
-// Render inline bold (**text**) and italic (*text*)
 function renderInline(text) {
   if (!text) return text;
   const parts = [];
   let remaining = text;
   let key = 0;
-
   while (remaining.length > 0) {
-    // Bold: **text**
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
     if (boldMatch) {
       const idx = remaining.indexOf(boldMatch[0]);
@@ -64,12 +51,28 @@ function renderInline(text) {
   return parts.length === 1 ? parts[0] : parts;
 }
 
+// ─── ENGAGEMENT BADGE ───
+function EngagementBadge({ level }) {
+  const colors = { viral: 'bg-red-500', high: 'bg-orange-500', medium: 'bg-yellow-500' };
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full text-white font-medium ${colors[level] || 'bg-gray-500'}`}>
+      {level === 'viral' ? '\uD83D\uDD25 Viral' : level === 'high' ? '\u26A1 High' : '\uD83D\uDCC8 Medium'}
+    </span>
+  );
+}
+
 export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
   // ─── CORE STATE ───
   const [platform, setPlatform] = useState('LinkedIn');
   const [pillarIdx, setPillarIdx] = useState(0);
   const [audience, setAudience] = useState('');
   const [topic, setTopic] = useState('');
+
+  // ─── TRENDING TOPICS ───
+  const [trendingTopics, setTrendingTopics] = useState([]);
+  const [selectedTrending, setSelectedTrending] = useState(null);
+  const [trendingLoading, setTrendingLoading] = useState(false);
+  const [autoTrending, setAutoTrending] = useState(true);
 
   // ─── ADVANCED CONTENT CONTROLS ───
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -93,12 +96,28 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [error, setError] = useState('');
   const [images, setImages] = useState([]);
   const [selectedImg, setSelectedImg] = useState(0);
+  const [genPhase, setGenPhase] = useState('');
   const cvRef = useRef(null);
 
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
-
-  // ─── PARSE COMMA/NEWLINE LISTS ───
   const parseList = (str) => str.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean);
+
+  // ─── FETCH TRENDING TOPICS ───
+  const loadTrending = async () => {
+    if (!live) { showToast('API key required for trending topics'); return; }
+    setTrendingLoading(true);
+    setTrendingTopics([]);
+    setSelectedTrending(null);
+    try {
+      const topics = await fetchTrendingTopics(manualKey, selModel, brand, pillar, platform, 5);
+      setTrendingTopics(topics);
+      showToast(`${topics.length} trending topics found!`);
+    } catch (e) {
+      console.error('[LeadGen] Trending topics failed:', e);
+      showToast('Could not fetch trending topics: ' + e.message);
+    }
+    setTrendingLoading(false);
+  };
 
   // ─── BRANDED CARD GENERATORS ───
   const makeBrandedImages = () => {
@@ -115,8 +134,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         '6-12 months average permanent physician search',
         '60% rural physician shortage vs 10% urban',
       ];
-      for (let i = 0; i < Math.min(IMAGE_COUNT, usedDp.length); i++) {
-        const d = usedDp[i];
+      // Shuffle for variety
+      const shuffled = [...usedDp].sort(() => Math.random() - 0.5);
+      for (let i = 0; i < Math.min(IMAGE_COUNT, shuffled.length); i++) {
+        const d = shuffled[i];
         const m = d.match(/^([\$\d,\.%\+]+)\s*(.*)/);
         generateStatCard(cv, {
           stat: m ? m[1] : d.split(' ')[0],
@@ -137,8 +158,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         { quote: 'Your staffing problem is a timing problem.', context: 'Retirements are predictable.\nSeasonal surges are predictable.\nRecruitment timelines are predictable.', closing: 'So why are we still scrambling?' },
         { quote: 'The best time to plan for a coverage gap is before it exists.', context: '5-step proactive framework.\nSpecialty risk matrix.\nCredentialing timeline templates.', closing: 'Start today.' },
       ];
+      const shuffled = [...quotes].sort(() => Math.random() - 0.5);
       for (let i = 0; i < IMAGE_COUNT; i++) {
-        const q = quotes[i % quotes.length];
+        const q = shuffled[i % shuffled.length];
         generateQuoteCard(cv, { quote: q.quote, context: q.context, closingLine: q.closing, brandName: brand.name, role: brand.tagline, tagline: brand.tagline, colors: brand.colors });
         results.push({ url: cv.toDataURL('image/png'), prompt: `Quote card: ${q.quote}`, error: null });
       }
@@ -150,8 +172,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         { num: '1', topic: 'REACTIVE VS PROACTIVE', title: 'Higher Rates', sub: 'Reactive staffing always costs more.', subSub: 'Urgency = premium pricing. Planning = controlled costs.' },
         { num: '2', topic: 'THE MATCH ISN\'T ENOUGH', title: '41,482', sub: 'Positions filled in 2026 Match.', subSub: 'Still not enough to fix the 86,000 deficit.' },
       ];
+      const shuffled = [...cards].sort(() => Math.random() - 0.5);
       for (let i = 0; i < IMAGE_COUNT; i++) {
-        const c = cards[i % cards.length];
+        const c = shuffled[i % shuffled.length];
         generateMultiCard(cv, { cardNumber: c.num, totalCards: '3', topicLabel: c.topic, title: c.title, subtitle: c.sub, subSubtitle: c.subSub, tagLabel: pillar.name, brandName: brand.name, colors: brand.colors });
         results.push({ url: cv.toDataURL('image/png'), prompt: `Multi card ${c.num}: ${c.topic}`, error: null });
       }
@@ -160,10 +183,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setSelectedImg(0);
   };
 
-  // ─── AI IMAGE GENERATION (content-matched) ───
+  // ─── AI IMAGE GENERATION ───
   const makeAIImages = async (postText) => {
     setImgLoading(true);
-    setImgProgress('Analyzing content for image prompts...');
+    setImgProgress('Analyzing content for unique image prompts...');
     setImages([]);
     try {
       const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
@@ -177,7 +200,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       } else {
         setImages(results);
         setSelectedImg(0);
-        showToast(`${successful.length} AI images generated!`);
+        showToast(`${successful.length} unique AI images generated!`);
       }
     } catch (e) {
       console.error('[LeadGen] Multi-image generation failed:', e);
@@ -196,21 +219,36 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setImages([]);
     setSelectedImg(0);
 
-    const advancedOpts = {
-      tone,
-      ctaType,
-      useEmoji,
-      formatting,
-    };
+    const advancedOpts = { tone, ctaType, useEmoji, formatting };
     const contentOpts = {
       keywords: parseList(keywords),
       keyPhrases: parseList(keyPhrases),
       avoidTopics: parseList(avoidTopics),
+      trendingTopic: null,
     };
 
     try {
       let txt;
       if (live) {
+        // Step 1: Auto-fetch trending topic if enabled and none selected
+        let activeTrending = selectedTrending;
+        if (autoTrending && !selectedTrending && !topic) {
+          setGenPhase('Discovering trending topics...');
+          try {
+            const topics = await fetchTrendingTopics(manualKey, selModel, brand, pillar, platform, 5);
+            setTrendingTopics(topics);
+            // Auto-pick the highest engagement one
+            activeTrending = topics.find(t => t.engagementPotential === 'viral') || topics.find(t => t.engagementPotential === 'high') || topics[0];
+            setSelectedTrending(activeTrending);
+          } catch (e) {
+            console.warn('[LeadGen] Auto-trending failed, generating without:', e.message);
+          }
+        }
+
+        contentOpts.trendingTopic = activeTrending;
+
+        // Step 2: Generate content
+        setGenPhase(activeTrending ? `Writing about: ${activeTrending.topic.substring(0, 50)}...` : 'Generating fresh content...');
         txt = await callOpenRouter(
           manualKey,
           selModel,
@@ -225,8 +263,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       }
       setPost(txt);
       setLoading(false);
+      setGenPhase('');
 
-      // Generate images
+      // Step 3: Generate images
       if (imageMode === 'ai' && live) {
         await makeAIImages(txt);
       } else {
@@ -235,6 +274,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     } catch (e) {
       setError(e.message);
       setLoading(false);
+      setGenPhase('');
     }
   };
 
@@ -250,6 +290,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         pillar: pillar.name,
         tone,
         ctaType,
+        trendingTopic: selectedTrending?.topic || null,
         imageStyle,
         imageMode,
         imageData: currentImg,
@@ -287,7 +328,6 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     { id: 'storytelling', label: 'Storytelling', desc: 'Narrative-driven' },
     { id: 'educational', label: 'Educational', desc: 'Clear, instructive' },
   ];
-
   const CTA_TYPES = [
     { id: 'question', label: 'Question', desc: 'Invite comments' },
     { id: 'dm', label: 'DM CTA', desc: 'DM me "GUIDE"' },
@@ -295,13 +335,11 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     { id: 'engage', label: 'Engage', desc: 'Share experience' },
     { id: 'none', label: 'None', desc: 'No CTA' },
   ];
-
   const FORMAT_OPTS = [
     { id: 'minimal', label: 'Minimal', desc: 'Flowing prose' },
     { id: 'balanced', label: 'Balanced', desc: 'Mix of prose & lists' },
     { id: 'heavy', label: 'Structured', desc: 'Bullets & bold' },
   ];
-
   const IMAGE_STYLES = [
     { id: 'stat', l: '\uD83D\uDCCA Stat Card', d: 'Bold number' },
     { id: 'quote', l: '\uD83D\uDCAC Quote Card', d: 'Perspective' },
@@ -338,11 +376,89 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           <label className="block text-sm font-medium text-gray-300 mb-1">Target Audience <span className="text-gray-500">(optional)</span></label>
           <input className="input-field mb-3" placeholder={pillar.audience} value={audience} onChange={(e) => setAudience(e.target.value)} />
 
-          {/* Topic */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">(optional)</span></label>
-          <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+          {/* ─── TRENDING TOPICS SECTION ─── */}
+          <div className="mb-4 p-4 rounded-lg border border-indigo-800 bg-indigo-900 bg-opacity-20">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-indigo-300">{'\uD83D\uDD25'} Trending Topics</h3>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                  <span>Auto-discover</span>
+                  <button
+                    className={`relative w-9 h-5 rounded-full transition-all ${autoTrending ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                    onClick={() => setAutoTrending(!autoTrending)}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${autoTrending ? 'left-4' : 'left-0.5'}`} />
+                  </button>
+                </label>
+                <button
+                  className="btn-ghost text-xs py-1 px-2"
+                  onClick={loadTrending}
+                  disabled={trendingLoading || !live}
+                >
+                  {trendingLoading ? 'Searching...' : '\uD83D\uDD0D Find Now'}
+                </button>
+              </div>
+            </div>
 
-          {/* ─── ADVANCED CONTENT OPTIONS ─── */}
+            {!live && <p className="text-xs text-gray-500">Add API key to enable trending topic discovery</p>}
+
+            {autoTrending && live && trendingTopics.length === 0 && !trendingLoading && (
+              <p className="text-xs text-indigo-400">Trending topics will be auto-discovered when you generate</p>
+            )}
+
+            {trendingLoading && (
+              <div className="flex items-center gap-2 py-2">
+                <span className="spinner" style={{ width: 16, height: 16 }} />
+                <span className="text-xs text-indigo-300">Searching for trending topics in your niche...</span>
+              </div>
+            )}
+
+            {trendingTopics.length > 0 && (
+              <div className="space-y-2 mt-2 max-h-64 overflow-y-auto">
+                {trendingTopics.map((t, i) => (
+                  <button
+                    key={i}
+                    className={`w-full text-left p-3 rounded-lg transition-all ${
+                      selectedTrending === t
+                        ? 'bg-indigo-700 border border-indigo-500'
+                        : 'bg-gray-800 bg-opacity-60 border border-gray-700 hover:border-indigo-500'
+                    }`}
+                    onClick={() => setSelectedTrending(selectedTrending === t ? null : t)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-white leading-tight">{t.topic}</div>
+                        <div className="text-xs text-gray-400 mt-1">{t.angle}</div>
+                      </div>
+                      <EngagementBadge level={t.engagementPotential} />
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1.5">{t.whyTrending}</div>
+                    {selectedTrending === t && t.suggestedHook && (
+                      <div className="text-xs text-indigo-300 mt-2 pt-2 border-t border-indigo-700">
+                        {'\uD83C\uDFA3'} Hook: "{t.suggestedHook}"
+                      </div>
+                    )}
+                  </button>
+                ))}
+                <button
+                  className="text-xs text-indigo-400 hover:text-indigo-300 w-full text-center py-1"
+                  onClick={() => { setSelectedTrending(null); setTrendingTopics([]); }}
+                >
+                  Clear trending topics (use manual topic instead)
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Topic (manual - shown when no trending selected) */}
+          {!selectedTrending && (
+            <>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">(optional \u2014 or use trending above)</span></label>
+              <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+            </>
+          )}
+
+          {/* Advanced toggle */}
           <button
             className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg mb-3 text-sm font-medium transition-all bg-gray-800 border border-gray-600 hover:border-gray-500 text-gray-300"
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -358,92 +474,67 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                 <label className="block text-sm font-medium text-gray-300 mb-2">Voice & Tone</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {TONES.map((t) => (
-                    <button
-                      key={t.id}
-                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${tone === t.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`}
-                      onClick={() => setTone(t.id)}
-                    >
+                    <button key={t.id} className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${tone === t.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`} onClick={() => setTone(t.id)}>
                       <div className="font-semibold">{t.label}</div>
                       <div className="opacity-70 mt-0.5">{t.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* CTA Type */}
+              {/* CTA */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Call-to-Action Style</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {CTA_TYPES.map((c) => (
-                    <button
-                      key={c.id}
-                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${ctaType === c.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`}
-                      onClick={() => setCtaType(c.id)}
-                    >
+                    <button key={c.id} className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${ctaType === c.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`} onClick={() => setCtaType(c.id)}>
                       <div className="font-semibold">{c.label}</div>
                       <div className="opacity-70 mt-0.5">{c.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
-
               {/* Formatting */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Formatting Style</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {FORMAT_OPTS.map((f) => (
-                    <button
-                      key={f.id}
-                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${formatting === f.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`}
-                      onClick={() => setFormatting(f.id)}
-                    >
+                    <button key={f.id} className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${formatting === f.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`} onClick={() => setFormatting(f.id)}>
                       <div className="font-semibold">{f.label}</div>
                       <div className="opacity-70 mt-0.5">{f.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Emoji toggle */}
+              {/* Emoji */}
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-gray-300">Use Emojis</label>
-                <button
-                  className={`relative w-11 h-6 rounded-full transition-all ${useEmoji ? 'bg-blue-600' : 'bg-gray-700'}`}
-                  onClick={() => setUseEmoji(!useEmoji)}
-                >
+                <button className={`relative w-11 h-6 rounded-full transition-all ${useEmoji ? 'bg-blue-600' : 'bg-gray-700'}`} onClick={() => setUseEmoji(!useEmoji)}>
                   <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${useEmoji ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
-
               {/* Keywords */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Keywords <span className="text-gray-500">(comma-separated)</span></label>
                 <input className="input-field" placeholder="e.g., locum tenens, physician shortage, staffing ROI" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
               </div>
-
               {/* Key Phrases */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Key Phrases to Include <span className="text-gray-500">(one per line or comma-separated)</span></label>
-                <textarea className="input-field" placeholder="e.g., proactive beats reactive&#10;coverage risk calendar&#10;the shortage is here" value={keyPhrases} onChange={(e) => setKeyPhrases(e.target.value)} rows={3} />
+                <label className="block text-sm font-medium text-gray-300 mb-1">Key Phrases to Include</label>
+                <textarea className="input-field" placeholder="e.g., proactive beats reactive&#10;coverage risk calendar" value={keyPhrases} onChange={(e) => setKeyPhrases(e.target.value)} rows={3} />
               </div>
-
-              {/* Avoid Topics */}
+              {/* Avoid */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Topics to Avoid <span className="text-gray-500">(comma-separated)</span></label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Topics to Avoid</label>
                 <input className="input-field" placeholder="e.g., politics, specific competitors" value={avoidTopics} onChange={(e) => setAvoidTopics(e.target.value)} />
               </div>
             </div>
           )}
 
-          {/* ─── IMAGE OPTIONS ─── */}
+          {/* Image options */}
           <label className="block text-sm font-medium text-gray-300 mb-1">Image Style</label>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {IMAGE_STYLES.map((s) => (
-              <button
-                key={s.id}
-                className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'}`}
-                onClick={() => setImageStyle(s.id)}
-              >
+              <button key={s.id} className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'}`} onClick={() => setImageStyle(s.id)}>
                 <div className="text-sm font-semibold">{s.l}</div>
                 <div className="text-xs text-gray-400 mt-0.5">{s.d}</div>
               </button>
@@ -452,17 +543,11 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
           <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} per post)</label>
           <div className="flex gap-2 mb-4">
-            <button
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'ai' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`}
-              onClick={() => setImageMode('ai')}
-            >
+            <button className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'ai' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`} onClick={() => setImageMode('ai')}>
               <div className="font-semibold">{'\uD83E\uDD16'} AI Generated</div>
-              <div className="text-xs opacity-70 mt-0.5">{live ? 'Content-matched AI images' : 'Requires API key'}</div>
+              <div className="text-xs opacity-70 mt-0.5">{live ? 'Unique content-matched images' : 'Requires API key'}</div>
             </button>
-            <button
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`}
-              onClick={() => setImageMode('branded')}
-            >
+            <button className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`} onClick={() => setImageMode('branded')}>
               <div className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</div>
               <div className="text-xs opacity-70 mt-0.5">Canvas-based, instant</div>
             </button>
@@ -471,17 +556,17 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Generate button */}
           <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading}>
             {loading ? (
-              <><span className="spinner" /> Generating content...</>
+              <><span className="spinner" /> {genPhase || 'Generating...'}</>
             ) : imgLoading ? (
               <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
             ) : (
-              <>{'\u26A1'} Generate Post + {IMAGE_COUNT} Images</>
+              <>{'\u26A1'} {autoTrending && live ? 'Find Trend + Generate' : `Generate Post + ${IMAGE_COUNT} Images`}</>
             )}
           </button>
           {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}
         </div>
 
-        {/* Data points reference */}
+        {/* Data points */}
         {brand.dataPoints?.length > 0 && (
           <div className="card p-4">
             <h3 className="text-sm font-semibold text-gray-300 mb-2">{'\uD83D\uDCCB'} Available Data Points</h3>
@@ -510,9 +595,19 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               </div>
             )}
           </div>
+
+          {/* Trending topic badge */}
+          {post && selectedTrending && (
+            <div className="mb-3 p-2.5 rounded-lg bg-indigo-900 bg-opacity-30 border border-indigo-800">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-indigo-400 font-semibold">{'\uD83D\uDD25'} Based on trending:</span>
+                <span className="text-indigo-300">{selectedTrending.topic}</span>
+              </div>
+            </div>
+          )}
+
           {post ? (
             <div className="bg-white rounded-lg p-5 text-gray-800 text-sm leading-relaxed" style={{ maxHeight: 500, overflowY: 'auto' }}>
-              {/* Brand header */}
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
                 <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{ background: brand.colors.primary }}>
                   {(brand.name || 'B')[0]}
@@ -522,20 +617,19 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                   <div className="text-xs text-gray-500">{brand.tagline || ''}</div>
                 </div>
               </div>
-              {/* Formatted post content */}
               <FormattedPost text={post} />
-              {/* Tone/CTA badges */}
-              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200">
+              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 flex-wrap">
                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{tone}</span>
                 <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">CTA: {ctaType}</span>
                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{formatting}</span>
+                {selectedTrending && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">{'\uD83D\uDD25'} Trending</span>}
               </div>
             </div>
           ) : (
             <div className="text-center py-16 text-gray-500">
               <div className="text-4xl mb-3">{'\u270D\uFE0F'}</div>
               <p>Your generated post will appear here</p>
-              <p className="text-sm mt-1">{live ? 'Live AI mode active' : 'Demo mode \u2014 add API key for live AI'}</p>
+              <p className="text-sm mt-1">{live ? (autoTrending ? 'AI will find trending topics + generate content' : 'Live AI mode active') : 'Demo mode \u2014 add API key for live AI'}</p>
             </div>
           )}
         </div>
@@ -563,7 +657,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="text-center py-14 text-gray-500">
               <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
               <p className="font-medium text-gray-300">{imgProgress || 'Generating images...'}</p>
-              <p className="text-sm mt-1">Creating {IMAGE_COUNT} content-matched images</p>
+              <p className="text-sm mt-1">Creating {IMAGE_COUNT} unique content-matched images</p>
               <div className="flex justify-center gap-2 mt-4">
                 {Array.from({ length: IMAGE_COUNT }).map((_, i) => (
                   <div key={i} className={`w-3 h-3 rounded-full transition-all ${
@@ -575,38 +669,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             </div>
           ) : successfulImages.length > 0 ? (
             <div>
-              {/* Main image */}
               <div className="relative mb-3">
-                <img
-                  src={images[selectedImg]?.url}
-                  className="w-full rounded-lg shadow-lg"
-                  alt={`Generated image ${selectedImg + 1}`}
-                  onError={() => {
-                    showToast('Image load error');
-                    const updated = [...images];
-                    updated[selectedImg] = { ...updated[selectedImg], url: null, error: 'Load failed' };
-                    setImages(updated);
-                  }}
-                />
-                <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">
-                  {selectedImg + 1} / {successfulImages.length}
-                </div>
-                <button className="absolute top-2 right-2 btn-secondary text-xs" onClick={() => downloadImage(images[selectedImg].url, selectedImg)}>
-                  {'\u2B07\uFE0F'}
-                </button>
+                <img src={images[selectedImg]?.url} className="w-full rounded-lg shadow-lg" alt={`Generated image ${selectedImg + 1}`} onError={() => { showToast('Image load error'); const updated = [...images]; updated[selectedImg] = { ...updated[selectedImg], url: null, error: 'Load failed' }; setImages(updated); }} />
+                <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">{selectedImg + 1} / {successfulImages.length}</div>
+                <button className="absolute top-2 right-2 btn-secondary text-xs" onClick={() => downloadImage(images[selectedImg].url, selectedImg)}>{'\u2B07\uFE0F'}</button>
               </div>
-
-              {/* Thumbnail strip */}
               <div className="grid grid-cols-5 gap-2">
                 {images.map((img, i) => (
-                  <button
-                    key={i}
-                    className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${
-                      selectedImg === i ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-gray-600 hover:border-gray-400'
-                    } ${!img.url ? 'opacity-40' : ''}`}
-                    onClick={() => img.url && setSelectedImg(i)}
-                    disabled={!img.url}
-                  >
+                  <button key={i} className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${selectedImg === i ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-gray-600 hover:border-gray-400'} ${!img.url ? 'opacity-40' : ''}`} onClick={() => img.url && setSelectedImg(i)} disabled={!img.url}>
                     {img.url ? (
                       <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i + 1}`} />
                     ) : (
@@ -616,23 +686,17 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                   </button>
                 ))}
               </div>
-
-              {/* Prompt info */}
               {images[selectedImg]?.prompt && (
                 <div className="mt-3 p-2 bg-gray-800 rounded-lg">
-                  <p className="text-xs text-gray-400 truncate" title={images[selectedImg].prompt}>
-                    {'\uD83C\uDFA8'} {images[selectedImg].prompt}
-                  </p>
-                  {images[selectedImg]?.model && (
-                    <p className="text-xs text-gray-500 mt-0.5">Model: {images[selectedImg].model}</p>
-                  )}
+                  <p className="text-xs text-gray-400 truncate" title={images[selectedImg].prompt}>{'\uD83C\uDFA8'} {images[selectedImg].prompt}</p>
+                  {images[selectedImg]?.model && <p className="text-xs text-gray-500 mt-0.5">Model: {images[selectedImg].model}</p>}
                 </div>
               )}
             </div>
           ) : (
             <div className="text-center py-12 text-gray-500">
               <div className="text-4xl mb-3">{'\uD83D\uDDBC'}</div>
-              <p>{IMAGE_COUNT} images will be generated with your post</p>
+              <p>{IMAGE_COUNT} unique images will be generated with your post</p>
             </div>
           )}
         </div>

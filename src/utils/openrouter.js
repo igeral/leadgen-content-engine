@@ -42,6 +42,51 @@ function apiHeaders(key) {
   };
 }
 
+// ─── RANDOMIZATION HELPERS ───
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+const HOOK_STYLES = [
+  'Open with a shocking statistic or number.',
+  'Open with a bold, contrarian claim that challenges conventional wisdom.',
+  'Open with a short story or real scenario (1-2 sentences max).',
+  'Open with a provocative question that stops the scroll.',
+  'Open with a "hot take" or unpopular opinion.',
+  'Open with a "what if" scenario.',
+  'Open with "Here\'s what nobody is telling you about..."',
+  'Open with a painful truth the audience recognizes immediately.',
+  'Open with a comparison (before vs after, old way vs new way).',
+  'Open with a timestamp ("Last week, I..." or "6 months ago...").',
+];
+
+const ANGLE_MODIFIERS = [
+  'Frame this from a contrarian perspective — challenge what people assume.',
+  'Use a specific, concrete example or case study to make the point.',
+  'Frame this as a "mistake most people make" and the fix.',
+  'Use a metaphor or analogy from outside healthcare to explain the concept.',
+  'Frame this as a prediction or trend that\'s emerging.',
+  'Present this as a "framework" or "mental model" the reader can use today.',
+  'Frame this as lessons learned from a specific failure or near-miss.',
+  'Use a "myth vs reality" structure to bust a common misconception.',
+  'Frame this as "the question you should be asking but aren\'t".',
+  'Tell this through the lens of one specific person\'s experience.',
+];
+
+const IMAGE_STYLE_SEEDS = [
+  'photorealistic editorial photograph',
+  'clean minimalist vector illustration',
+  'moody cinematic lighting with depth of field',
+  'abstract geometric data visualization',
+  'isometric 3D illustration',
+  'watercolor and ink editorial style',
+  'bold flat design with strong geometry',
+  'dramatic aerial/bird\'s eye perspective',
+  'split-screen comparison composition',
+  'conceptual metaphor illustration',
+  'blueprint/schematic technical drawing style',
+  'warm documentary photography style',
+];
+
 // ─── TEXT GENERATION ───
 export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
   const key = getApiKey(manualKey);
@@ -54,7 +99,7 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
         { role: 'system', content: sysPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.8,
+      temperature: 0.95,
       max_tokens: 2000,
     }),
   });
@@ -63,6 +108,80 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
     throw new Error(e.error?.message || `API error: ${resp.status}`);
   }
   return (await resp.json()).choices[0].message.content;
+}
+
+// ═══════════ TRENDING TOPIC DISCOVERY ═══════════
+export async function fetchTrendingTopics(manualKey, model, brand, pillar, platform, count = 5) {
+  const key = getApiKey(manualKey);
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: apiHeaders(key),
+    body: JSON.stringify({
+      model,
+      messages: [{
+        role: 'user',
+        content: `You are a social media trend analyst specializing in ${platform} content strategy for the ${brand.category || 'B2B'} industry.
+
+TODAY'S DATE: ${today}
+BRAND: ${brand.name || 'B2B Company'}
+NICHE: ${brand.category || 'B2B professional services'}
+CONTENT PILLAR: ${pillar.name} (targeting ${pillar.audience})
+PILLARS CONTEXT: ${brand.pillars.map(p => `${p.name}: ${p.description}`).join('; ')}
+
+Your task: Research and identify the ${count} MOST ENGAGING trending topics right now on ${platform} that are relevant to this brand's niche. Think about:
+
+1. What topics in this industry are getting the MOST engagement (comments, shares, reactions) on ${platform} RIGHT NOW?
+2. What breaking news, policy changes, new studies, or industry shifts happened THIS WEEK or THIS MONTH?
+3. What controversial or polarizing discussions are happening in this space?
+4. What pain points are professionals in this audience currently venting about?
+5. What viral posts or formats are performing well in this niche?
+
+For each topic, provide:
+- topic: A specific, timely topic title (not generic — reference real events, data, or trends)
+- angle: The specific hook or angle that makes this engaging right now
+- whyTrending: Why this is hot right now (1 sentence)
+- engagementPotential: "viral" | "high" | "medium"
+- suggestedHook: A 1-line opening hook for a post on this topic
+
+CRITICAL RULES:
+- Be SPECIFIC and TIMELY. Not "physician burnout" but "Why 3 major health systems just announced 4-day work weeks for physicians — and what it means for staffing"
+- Reference REAL industry trends, reports, legislation, events happening NOW in 2026
+- Each topic must be DIFFERENT from the others — different angles, different emotions, different formats
+- Think about what would actually go VIRAL on ${platform}, not just what's "relevant"
+
+Return ONLY valid JSON array. No markdown, no code blocks.
+[{"topic":"...","angle":"...","whyTrending":"...","engagementPotential":"...","suggestedHook":"..."}]`
+      }],
+      temperature: 1.0,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || 'Failed to fetch trending topics');
+  }
+
+  const data = await resp.json();
+  let raw = data.choices?.[0]?.message?.content || '';
+  raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+  try {
+    const topics = JSON.parse(raw);
+    if (Array.isArray(topics) && topics.length >= 1) return topics.slice(0, count);
+  } catch {
+    // Try to extract JSON array from the response
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (match) {
+      try {
+        const topics = JSON.parse(match[0]);
+        if (Array.isArray(topics) && topics.length >= 1) return topics.slice(0, count);
+      } catch {}
+    }
+  }
+  throw new Error('Could not parse trending topics');
 }
 
 // ─── EXTRACT IMAGE URL FROM RESPONSE ───
@@ -142,9 +261,12 @@ export async function callImageAPI(manualKey, model, prompt) {
   throw new Error('No image in response. Try a different model.');
 }
 
-// ─── GENERATE CONTENT-MATCHED IMAGE PROMPTS ───
+// ─── GENERATE CONTENT-MATCHED IMAGE PROMPTS (with variety) ───
 export async function generateImagePrompts(manualKey, textModel, postText, brand, count = 5) {
   const key = getApiKey(manualKey);
+  // Pick random style seeds for variety
+  const styles = shuffle(IMAGE_STYLE_SEEDS).slice(0, count);
+
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: apiHeaders(key),
@@ -152,7 +274,7 @@ export async function generateImagePrompts(manualKey, textModel, postText, brand
       model: textModel,
       messages: [{
         role: 'user',
-        content: `You are a social media visual strategist. Based on the LinkedIn/Facebook post below, generate exactly ${count} different image descriptions for AI image generation.
+        content: `You are a social media visual strategist creating UNIQUE, VARIED images. Based on the post below, generate exactly ${count} COMPLETELY DIFFERENT image descriptions for AI image generation.
 
 POST:
 ${postText}
@@ -160,20 +282,24 @@ ${postText}
 BRAND: ${brand.name || 'B2B Company'}
 BRAND COLORS: navy (#1a365d), steel blue (#2c5282), accent blue (#3182ce)
 
+MANDATORY STYLE ASSIGNMENTS (each image MUST use its assigned style):
+${styles.map((s, i) => `Image ${i + 1}: ${s}`).join('\n')}
+
 RULES:
-- Each description must be a specific, detailed prompt for AI image generation (2-3 sentences)
+- Each image MUST look completely different from the others — different composition, different subject, different mood
+- Each description must be specific and detailed (2-3 sentences)
 - Each image covers a DIFFERENT angle or message from the post
-- Professional, modern, corporate — suitable for LinkedIn/Facebook
-- Include composition, mood, color palette, and style details
+- Professional, modern — suitable for LinkedIn/Facebook
+- Include specific composition details, lighting, camera angle, mood, and color palette
 - 16:9 landscape format
-- No text/words/letters in the images
-- Mix: data visualizations, professional scenes, conceptual illustrations, environmental shots
-- No stock photo cliches (no handshakes, no pointing at screens)
+- ABSOLUTELY NO text, words, letters, numbers, or typography in the images
+- NO stock photo cliches (no handshakes, no pointing at screens, no smiling at camera)
+- Make each image VISUALLY DISTINCT — if one is dark/moody, make another bright/clean, etc.
 
 Return ONLY a JSON array of ${count} strings. No markdown, no code blocks.
 ["prompt 1", "prompt 2", "prompt 3", "prompt 4", "prompt 5"]`
       }],
-      temperature: 0.9,
+      temperature: 1.0,
       max_tokens: 1500,
     }),
   });
@@ -203,7 +329,6 @@ export async function generateMultipleImages(manualKey, imageModel, prompts, onP
     if (onProgress) onProgress(i, prompts.length);
     let success = false;
 
-    // Try primary model first, then fallbacks
     const modelsToTry = [imageModel, ...fallbackModels.slice(0, 2)];
     for (const model of modelsToTry) {
       try {
@@ -222,7 +347,7 @@ export async function generateMultipleImages(manualKey, imageModel, prompts, onP
   return results;
 }
 
-// ─── PROMPT BUILDERS ───
+// ─── PROMPT BUILDERS (with variety injection) ───
 export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, formatting } = {}) {
   const toneMap = {
     authoritative: 'Direct, authoritative, data-driven voice. You are the expert.',
@@ -250,32 +375,52 @@ VOICE & TONE:
 ${toneMap[tone] || toneMap.authoritative}
 
 FORMATTING RULES:
-- Hook in first 2 lines — this determines if anyone reads the rest
+- Hook in first 2 lines \u2014 this determines if anyone reads the rest
 - Short paragraphs (1-3 sentences max), generous line breaks
-- ${formatting === 'heavy' ? 'Use bullet points with → arrows, numbered lists, and bold structural markers (**bold** for key phrases)' : formatting === 'minimal' ? 'Minimal formatting. Flowing prose. No lists unless absolutely necessary.' : 'Mix of short paragraphs and → arrow lists where they add clarity. Use **bold** for 1-2 key phrases.'}
-- ${platform === 'LinkedIn' ? 'Professional but human. Use → arrow symbols for lists.' : 'Warmer tone, more shareable. Occasional emojis OK.'}
+- ${formatting === 'heavy' ? 'Use bullet points with \u2192 arrows, numbered lists, and bold structural markers (**bold** for key phrases)' : formatting === 'minimal' ? 'Minimal formatting. Flowing prose. No lists unless absolutely necessary.' : 'Mix of short paragraphs and \u2192 arrow lists where they add clarity. Use **bold** for 1-2 key phrases.'}
+- ${platform === 'LinkedIn' ? 'Professional but human. Use \u2192 arrow symbols for lists.' : 'Warmer tone, more shareable. Occasional emojis OK.'}
 - ${useEmoji ? 'Use 2-3 relevant emojis to break up text and add visual interest.' : 'No emojis. Let the words do the work.'}
 - 3-5 relevant hashtags at end
 - 200-350 words
 - Every sentence earns its place. No filler.
 
+VARIETY RULES:
+- NEVER write a generic post. Every post must have a specific, fresh angle.
+- ${pick(HOOK_STYLES)}
+- ${pick(ANGLE_MODIFIERS)}
+- Do NOT repeat common phrases like "here's the thing" or "let that sink in" or "read that again"
+- Use a FRESH hook every time. Surprise the reader.
+
 CTA STYLE:
 ${ctaMap[ctaType] || ctaMap.question}`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics } = {}) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic } = {}) {
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
 
-  if (topic) p += `\n\nTopic/Angle: ${topic}`;
+  // Trending topic takes priority as the main angle
+  if (trendingTopic) {
+    p += `\n\nTRENDING TOPIC TO WRITE ABOUT:\nTitle: ${trendingTopic.topic}\nAngle: ${trendingTopic.angle}\nWhy it's trending: ${trendingTopic.whyTrending}`;
+    if (trendingTopic.suggestedHook) p += `\nSuggested hook: ${trendingTopic.suggestedHook}`;
+    p += `\n\nWrite the post specifically about this trending topic. Make it timely and relevant to what's happening NOW.`;
+  }
+
+  if (topic && !trendingTopic) p += `\n\nTopic/Angle: ${topic}`;
   if (keywords?.length) p += `\n\nKeywords to weave in naturally (don't force them): ${keywords.join(', ')}`;
   if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
   if (avoidTopics?.length) p += `\n\nAvoid these topics/angles: ${avoidTopics.join(', ')}`;
-  if (dataPoints?.length) p += `\n\nData points (use 1-2 max, weave naturally):\n${dataPoints.map((d) => `- ${d}`).join('\n')}`;
+  if (dataPoints?.length) {
+    // Randomly select 2-3 data points instead of passing all
+    const selected = shuffle(dataPoints).slice(0, Math.min(3, dataPoints.length));
+    p += `\n\nData points (use 1-2 max, weave naturally):\n${selected.map((d) => `- ${d}`).join('\n')}`;
+  }
 
   if (imageStyle === 'stat') p += '\n\nThis post is paired with a bold stat-card image. Reference a striking number early.';
-  if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem→context→solution). Structure the post to match.';
+  if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem\u2192context\u2192solution). Structure the post to match.';
   if (imageStyle === 'quote') p += '\n\nThis post is paired with a quote card. Lead with a strong, quotable opinion.';
 
+  // Random uniqueness seed to prevent identical outputs
+  p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)} \u2014 Use this to ensure this post is completely different from any previous generation. Write something FRESH and ORIGINAL.`;
   p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for key phrases.';
   return p;
 }
