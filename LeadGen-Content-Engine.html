@@ -4,1632 +4,844 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LeadGen Content Engine</title>
-
-  <!-- React 18 CDN -->
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-
-  <!-- Babel Standalone -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-
-  <!-- Tailwind CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
   <style>
-    * {
-      font-family: 'Inter', system-ui, sans-serif;
-    }
-
-    body {
-      background: #0f172a;
-      color: #e2e8f0;
-      margin: 0;
-    }
-
-    .gradient-bg {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-    }
-
-    .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-    }
-
-    .card-hover:hover {
-      border-color: #3b82f6;
-      box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      border: none;
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-    }
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .btn-secondary {
-      background: #334155;
-      border: 1px solid #475569;
-      color: #e2e8f0;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-    .btn-secondary:hover {
-      background: #475569;
-    }
-
-    .btn-ghost {
-      background: transparent;
-      border: 1px solid #475569;
-      color: #94a3b8;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-ghost:hover {
-      border-color: #3b82f6;
-      color: #3b82f6;
-    }
-
-    .input-field {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 10px 14px;
-      border-radius: 8px;
-      width: 100%;
-      outline: none;
-      transition: border-color 0.2s;
-      box-sizing: border-box;
-    }
-    .input-field:focus {
-      border-color: #3b82f6;
-    }
-    .input-field::placeholder {
-      color: #64748b;
-    }
-
-    textarea.input-field {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    select.input-field {
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 30px;
-    }
-
-    .tab-active {
-      background: #3b82f6;
-      color: #fff;
-    }
-    .tab-inactive {
-      background: #1e293b;
-      color: #94a3b8;
-      cursor: pointer;
-    }
-    .tab-inactive:hover {
-      background: #334155;
-      color: #e2e8f0;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 10px;
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .spinner {
-      border: 3px solid #334155;
-      border-top: 3px solid #3b82f6;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 0.8s linear infinite;
-      display: inline-block;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .mode-pill-live {
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid #166534;
-      color: #86efac;
-    }
-
-    .mode-pill-demo {
-      background: rgba(234, 179, 8, 0.15);
-      border: 1px solid #854d0e;
-      color: #fef08a;
-    }
-
-    .purple-active {
-      background: #7c3aed;
-      border: 1px solid #6d28d9;
-      color: #fff;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.3s ease-in;
-    }
-
-    @keyframes slideUp {
-      from { transform: translateY(100px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    .animate-slide-up {
-      animation: slideUp 0.3s ease-out;
-    }
+    *{font-family:'Inter',system-ui,sans-serif}
+    body{background:#0f172a;color:#e2e8f0;margin:0}
+    .gradient-bg{background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%)}
+    .card{background:#1e293b;border:1px solid #334155;border-radius:12px}
+    .card-hover:hover{border-color:#3b82f6;box-shadow:0 0 20px rgba(59,130,246,.15)}
+    .btn-primary{background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;transition:all .2s}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(59,130,246,.4)}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .btn-secondary{background:#334155;border:1px solid #475569;color:#e2e8f0;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:500;transition:all .2s}
+    .btn-secondary:hover{background:#475569}
+    .btn-ghost{background:transparent;border:1px solid #475569;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{border-color:#3b82f6;color:#3b82f6}
+    .input-field{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:8px;width:100%;outline:none;transition:border-color .2s;box-sizing:border-box}
+    .input-field:focus{border-color:#3b82f6}
+    .input-field::placeholder{color:#64748b}
+    textarea.input-field{resize:vertical;min-height:80px}
+    select.input-field{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+    .tab-active{background:#3b82f6;color:#fff}
+    .tab-inactive{background:#1e293b;color:#94a3b8;cursor:pointer}
+    .tab-inactive:hover{background:#334155;color:#e2e8f0}
+    .badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:600}
+    .spinner{border:3px solid #334155;border-top:3px solid #3b82f6;border-radius:50%;width:24px;height:24px;animation:spin .8s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .mode-pill-live{background:rgba(34,197,94,.15);border:1px solid #166534;color:#86efac}
+    .mode-pill-demo{background:rgba(234,179,8,.15);border:1px solid #854d0e;color:#fef08a}
+    .purple-active{background:#7c3aed;border:1px solid #6d28d9;color:#fff}
+    .animate-fade-in{animation:fadeIn .3s ease-out}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .animate-slide-up{animation:slideUp .3s ease-out}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   </style>
 </head>
 <body>
-  <div id="root"></div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
 
-  <script type="text/babel">
-    const { useState, useRef, useEffect } = React;
+// ═══════════ API KEY ═══════════
+const ENV_API_KEY = '';
 
-    // ─── ENV CONFIG ───
-    const ENV_API_KEY = "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";
+function getApiKey(manualKey) {
+  return (manualKey || '').trim() || ENV_API_KEY.trim();
+}
+function isLiveMode(manualKey) {
+  return getApiKey(manualKey).length > 0;
+}
+function isUsingEnvKey(manualKey) {
+  return !(manualKey || '').trim() && ENV_API_KEY.trim().length > 0;
+}
 
-    // ─── API KEY MANAGEMENT ───
-    function getApiKey(manualKey) {
-      return (manualKey || '').trim() || ENV_API_KEY.trim();
+// ═══════════ MODELS ═══════════
+const TEXT_MODELS = [
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4 (Best for content)', tier: 'premium' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o (Great all-rounder)', tier: 'premium' },
+  { id: 'google/gemini-2.5-pro-preview', name: 'Gemini 2.5 Pro (Strong writer)', tier: 'premium' },
+  { id: 'anthropic/claude-haiku-4', name: 'Claude Haiku 4 (Fast & cheap)', tier: 'budget' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Budget-friendly)', tier: 'budget' },
+  { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick (Open source)', tier: 'budget' },
+];
+
+const IMAGE_MODELS = [
+  { id: 'openai/gpt-5-image', name: 'GPT-5 Image (Best quality)', modalities: ['image', 'text'] },
+  { id: 'openai/gpt-5-image-mini', name: 'GPT-5 Image Mini (Fast)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image (Cheapest)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image (High quality)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-3.1-flash-image-preview', name: 'Gemini 3.1 Flash Image (Newest)', modalities: ['image', 'text'] },
+];
+
+// ═══════════ API HELPERS ═══════════
+function apiHeaders(key) {
+  return { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': window.location.href, 'X-Title': 'LeadGen Content Engine' };
+}
+
+async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
+  const key = getApiKey(manualKey);
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST', headers: apiHeaders(key),
+    body: JSON.stringify({ model, messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: userPrompt }], temperature: 0.8, max_tokens: 2000 }),
+  });
+  if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.error?.message || `API error: ${resp.status}`); }
+  return (await resp.json()).choices[0].message.content;
+}
+
+function extractImageUrl(data) {
+  const msg = data.choices?.[0]?.message;
+  const content = msg?.content;
+  if (msg?.images?.length > 0) {
+    const img = msg.images[0];
+    if (typeof img === 'string') return img;
+    if (img?.image_url?.url) return img.image_url.url;
+    if (img?.url) return img.url;
+  }
+  if (data.choices?.[0]?.native_images?.length > 0) return data.choices[0].native_images[0];
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (part.type === 'image_url' && (part.image_url?.url || part.url)) return part.image_url?.url || part.url;
+      if (part.type === 'image') {
+        if (part.source?.data) return `data:${part.source.media_type || 'image/png'};base64,${part.source.data}`;
+        if (part.image_url?.url) return part.image_url.url;
+        if (part.url) return part.url;
+      }
     }
+  }
+  if (typeof content === 'string') {
+    const b64 = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+    if (b64) return b64[0];
+    const md = content.match(/!\[.*?\]\((.*?)\)/);
+    if (md) return md[1];
+    const extUrl = content.match(/(https?:\/\/[^\s"'\)]+\.(png|jpg|jpeg|webp|gif)[^\s"'\)]*)/i);
+    if (extUrl) return extUrl[1];
+    const lineUrl = content.trim().match(/^(https?:\/\/[^\s]+)$/m);
+    if (lineUrl) return lineUrl[1];
+  }
+  return null;
+}
 
-    function isLiveMode(manualKey) {
-      return getApiKey(manualKey).length > 0;
-    }
+async function callImageAPI(manualKey, model, prompt) {
+  const key = getApiKey(manualKey);
+  const mc = IMAGE_MODELS.find(m => m.id === model) || IMAGE_MODELS[0];
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST', headers: apiHeaders(key),
+    body: JSON.stringify({ model: mc.id, messages: [{ role: 'user', content: prompt }], modalities: mc.modalities }),
+  });
+  if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.error?.message || `Image API error: ${resp.status}`); }
+  const data = await resp.json();
+  const url = extractImageUrl(data);
+  if (url) return url;
+  console.error('[LeadGen] Unrecognized image response:', JSON.stringify(data).substring(0, 800));
+  throw new Error('No image in response. Try a different model.');
+}
 
-    function isUsingEnvKey(manualKey) {
-      return !(manualKey || '').trim() && ENV_API_KEY.trim().length > 0;
-    }
+async function generateImagePrompts(manualKey, textModel, postText, brand, count = 5) {
+  const key = getApiKey(manualKey);
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST', headers: apiHeaders(key),
+    body: JSON.stringify({
+      model: textModel,
+      messages: [{ role: 'user', content: `You are a social media visual strategist. Based on the LinkedIn/Facebook post below, generate exactly ${count} different image descriptions for AI image generation.\n\nPOST:\n${postText}\n\nBRAND: ${brand.name || 'B2B Company'}\nBRAND COLORS: navy (#1a365d), steel blue (#2c5282), accent blue (#3182ce)\n\nRULES:\n- Each description must be a specific, detailed prompt for AI image generation (2-3 sentences)\n- Each image covers a DIFFERENT angle or message from the post\n- Professional, modern, corporate \u2014 suitable for LinkedIn/Facebook\n- Include composition, mood, color palette, and style details\n- 16:9 landscape format\n- No text/words/letters in the images\n- Mix: data visualizations, professional scenes, conceptual illustrations, environmental shots\n- No stock photo cliches\n\nReturn ONLY a JSON array of ${count} strings. No markdown, no code blocks.\n["prompt 1", "prompt 2", ...]` }],
+      temperature: 0.9, max_tokens: 1500,
+    }),
+  });
+  if (!resp.ok) throw new Error('Failed to generate image prompts');
+  let raw = (await resp.json()).choices?.[0]?.message?.content || '';
+  raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  try { const p = JSON.parse(raw); if (Array.isArray(p) && p.length >= 1) return p.slice(0, count); } catch {}
+  const matches = raw.match(/"([^"]{20,})"/g);
+  if (matches?.length >= 1) return matches.slice(0, count).map(s => s.replace(/^"|"$/g, ''));
+  throw new Error('Could not parse image prompts');
+}
 
-    // ─── TEXT MODELS ───
-    const TEXT_MODELS = [
-      { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4 (Best for content)', tier: 'premium' },
-      { id: 'openai/gpt-4o', name: 'GPT-4o (Great all-rounder)', tier: 'premium' },
-      { id: 'google/gemini-2.5-pro-preview', name: 'Gemini 2.5 Pro (Strong writer)', tier: 'premium' },
-      { id: 'anthropic/claude-haiku-4', name: 'Claude Haiku 4 (Fast & cheap)', tier: 'budget' },
-      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Budget-friendly)', tier: 'budget' },
-      { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick (Open source)', tier: 'budget' },
-    ];
-
-    // ─── IMAGE MODELS ───
-    const IMAGE_MODELS = [
-      { id: 'openai/gpt-image-1', name: 'GPT Image 1 (Best quality)', modalities: ['image', 'text'] },
-      { id: 'google/gemini-2.5-flash-preview:image-generation', name: 'Gemini Flash Image (Fast + cheap)', modalities: ['image', 'text'] },
-      { id: 'black-forest-labs/flux-1.1-pro', name: 'FLUX 1.1 Pro (Photorealistic)', modalities: ['image'] },
-      { id: 'black-forest-labs/flux-schnell', name: 'FLUX Schnell (Fastest)', modalities: ['image'] },
-      { id: 'stability/stable-diffusion-3.5-large', name: 'Stable Diffusion 3.5 Large', modalities: ['image'] },
-    ];
-
-    // ─── SHARED HEADERS ───
-    function apiHeaders(key) {
-      return {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': window.location.href,
-        'X-Title': 'LeadGen Content Engine',
-      };
-    }
-
-    // ─── TEXT GENERATION ───
-    async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
-      const key = getApiKey(manualKey);
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: apiHeaders(key),
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: sysPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.8,
-          max_tokens: 2000,
-        }),
-      });
-      if (!resp.ok) {
-        const e = await resp.json().catch(() => ({}));
-        throw new Error(e.error?.message || `API error: ${resp.status}`);
-      }
-      return (await resp.json()).choices[0].message.content;
-    }
-
-    // ─── EXTRACT IMAGE URL FROM RESPONSE ───
-    function extractImageUrl(data) {
-      const msg = data.choices?.[0]?.message;
-      const content = msg?.content;
-
-      if (data.choices?.[0]?.native_images?.length > 0) {
-        return data.choices[0].native_images[0];
-      }
-
-      if (msg?.images?.length > 0) {
-        return msg.images[0];
-      }
-
-      if (Array.isArray(content)) {
-        for (const part of content) {
-          if (part.type === 'image_url' && (part.image_url?.url || part.url)) {
-            return part.image_url?.url || part.url;
-          }
-          if (part.type === 'image') {
-            if (part.source?.data) {
-              return `data:${part.source.media_type || 'image/png'};base64,${part.source.data}`;
-            }
-            if (part.image_url?.url) return part.image_url.url;
-            if (part.url) return part.url;
-          }
-        }
-      }
-
-      if (typeof content === 'string') {
-        const md = content.match(/!\[.*?\]\((.*?)\)/);
-        if (md) return md[1];
-        const b64 = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-        if (b64) return b64[0];
-        const extUrl = content.match(/(https?:\/\/[^\s"'\)]+\.(png|jpg|jpeg|webp|gif)[^\s"'\)]*)/i);
-        if (extUrl) return extUrl[1];
-        const genUrl = content.match(/(https?:\/\/[^\s"'\)]+\/(generation|image|img)[^\s"'\)]*)/i);
-        if (genUrl) return genUrl[1];
-        const lineUrl = content.trim().match(/^(https?:\/\/[^\s]+)$/m);
-        if (lineUrl) return lineUrl[1];
-      }
-
-      return null;
-    }
-
-    // ─── SINGLE IMAGE GENERATION ───
-    async function callImageAPI(manualKey, model, prompt) {
-      const key = getApiKey(manualKey);
-      const mc = IMAGE_MODELS.find((m) => m.id === model) || IMAGE_MODELS[0];
-
-      const body = {
-        model: mc.id,
-        messages: [{ role: 'user', content: prompt }],
-        modalities: mc.modalities,
-      };
-      if (mc.modalities.includes('text')) {
-        body.image_config = { aspect_ratio: '16:9' };
-      }
-
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: apiHeaders(key),
-        body: JSON.stringify(body),
-      });
-
-      if (!resp.ok) {
-        const e = await resp.json().catch(() => ({}));
-        throw new Error(e.error?.message || `Image API error: ${resp.status}`);
-      }
-
-      const data = await resp.json();
-      const url = extractImageUrl(data);
-      if (url) return url;
-
-      console.error('[LeadGen] Image response format unrecognized:', JSON.stringify(data).substring(0, 500));
-      throw new Error('No image in response. Try a different model.');
-    }
-
-    // ─── GENERATE MULTIPLE CONTENT-MATCHED IMAGE PROMPTS ───
-    async function generateImagePrompts(manualKey, textModel, postText, brand, count = 5) {
-      const key = getApiKey(manualKey);
-      const prompt = `You are a social media visual strategist. Based on the post below, generate exactly ${count} different image descriptions for AI image generation. Each image must directly illustrate a different aspect of the post content.
-
-POST:
-${postText}
-
-BRAND: ${brand.name || 'B2B Company'}
-BRAND COLORS: navy (#1a365d), steel blue (#2c5282), accent blue (#3182ce)
-
-RULES:
-- Each description must be a specific, detailed image generation prompt (2-3 sentences)
-- Images must be professional, modern, corporate — suitable for LinkedIn/Facebook
-- Each image should cover a DIFFERENT angle/message from the post
-- Include composition, mood, color palette, and style details
-- Format: 16:9 landscape, clean and modern
-- No text overlay in images — purely visual
-- No stock photo cliches (no handshakes, no pointing at screens)
-- Types to mix: data visualizations, professional scenes, conceptual illustrations, environmental shots, abstract representations
-
-Return ONLY a JSON array of ${count} strings. No commentary, no markdown, no code blocks. Example:
-["prompt 1", "prompt 2", "prompt 3", "prompt 4", "prompt 5"]`;
-
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: apiHeaders(key),
-        body: JSON.stringify({
-          model: textModel,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.9,
-          max_tokens: 1500,
-        }),
-      });
-
-      if (!resp.ok) {
-        throw new Error('Failed to generate image prompts');
-      }
-
-      const data = await resp.json();
-      let raw = data.choices?.[0]?.message?.content || '';
-
-      raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
+async function generateMultipleImages(manualKey, imageModel, prompts, onProgress) {
+  const results = [];
+  const fallbackModels = IMAGE_MODELS.filter(m => m.id !== imageModel).map(m => m.id);
+  for (let i = 0; i < prompts.length; i++) {
+    if (onProgress) onProgress(i, prompts.length);
+    let success = false;
+    const modelsToTry = [imageModel, ...fallbackModels.slice(0, 2)];
+    for (const model of modelsToTry) {
       try {
-        const prompts = JSON.parse(raw);
-        if (Array.isArray(prompts) && prompts.length >= 1) {
-          return prompts.slice(0, count);
-        }
-      } catch {
-        const matches = raw.match(/"([^"]{20,})"/g);
-        if (matches && matches.length >= 1) {
-          return matches.slice(0, count).map((s) => s.replace(/^"|"$/g, ''));
-        }
-      }
-
-      throw new Error('Could not parse image prompts from AI response');
+        const url = await callImageAPI(manualKey, model, prompts[i]);
+        results.push({ url, prompt: prompts[i], error: null, model });
+        success = true; break;
+      } catch (e) { console.warn(`[LeadGen] Image ${i + 1} failed on ${model}:`, e.message); }
     }
+    if (!success) results.push({ url: null, prompt: prompts[i], error: 'All models failed' });
+  }
+  return results;
+}
 
-    // ─── BATCH IMAGE GENERATION ───
-    async function generateMultipleImages(manualKey, imageModel, prompts, onProgress) {
-      const results = [];
-      for (let i = 0; i < prompts.length; i++) {
-        if (onProgress) onProgress(i, prompts.length);
-        try {
-          const url = await callImageAPI(manualKey, imageModel, prompts[i]);
-          results.push({ url, prompt: prompts[i], error: null });
-        } catch (e) {
-          results.push({ url: null, prompt: prompts[i], error: e.message });
-        }
-      }
-      return results;
-    }
+// ═══════════ PROMPT BUILDERS ═══════════
+function buildSystemPrompt(brand, platform, opts = {}) {
+  const { tone, ctaType, useEmoji, formatting } = opts;
+  const toneMap = {
+    authoritative: 'Direct, authoritative, data-driven voice. You are the expert.',
+    conversational: 'Warm, conversational, relatable voice. Like talking to a smart colleague.',
+    provocative: 'Bold, contrarian, thought-provoking voice. Challenge conventional thinking.',
+    storytelling: 'Narrative-driven voice. Open with a scene or moment. Pull the reader in.',
+    educational: 'Clear, instructive voice. Teach something valuable. Be specific.',
+  };
+  const ctaMap = {
+    question: 'End with a thought-provoking question that invites comments.',
+    dm: 'End with a DM-based CTA (e.g., DM me "GUIDE" to get...).',
+    link: 'End with a CTA pointing to a link or resource.',
+    engage: 'End by asking readers to share their experience or opinion.',
+    none: 'No explicit CTA. Let the content speak for itself.',
+  };
+  return `You are an expert social media content strategist for B2B lead generation on ${platform}.\n\nBRAND: ${brand.name || 'the client'}\nTagline: ${brand.tagline || 'N/A'}\nCategory: ${brand.category || 'N/A'}\nPillars: ${brand.pillars.map(p => p.name).join(', ')}\n\nVOICE & TONE:\n${toneMap[tone] || toneMap.authoritative}\n\nFORMATTING RULES:\n- Hook in first 2 lines\n- Short paragraphs (1-3 sentences max), generous line breaks\n- ${formatting === 'heavy' ? 'Use bullet points with \u2192 arrows, numbered lists, and bold structural markers (**bold** for key phrases)' : formatting === 'minimal' ? 'Minimal formatting. Flowing prose. No lists unless absolutely necessary.' : 'Mix of short paragraphs and \u2192 arrow lists where they add clarity. Use **bold** for 1-2 key phrases.'}\n- ${platform === 'LinkedIn' ? 'Professional but human. Use \u2192 arrow symbols for lists.' : 'Warmer tone, more shareable. Occasional emojis OK.'}\n- ${useEmoji ? 'Use 2-3 relevant emojis to break up text and add visual interest.' : 'No emojis. Let the words do the work.'}\n- 3-5 relevant hashtags at end\n- 200-350 words\n- Every sentence earns its place. No filler.\n\nCTA STYLE:\n${ctaMap[ctaType] || ctaMap.question}`;
+}
 
-    // ─── PROMPT BUILDERS ───
-    function buildSystemPrompt(brand, platform) {
-      return `You are an expert social media content strategist for B2B lead generation on ${platform}.
+function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, opts = {}) {
+  const { keywords, keyPhrases, avoidTopics } = opts;
+  let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
+  if (topic) p += `\n\nTopic/Angle: ${topic}`;
+  if (keywords?.length) p += `\n\nKeywords to weave in naturally: ${keywords.join(', ')}`;
+  if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map(k => `- "${k}"`).join('\n')}`;
+  if (avoidTopics?.length) p += `\n\nAvoid these topics/angles: ${avoidTopics.join(', ')}`;
+  if (dataPoints?.length) p += `\n\nData points (use 1-2 max):\n${dataPoints.map(d => `- ${d}`).join('\n')}`;
+  if (imageStyle === 'stat') p += '\n\nThis post is paired with a bold stat-card image. Reference a striking number early.';
+  if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem\u2192context\u2192solution). Structure the post to match.';
+  if (imageStyle === 'quote') p += '\n\nThis post is paired with a quote card. Lead with a strong, quotable opinion.';
+  p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for key phrases.';
+  return p;
+}
 
-BRAND: ${brand.name || 'the client'}
-Tagline: ${brand.tagline || 'N/A'}
-Category: ${brand.category || 'N/A'}
-Pillars: ${brand.pillars.map((p) => p.name).join(', ')}
+// ═══════════ CANVAS IMAGE GENERATORS ═══════════
+function wrapText(ctx, text, x, y, maxW, lh) {
+  const words = text.split(' '); let line = '', n = 0;
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > maxW && i > 0) { ctx.fillText(line.trim(), x, y); line = words[i] + ' '; y += lh; n++; if (n > 8) break; } else { line = test; }
+  }
+  ctx.fillText(line.trim(), x, y); return y;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+function generateStatCard(cv, opts) {
+  const ctx=cv.getContext('2d'), W=1200, H=628; cv.width=W; cv.height=H;
+  const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,opts.colors.primary); g.addColorStop(1,opts.colors.secondary||opts.colors.primary); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=opts.colors.accent||'#3b82f6'; ctx.fillRect(200,60,320,4); ctx.fillStyle=opts.colors.light||'#bee3f8'; ctx.font='600 16px Inter,sans-serif'; ctx.textAlign='left'; ctx.fillText((opts.category||'INSIGHT').toUpperCase(),200,50);
+  ctx.fillStyle='#fff'; ctx.font='900 120px Inter,sans-serif'; const stat=opts.stat||'86,000'; ctx.fillText(stat,190,240);
+  ctx.fillStyle=opts.colors.accent||'#3b82f6'; ctx.fillRect(190,260,Math.min(ctx.measureText(stat).width,500),4);
+  ctx.fillStyle='#fff'; ctx.font='700 36px Inter,sans-serif'; wrapText(ctx,opts.label||'Key metric.',190,320,700,44);
+  if(opts.subtitle){ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='400 20px Inter,sans-serif';wrapText(ctx,opts.subtitle,190,420,700,28);}
+  ctx.fillStyle=opts.colors.accent||'#3b82f6'; ctx.fillRect(0,H-50,W,50); ctx.fillStyle='#fff'; ctx.font='700 16px Inter,sans-serif'; ctx.textAlign='left'; ctx.fillText((opts.brandName||'YOUR BRAND').toUpperCase(),30,H-18); ctx.textAlign='right'; ctx.font='400 14px Inter,sans-serif'; ctx.fillText(opts.tagline||'',W-30,H-18);
+  ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(190,490); ctx.lineTo(220,490); ctx.lineTo(230,470); ctx.lineTo(240,510); ctx.lineTo(250,480); ctx.lineTo(260,490); ctx.lineTo(350,490); ctx.stroke();
+}
+function generateQuoteCard(cv, opts) {
+  const ctx=cv.getContext('2d'), W=1200, H=628; cv.width=W; cv.height=H;
+  const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,'#2d4a6f'); g.addColorStop(1,opts.colors.primary||'#1a365d'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.font='900 200px Georgia,serif'; ctx.textAlign='left'; ctx.fillText('\u201C',40,180);
+  ctx.fillStyle='#fff'; ctx.font='700 32px Inter,sans-serif'; wrapText(ctx,opts.quote||'Your perspective here.',80,210,520,42);
+  ctx.fillStyle='rgba(255,255,255,.7)'; ctx.font='400 18px Inter,sans-serif'; ctx.fillText(opts.brandName||'Your Brand',80,480); ctx.font='400 14px Inter,sans-serif'; ctx.fillText(opts.role||'',80,505);
+  ctx.fillStyle='rgba(255,255,255,.08)'; roundRect(ctx,650,80,480,470,12); ctx.fill();
+  if(opts.context){ctx.fillStyle='#fff';ctx.font='600 20px Inter,sans-serif';wrapText(ctx,opts.context,680,130,420,30);}
+  if(opts.closingLine){ctx.fillStyle='#fff';ctx.font='800 24px Inter,sans-serif';wrapText(ctx,opts.closingLine,680,440,420,32);}
+  ctx.fillStyle=opts.colors.accent||'#3b82f6'; ctx.fillRect(0,H-50,W,50); ctx.fillStyle='#fff'; ctx.font='700 16px Inter,sans-serif'; ctx.textAlign='left'; ctx.fillText((opts.brandName||'YOUR BRAND').toUpperCase(),30,H-18); ctx.textAlign='right'; ctx.font='400 14px Inter,sans-serif'; ctx.fillText(opts.tagline||'',W-30,H-18);
+}
+function generateMultiCard(cv, opts) {
+  const ctx=cv.getContext('2d'), W=1200, H=628; cv.width=W; cv.height=H;
+  ctx.fillStyle='#f1f5f9'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=opts.colors.primary||'#1a365d'; ctx.fillRect(0,0,100,H); ctx.fillStyle='#fff'; ctx.font='700 48px Inter,sans-serif'; ctx.textAlign='center'; ctx.fillText(opts.cardNumber||'1',50,310); ctx.font='400 20px Inter,sans-serif'; ctx.fillText('of',50,340); ctx.fillText(opts.totalCards||'3',50,370);
+  ctx.fillStyle=opts.colors.primary||'#1a365d'; ctx.font='700 14px Inter,sans-serif'; ctx.textAlign='left'; ctx.fillText((opts.topicLabel||'TOPIC').toUpperCase(),200,60); ctx.fillStyle=opts.colors.accent||'#3b82f6'; ctx.fillRect(200,70,200,3);
+  ctx.fillStyle=opts.colors.primary||'#1a365d'; roundRect(ctx,W-120,20,90,90,8); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='700 14px Inter,sans-serif'; ctx.textAlign='center'; ctx.fillText(opts.brandName?opts.brandName.split(' ')[0].toUpperCase():'BRAND',W-75,70); ctx.textAlign='left';
+  if(opts.title){ctx.fillStyle=opts.colors.primary||'#1a365d';ctx.font='800 42px Inter,sans-serif';wrapText(ctx,opts.title,200,160,800,52);}
+  if(opts.subtitle){ctx.fillStyle=opts.colors.primary||'#1a365d';ctx.font='800 38px Inter,sans-serif';wrapText(ctx,opts.subtitle,200,420,800,46);if(opts.subSubtitle){ctx.fillStyle='#64748b';ctx.font='400 20px Inter,sans-serif';ctx.fillText(opts.subSubtitle,200,510);}}
+  if(opts.tagLabel){ctx.font='600 13px Inter,sans-serif';const tw=ctx.measureText(opts.tagLabel.toUpperCase()).width+40;ctx.fillStyle=opts.colors.primary||'#1a365d';roundRect(ctx,W-tw-30,H-70,tw,36,6);ctx.fill();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(opts.tagLabel.toUpperCase(),W-tw/2-30,H-47);}
+  ctx.fillStyle=opts.colors.primary||'#1a365d'; ctx.font='700 14px Inter,sans-serif'; ctx.textAlign='left'; ctx.fillText((opts.brandName||'YOUR BRAND').toUpperCase(),120,H-20);
+}
 
-RULES:
-- Direct, authoritative voice
-- Short paragraphs, line breaks for readability
-- Hook in first 2 lines
-- CTA or question at end
-- ${platform === 'LinkedIn' ? 'Use arrow symbols for lists. Professional but human.' : 'Warmer tone, occasional emojis. Shareable.'}
-- 3-5 hashtags at end
-- 150-300 words
-- No filler. Every sentence earns its place.`;
-    }
+// ═══════════ PRESETS ═══════════
+const STEADFAST_PRESET = {
+  name: 'Steadfast Physician Partners', tagline: 'Reliable Physician Coverage. Deployed Fast.',
+  category: 'The company that helps hospitals eliminate physician coverage gaps before they become crises.',
+  colors: { primary: '#1a365d', secondary: '#2c5282', accent: '#3182ce', light: '#bee3f8', bg: '#1a365d', text: '#ffffff' },
+  pillars: [
+    { name: 'Workforce Insights', audience: 'Hospital Leaders', description: 'Data-driven content about physician shortages and capacity gaps' },
+    { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Content for physicians considering locum work and career flexibility' },
+    { name: 'Staffing Strategy', audience: 'Hospital Leaders', description: 'Proactive staffing frameworks, cost analysis, and locum strategy' },
+    { name: 'Industry Commentary', audience: 'Both', description: 'Hot takes on healthcare policy, Match results, market shifts' },
+  ],
+  schedule: [
+    { day: 'Monday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'stat' },
+    { day: 'Monday', time: '12:00 PM', pillar: 'Workforce Insights', audience: 'Hospital Leaders', imageStyle: 'quote' },
+    { day: 'Tuesday', time: '7:30 AM', pillar: 'Industry Commentary', audience: 'Both', imageStyle: 'stat' },
+    { day: 'Tuesday', time: '12:00 PM', pillar: 'Workforce Insights', audience: 'Hospital Leaders', imageStyle: 'multi' },
+    { day: 'Wednesday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'quote' },
+    { day: 'Wednesday', time: '12:00 PM', pillar: 'Staffing Strategy', audience: 'Hospital Leaders', imageStyle: 'stat' },
+    { day: 'Thursday', time: '12:00 PM', pillar: 'Staffing Strategy', audience: 'Hospital Leaders', imageStyle: 'multi' },
+    { day: 'Thursday', time: '5:15 PM', pillar: 'Lead Magnet', audience: 'Hospital Leaders', imageStyle: 'stat' },
+  ],
+  dataPoints: [
+    '86,000 projected physician shortage by 2036',
+    '65% of hospitals have run below capacity due to staffing shortages',
+    'Rural hospitals face 60% projected physician shortage vs 10% urban',
+    '$1M+ lost annually per unfilled physician position',
+    'Average permanent physician search takes 6-12 months',
+    '40% of hospital leaders already use locum tenens to address demand spikes',
+    '2026 Match: largest in history with 41,482 positions filled',
+    'Resident Physician Shortage Reduction Act would add 14,000 residency slots over 7 years',
+  ],
+};
 
-    function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle) {
-      let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
-      if (topic) p += `\n\nTopic: ${topic}`;
-      if (dataPoints?.length) {
-        p += `\n\nData points (use 1-2 max):\n${dataPoints.map((d) => `- ${d}`).join('\n')}`;
-      }
-      if (imageStyle === 'stat') p += '\n\nPaired with a single-stat image card. Reference a key number.';
-      if (imageStyle === 'multi') p += '\n\nPaired with a 3-image set (problem→context→solution).';
-      if (imageStyle === 'quote') p += '\n\nPaired with a quote card. Lead with a strong opinion.';
-      p += '\n\nReturn ONLY the raw post text. No labels or commentary.';
-      return p;
-    }
+const BLANK_PRESET = {
+  name: '', tagline: '', category: '',
+  colors: { primary: '#1e40af', secondary: '#1d4ed8', accent: '#3b82f6', light: '#dbeafe', bg: '#1e40af', text: '#ffffff' },
+  pillars: [
+    { name: 'Educational', audience: 'Primary', description: 'Teaching your audience something valuable' },
+    { name: 'Storytelling', audience: 'Both', description: 'Stories that build trust and connection' },
+    { name: 'Industry News', audience: 'Both', description: 'Commentary on trends and news' },
+    { name: 'Lead Magnet', audience: 'Primary', description: 'Content that drives email signups and conversions' },
+  ],
+  schedule: [], dataPoints: [],
+};
 
-    // ─── CANVAS HELPERS ───
-    function wrapText(ctx, text, x, y, maxW, lh) {
-      const words = text.split(' ');
-      let line = '';
-      let n = 0;
-      for (let i = 0; i < words.length; i++) {
-        const test = line + words[i] + ' ';
-        if (ctx.measureText(test).width > maxW && i > 0) {
-          ctx.fillText(line.trim(), x, y);
-          line = words[i] + ' ';
-          y += lh;
-          n++;
-          if (n > 8) break;
-        } else {
-          line = test;
-        }
-      }
-      ctx.fillText(line.trim(), x, y);
-      return y;
-    }
+// ═══════════ MOCK POSTS ═══════════
+const MOCK_POSTS = {
+  linkedin: {
+    'Workforce Insights': [
+      "The numbers don\u2019t lie.\n\nEvery unfilled physician position costs your hospital $1M+ per year.\n\nThat\u2019s not a budget line item. That\u2019s lost billings. Diverted patients. Overtime premiums that never stop.\n\nBut here\u2019s what keeps me up at night:\n\nMost hospital leaders don\u2019t calculate this cost until the gap already exists.\n\nBy then, you\u2019re in reactive mode. Paying premium rates. Scrambling for coverage.\n\nThe math is simple:\n\u2192 Proactive coverage planning = lower cost per physician\n\u2192 Reactive scrambling = highest cost per physician\n\nYour workforce strategy isn\u2019t a staffing problem.\nIt\u2019s a revenue problem.\n\nWhat\u2019s the real cost of your current coverage gaps?\n\n#PhysicianWorkforce #HealthcareLeadership #HospitalAdministration #WorkforceStrategy",
+      "86,000.\n\nThat\u2019s the projected U.S. physician shortage by 2036.\n\nAnd here\u2019s the part nobody\u2019s talking about:\n\nThe shortage isn\u2019t evenly distributed.\n\nRural hospitals face a 60% projected shortfall. Urban hospitals? 10%.\n\nThat means if you\u2019re running a community hospital outside a major metro area \u2014 you\u2019re competing for talent with one hand tied behind your back.\n\nThe physicians aren\u2019t coming. Not fast enough.\n\nSo the question isn\u2019t \u201Cwill we have gaps?\u201D\n\nIt\u2019s \u201Chow are we covering them before they become crises?\u201D\n\nThe health systems that figure this out first will win.\n\n#PhysicianShortage #RuralHealthcare #WorkforcePlanning #HealthcareStrategy",
+    ],
+    'Physician Lifestyle': [
+      "You didn\u2019t go through 12+ years of training to feel trapped.\n\nBut that\u2019s exactly how it feels for a lot of physicians right now.\n\nThe burnout. The admin burden. The golden handcuffs of a contract that looked great on paper but left you with zero flexibility.\n\nHere\u2019s what I\u2019m hearing from physicians every week:\n\n\u201CI love medicine. I just don\u2019t love this job anymore.\u201D\n\nLocum tenens isn\u2019t a backup plan. For a growing number of physicians, it\u2019s the path back to actually practicing medicine.\n\n\u2192 Choose your schedule\n\u2192 Pick your locations\n\u2192 Focus on patients, not politics\n\nThe model is changing. The physicians who see it first are already moving.\n\nAre you one of them?\n\n#LocumTenens #PhysicianLife #PhysicianBurnout #MedicalCareers",
+    ],
+    'Staffing Strategy': [
+      "Your staffing problem isn\u2019t a staffing problem.\n\nIt\u2019s a timing problem.\n\nEvery hospital knows physicians retire. Every hospital knows recruitment takes 6-12 months. Every hospital has seen seasonal volume surges.\n\nBut most hospitals react to these events instead of planning for them.\n\nThe result?\n\u2192 Higher locum rates\n\u2192 Coverage gaps that disrupt patient care\n\u2192 Burnt out staff picking up the slack\n\u2192 Revenue walking out the door\n\nThe fix is a 5-step proactive model:\n\n1. Build a coverage risk calendar\n2. Define your highest-risk specialties\n3. Establish a locum partner before you need one\n4. Credential physicians in advance\n5. Integrate locums into your care culture\n\nProactive staffing costs less than reactive staffing.\nEvery. Single. Time.\n\n#StaffingStrategy #HealthcareOperations #PhysicianRecruitment #HospitalManagement",
+    ],
+    'Industry Commentary': [
+      "The 2026 Match was the largest in history.\n\n41,482 positions filled.\n\nBut before we celebrate \u2014 look at what\u2019s still broken:\n\n\u2192 Emergency medicine: unfilled positions rising\n\u2192 Psychiatry: demand outpacing supply 3:1\n\u2192 Rural programs: still struggling to attract candidates\n\n#Match2026 #MedicalEducation #PhysicianWorkforce #HealthcarePolicy",
+    ],
+    'Educational': [
+      "Here\u2019s something most people get wrong:\n\nThey think more content = more leads.\n\nThe data tells a different story.\n\nThe 4-3-2-1 framework:\n4 posts per week\n3 content types\n2 audiences\n1 lead magnet post\n\nSimple. Repeatable. Scalable.\n\n#ContentStrategy #LinkedInGrowth #LeadGeneration",
+    ],
+  },
+  facebook: {
+    'Workforce Insights': [
+      "Did you know? Every unfilled physician position costs hospitals over $1 MILLION per year.\n\nThat\u2019s not just a number \u2014 it\u2019s lost patient care, burnt-out staff, and revenue that never comes back.\n\nWith 86,000 physicians projected to be short by 2036, the time to plan is NOW.\n\n#HealthcareWorkforce #PhysicianShortage #HospitalManagement",
+    ],
+    'Staffing Strategy': [
+      "Here\u2019s the truth about physician staffing that nobody wants to hear:\n\nIf you\u2019re calling for coverage when you already have a gap \u2014 you\u2019re already too late.\n\n5 steps to get ahead:\n1. Build a coverage risk calendar\n2. Identify your highest-risk specialties\n3. Partner with a locum firm BEFORE you need one\n4. Credential physicians in advance\n5. Integrate locums into your care culture\n\n#StaffingStrategy #HealthcareLeadership #LocumTenens",
+    ],
+  },
+};
 
-    function roundRect(ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    }
+// ═══════════ TOAST COMPONENT ═══════════
+function Toast({ message, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, [onClose]);
+  return React.createElement('div', { className: 'fixed bottom-8 right-8 bg-green-500 text-white px-6 py-3 rounded-lg font-semibold z-50 animate-slide-up shadow-lg' }, message);
+}
 
-    // ─── STAT CARD ───
-    function generateStatCard(canvas, opts) {
-      const ctx = canvas.getContext('2d');
-      const W = 1200, H = 628;
-      canvas.width = W;
-      canvas.height = H;
-
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, opts.colors.primary);
-      g.addColorStop(1, opts.colors.secondary || opts.colors.primary);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.fillStyle = opts.colors.accent || '#3b82f6';
-      ctx.fillRect(200, 60, 320, 4);
-      ctx.fillStyle = opts.colors.light || '#bee3f8';
-      ctx.font = '600 16px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText((opts.category || 'INSIGHT').toUpperCase(), 200, 50);
-
-      ctx.fillStyle = '#fff';
-      ctx.font = '900 120px Inter, sans-serif';
-      const stat = opts.stat || '86,000';
-      ctx.fillText(stat, 190, 240);
-
-      ctx.fillStyle = opts.colors.accent || '#3b82f6';
-      ctx.fillRect(190, 260, Math.min(ctx.measureText(stat).width, 500), 4);
-
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 36px Inter, sans-serif';
-      wrapText(ctx, opts.label || 'Key metric.', 190, 320, 700, 44);
-
-      if (opts.subtitle) {
-        ctx.fillStyle = 'rgba(255,255,255,.7)';
-        ctx.font = '400 20px Inter, sans-serif';
-        wrapText(ctx, opts.subtitle, 190, 420, 700, 28);
-      }
-
-      ctx.fillStyle = opts.colors.accent || '#3b82f6';
-      ctx.fillRect(0, H - 50, W, 50);
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 16px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText((opts.brandName || 'YOUR BRAND').toUpperCase(), 30, H - 18);
-      ctx.textAlign = 'right';
-      ctx.font = '400 14px Inter, sans-serif';
-      ctx.fillText(opts.tagline || '', W - 30, H - 18);
-
-      ctx.strokeStyle = 'rgba(255,255,255,.15)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(190, 490);
-      ctx.lineTo(220, 490);
-      ctx.lineTo(230, 470);
-      ctx.lineTo(240, 510);
-      ctx.lineTo(250, 480);
-      ctx.lineTo(260, 490);
-      ctx.lineTo(350, 490);
-      ctx.stroke();
-    }
-
-    // ─── QUOTE CARD ───
-    function generateQuoteCard(canvas, opts) {
-      const ctx = canvas.getContext('2d');
-      const W = 1200, H = 628;
-      canvas.width = W;
-      canvas.height = H;
-
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, '#2d4a6f');
-      g.addColorStop(1, opts.colors.primary || '#1a365d');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.fillStyle = 'rgba(255,255,255,.12)';
-      ctx.font = '900 200px Georgia, serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('\u201C', 40, 180);
-
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 32px Inter, sans-serif';
-      wrapText(ctx, opts.quote || 'Your perspective here.', 80, 210, 520, 42);
-
-      ctx.fillStyle = 'rgba(255,255,255,.7)';
-      ctx.font = '400 18px Inter, sans-serif';
-      ctx.fillText(opts.brandName || 'Your Brand', 80, 480);
-      ctx.font = '400 14px Inter, sans-serif';
-      ctx.fillText(opts.role || '', 80, 505);
-
-      ctx.fillStyle = 'rgba(255,255,255,.08)';
-      roundRect(ctx, 650, 80, 480, 470, 12);
-      ctx.fill();
-
-      if (opts.context) {
-        ctx.fillStyle = '#fff';
-        ctx.font = '600 20px Inter, sans-serif';
-        wrapText(ctx, opts.context, 680, 130, 420, 30);
-      }
-      if (opts.closingLine) {
-        ctx.fillStyle = '#fff';
-        ctx.font = '800 24px Inter, sans-serif';
-        wrapText(ctx, opts.closingLine, 680, 440, 420, 32);
-      }
-
-      ctx.fillStyle = opts.colors.accent || '#3b82f6';
-      ctx.fillRect(0, H - 50, W, 50);
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 16px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText((opts.brandName || 'YOUR BRAND').toUpperCase(), 30, H - 18);
-      ctx.textAlign = 'right';
-      ctx.font = '400 14px Inter, sans-serif';
-      ctx.fillText(opts.tagline || '', W - 30, H - 18);
-    }
-
-    // ─── MULTI CARD ───
-    function generateMultiCard(canvas, opts) {
-      const ctx = canvas.getContext('2d');
-      const W = 1200, H = 628;
-      canvas.width = W;
-      canvas.height = H;
-
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.fillStyle = opts.colors.primary || '#1a365d';
-      ctx.fillRect(0, 0, 100, H);
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 48px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(opts.cardNumber || '1', 50, 310);
-      ctx.font = '400 20px Inter, sans-serif';
-      ctx.fillText('of', 50, 340);
-      ctx.fillText(opts.totalCards || '3', 50, 370);
-
-      ctx.fillStyle = opts.colors.primary || '#1a365d';
-      ctx.font = '700 14px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText((opts.topicLabel || 'TOPIC').toUpperCase(), 200, 60);
-      ctx.fillStyle = opts.colors.accent || '#3b82f6';
-      ctx.fillRect(200, 70, 200, 3);
-
-      ctx.fillStyle = opts.colors.primary || '#1a365d';
-      roundRect(ctx, W - 120, 20, 90, 90, 8);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 14px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(
-        opts.brandName ? opts.brandName.split(' ')[0].toUpperCase() : 'BRAND',
-        W - 75,
-        70
-      );
-      ctx.textAlign = 'left';
-
-      if (opts.title) {
-        ctx.fillStyle = opts.colors.primary || '#1a365d';
-        ctx.font = '800 42px Inter, sans-serif';
-        wrapText(ctx, opts.title, 200, 160, 800, 52);
-      }
-
-      if (opts.points?.length) {
-        let y = opts.title ? 300 : 140;
-        opts.points.forEach((point, i) => {
-          ctx.fillStyle = opts.colors.accent || '#3b82f6';
-          ctx.beginPath();
-          ctx.arc(220, y - 6, 16, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.font = '700 14px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(String(i + 1).padStart(2, '0'), 220, y - 1);
-          ctx.textAlign = 'left';
-          ctx.fillStyle = opts.colors.primary || '#1a365d';
-          ctx.font = '600 26px Inter, sans-serif';
-          ctx.fillText(point, 250, y);
-          y += 60;
-        });
-      }
-
-      if (opts.subtitle) {
-        ctx.fillStyle = opts.colors.primary || '#1a365d';
-        ctx.font = '800 38px Inter, sans-serif';
-        wrapText(ctx, opts.subtitle, 200, 420, 800, 46);
-        if (opts.subSubtitle) {
-          ctx.fillStyle = '#64748b';
-          ctx.font = '400 20px Inter, sans-serif';
-          ctx.fillText(opts.subSubtitle, 200, 510);
-        }
-      }
-
-      if (opts.tagLabel) {
-        ctx.font = '600 13px Inter, sans-serif';
-        const tw = ctx.measureText(opts.tagLabel.toUpperCase()).width + 40;
-        ctx.fillStyle = opts.colors.primary || '#1a365d';
-        roundRect(ctx, W - tw - 30, H - 70, tw, 36, 6);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.fillText(opts.tagLabel.toUpperCase(), W - tw / 2 - 30, H - 47);
-      }
-
-      ctx.fillStyle = opts.colors.primary || '#1a365d';
-      ctx.font = '700 14px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText((opts.brandName || 'YOUR BRAND').toUpperCase(), 120, H - 20);
-    }
-
-    // ─── PRESETS ───
-    const STEADFAST_PRESET = {
-      name: 'Steadfast Physician Partners',
-      tagline: 'Reliable Physician Coverage. Deployed Fast.',
-      category: 'The company that helps hospitals eliminate physician coverage gaps before they become crises.',
-      colors: {
-        primary: '#1a365d',
-        secondary: '#2c5282',
-        accent: '#3182ce',
-        light: '#bee3f8',
-        bg: '#1a365d',
-        text: '#ffffff',
-      },
-      pillars: [
-        { name: 'Workforce Insights', audience: 'Hospital Leaders', description: 'Data-driven content about physician shortages and capacity gaps' },
-        { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Content for physicians considering locum work and career flexibility' },
-        { name: 'Staffing Strategy', audience: 'Hospital Leaders', description: 'Proactive staffing frameworks, cost analysis, and locum strategy' },
-        { name: 'Industry Commentary', audience: 'Both', description: 'Hot takes on healthcare policy, Match results, market shifts' },
-      ],
-      schedule: [
-        { day: 'Monday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'stat' },
-        { day: 'Monday', time: '12:00 PM', pillar: 'Workforce Insights', audience: 'Hospital Leaders', imageStyle: 'quote' },
-        { day: 'Tuesday', time: '7:30 AM', pillar: 'Industry Commentary', audience: 'Both', imageStyle: 'stat' },
-        { day: 'Tuesday', time: '12:00 PM', pillar: 'Workforce Insights', audience: 'Hospital Leaders', imageStyle: 'multi' },
-        { day: 'Wednesday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'quote' },
-        { day: 'Wednesday', time: '12:00 PM', pillar: 'Staffing Strategy', audience: 'Hospital Leaders', imageStyle: 'stat' },
-        { day: 'Thursday', time: '12:00 PM', pillar: 'Staffing Strategy', audience: 'Hospital Leaders', imageStyle: 'multi' },
-        { day: 'Thursday', time: '5:15 PM', pillar: 'Lead Magnet', audience: 'Hospital Leaders', imageStyle: 'stat' },
-      ],
-      dataPoints: [
-        '86,000 projected physician shortage by 2036',
-        '65% of hospitals have run below capacity due to staffing shortages',
-        'Rural hospitals face 60% projected physician shortage vs 10% urban',
-        '$1M+ lost annually per unfilled physician position',
-        'Average permanent physician search takes 6-12 months',
-        '40% of hospital leaders already use locum tenens to address demand spikes',
-        '2026 Match: largest in history with 41,482 positions filled',
-        'Resident Physician Shortage Reduction Act would add 14,000 residency slots over 7 years',
-      ],
-    };
-
-    const BLANK_PRESET = {
-      name: '',
-      tagline: '',
-      category: '',
-      colors: {
-        primary: '#1e40af',
-        secondary: '#1d4ed8',
-        accent: '#3b82f6',
-        light: '#dbeafe',
-        bg: '#1e40af',
-        text: '#ffffff',
-      },
-      pillars: [
-        { name: 'Educational', audience: 'Primary', description: 'Teaching your audience something valuable' },
-        { name: 'Storytelling', audience: 'Both', description: 'Stories that build trust and connection' },
-        { name: 'Industry News', audience: 'Both', description: 'Commentary on trends and news' },
-        { name: 'Lead Magnet', audience: 'Primary', description: 'Content that drives email signups and conversions' },
-      ],
-      schedule: [],
-      dataPoints: [],
-    };
-
-    const MOCK_POSTS = {
-      linkedin: {
-        'Workforce Insights': [
-          "The numbers don't lie.\n\nEvery unfilled physician position costs your hospital $1M+ per year.\n\nThat's not a budget line item. That's lost billings. Diverted patients. Overtime premiums that never stop.\n\nBut here's what keeps me up at night:\n\nMost hospital leaders don't calculate this cost until the gap already exists.\n\nBy then, you're in reactive mode. Paying premium rates. Scrambling for coverage.\n\nThe math is simple:\n→ Proactive coverage planning = lower cost per physician\n→ Reactive scrambling = highest cost per physician\n\nYour workforce strategy isn't a staffing problem.\nIt's a revenue problem.\n\nWhat's the real cost of your current coverage gaps?\n\n#PhysicianWorkforce #HealthcareLeadership #HospitalAdministration #WorkforceStrategy",
-          "86,000.\n\nThat's the projected U.S. physician shortage by 2036.\n\nAnd here's the part nobody's talking about:\n\nThe shortage isn't evenly distributed.\n\nRural hospitals face a 60% projected shortfall. Urban hospitals? 10%.\n\nThat means if you're running a community hospital outside a major metro area — you're competing for talent with one hand tied behind your back.\n\nThe physicians aren't coming. Not fast enough.\n\nSo the question isn't \"will we have gaps?\"\n\nIt's \"how are we covering them before they become crises?\"\n\nThe health systems that figure this out first will win.\n\n#PhysicianShortage #RuralHealthcare #WorkforcePlanning #HealthcareStrategy",
-        ],
-        'Physician Lifestyle': [
-          "You didn't go through 12+ years of training to feel trapped.\n\nBut that's exactly how it feels for a lot of physicians right now.\n\nThe burnout. The admin burden. The golden handcuffs of a contract that looked great on paper but left you with zero flexibility.\n\nHere's what I'm hearing from physicians every week:\n\n\"I love medicine. I just don't love this job anymore.\"\n\nLocum tenens isn't a backup plan. For a growing number of physicians, it's the path back to actually practicing medicine.\n\n→ Choose your schedule\n→ Pick your locations\n→ Focus on patients, not politics\n\nThe model is changing. The physicians who see it first are already moving.\n\nAre you one of them?\n\n#LocumTenens #PhysicianLife #PhysicianBurnout #MedicalCareers",
-        ],
-        'Staffing Strategy': [
-          "Your staffing problem isn't a staffing problem.\n\nIt's a timing problem.\n\nEvery hospital knows physicians retire. Every hospital knows recruitment takes 6-12 months. Every hospital has seen seasonal volume surges.\n\nBut most hospitals react to these events instead of planning for them.\n\nThe result?\n→ Higher locum rates (because your urgency is visible)\n→ Coverage gaps that disrupt patient care\n→ Burnt out staff picking up the slack\n→ Revenue walking out the door\n\nThe fix is a 5-step proactive model:\n\n1. Build a coverage risk calendar\n2. Define your highest-risk specialties\n3. Establish a locum partner before you need one\n4. Credential physicians in advance\n5. Integrate locums into your care culture\n\nProactive staffing costs less than reactive staffing.\nEvery. Single. Time.\n\n#StaffingStrategy #HealthcareOperations #PhysicianRecruitment #HospitalManagement",
-          "A strong locum tenens strategy is not a backup plan.\n\nIt's a competitive advantage.\n\nReactive staffing model:\n→ You call when you're desperate\n→ Agencies know you're desperate\n→ You pay desperate rates\n\nProactive staffing model:\n→ Your locum partner knows your facility\n→ Physicians are pre-credentialed\n→ Coverage deploys in days, not weeks\n→ Cost is planned, not panic-priced\n\nThe hospitals winning the workforce game in 2026 aren't the ones with the biggest recruitment budgets.\n\nThey're the ones who stopped treating coverage as an emergency and started treating it as infrastructure.\n\n#LocumTenens #HospitalStrategy #PhysicianCoverage #HealthcareLeadership",
-        ],
-        'Industry Commentary': [
-          "The 2026 Match was the largest in history.\n\n41,482 positions filled.\n\nBut before we celebrate — look at what's still broken:\n\n→ Emergency medicine: unfilled positions rising\n→ Psychiatry: demand outpacing supply 3:1\n→ Rural programs: still struggling to attract candidates\n→ Anesthesiology and radiology: persistent gaps\n\nMore matches doesn't mean the shortage is over.\n\nThe Match fills residency slots. It doesn't fix the 86,000 physician deficit projected for 2036.\n\nIt goes down when hospitals, health systems, and staffing partners build real workforce infrastructure.\n\nNot hope. Infrastructure.\n\n#Match2026 #MedicalEducation #PhysicianWorkforce #HealthcarePolicy",
-        ],
-        'Lead Magnet': [
-          "Every week I talk to hospital administrators who tell me the same thing:\n\n\"We knew the gap was coming. We just didn't move fast enough.\"\n\nThat's why we built the free Physician Coverage Planning Guide.\n\nInside you'll find:\n→ The 5-step proactive coverage framework\n→ Cost calculator: what unfilled positions actually cost you\n→ Specialty risk matrix for 2026-2028\n→ Credentialing timeline templates\n→ Locum integration best practices\n\nDM me \"GUIDE\" or comment below and I'll send it over.\n\nBecause the best time to plan for a coverage gap is before it exists.\n\n#PhysicianStaffing #HealthcareResources #HospitalLeadership #FreeGuide",
-        ],
-        'Educational': [
-          "Here's something most people get wrong:\n\nThey think more content = more leads.\n\nThe data tells a different story.\n\nThe highest-converting LinkedIn profiles post 4x per week. Not 14. Not 7. Four.\n\n→ Consistency beats volume\n→ Each post has time to gain traction\n→ Quality stays high when quantity stays reasonable\n\nThe 4-3-2-1 framework:\n4 posts per week\n3 content types\n2 audiences\n1 lead magnet post\n\nSimple. Repeatable. Scalable.\n\n#ContentStrategy #LinkedInGrowth #LeadGeneration",
-        ],
-        'Storytelling': [
-          "Last month, a hospital CEO told me something I haven't stopped thinking about.\n\n\"We lost our only cardiologist to retirement. We knew it was coming for two years. We still weren't ready.\"\n\nTwo years of warning.\nSix months with no coverage.\nPatients diverted to a hospital 90 minutes away.\n\nThis isn't a staffing failure. It's a systems failure.\n\nThe difference between hospitals that handle physician transitions smoothly and those that scramble?\n\nA plan. Not a hope.\n\nA plan with pre-credentialed physicians, coverage calendars, and a partner who already knows your facility.\n\nEvery hospital will face this moment. The only question is whether you'll be ready.\n\n#HealthcareLeadership #PhysicianRecruitment #WorkforcePlanning",
-        ],
-      },
-      facebook: {
-        'Workforce Insights': [
-          "Did you know? Every unfilled physician position costs hospitals over $1 MILLION per year.\n\nThat's not just a number — it's lost patient care, burnt-out staff, and revenue that never comes back.\n\nWith 86,000 physicians projected to be short by 2036, the time to plan is NOW.\n\nHere's what smart hospital leaders are doing differently:\n- Building coverage risk calendars\n- Pre-credentialing locum physicians\n- Planning 12-18 months ahead, not 12-18 days\n\nProactive beats reactive. Every time.\n\n#HealthcareWorkforce #PhysicianShortage #HospitalManagement",
-        ],
-        'Staffing Strategy': [
-          "Here's the truth about physician staffing that nobody wants to hear:\n\nIf you're calling for coverage when you already have a gap — you're already too late.\n\nRetirement waves. Unexpected departures. Seasonal surges. Recruitment that takes 6-12 months.\n\nAll four are predictable. None of them have to catch you off guard.\n\n5 steps to get ahead:\n1. Build a coverage risk calendar\n2. Identify your highest-risk specialties\n3. Partner with a locum firm BEFORE you need one\n4. Credential physicians in advance\n5. Integrate locums into your care culture\n\n#StaffingStrategy #HealthcareLeadership #LocumTenens",
-        ],
-      },
-    };
-
-    // ─── TOAST COMPONENT ───
-    function Toast({ message, onClose }) {
-      useEffect(() => {
-        const t = setTimeout(onClose, 2500);
-        return () => clearTimeout(t);
-      }, [onClose]);
-
-      return React.createElement(
-        'div',
-        { className: 'fixed bottom-8 right-8 bg-green-500 text-white px-6 py-3 rounded-lg font-semibold z-50 animate-slide-up shadow-lg' },
-        message
-      );
-    }
-
-    // ─── HEADER COMPONENT ───
-    function Header({ brand, manualKey, setManualKey, live }) {
-      const usingEnv = isUsingEnvKey(manualKey);
-
-      return React.createElement(
-        'header',
-        { className: 'border-b border-gray-700 px-6 py-4 flex items-center justify-between' },
-        React.createElement(
-          'div',
-          { className: 'flex items-center gap-3' },
-          React.createElement('div', {
-            className: 'w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg',
-            style: { background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' },
-          }, 'L'),
-          React.createElement(
-            'div',
-            null,
-            React.createElement('h1', { className: 'text-lg font-bold text-white' }, 'LeadGen Content Engine'),
-            React.createElement(
-              'p',
-              { className: 'text-xs text-gray-400 flex items-center gap-2' },
-              brand.name ? `Loaded: ${brand.name}` : 'No brand loaded',
-              React.createElement(
-                'span',
-                { className: `badge ${live ? 'mode-pill-live' : 'mode-pill-demo'}` },
-                live ? (usingEnv ? 'Live (.env)' : 'Live (manual key)') : 'Demo Mode'
-              )
-            )
-          )
-        ),
-        React.createElement(
-          'div',
-          { className: 'flex items-center gap-2' },
-          React.createElement('input', {
-            type: 'password',
-            placeholder: usingEnv ? '.env key active — override here' : 'Paste OpenRouter API key',
-            className: 'input-field text-sm',
-            style: { width: 300 },
-            value: manualKey,
-            onChange: (e) => setManualKey(e.target.value),
-          }),
-          usingEnv && !manualKey && React.createElement('span', { className: 'text-xs text-green-400 whitespace-nowrap' }, 'via .env')
+// ═══════════ HEADER ═══════════
+function Header({ brand, manualKey, setManualKey, live }) {
+  const usingEnv = isUsingEnvKey(manualKey);
+  return React.createElement('header', { className: 'border-b border-gray-700 px-6 py-4 flex items-center justify-between' },
+    React.createElement('div', { className: 'flex items-center gap-3' },
+      React.createElement('div', { className: 'w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg', style: { background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)' } }, 'L'),
+      React.createElement('div', null,
+        React.createElement('h1', { className: 'text-lg font-bold text-white' }, 'LeadGen Content Engine'),
+        React.createElement('p', { className: 'text-xs text-gray-400 flex items-center gap-2' },
+          brand.name ? `Loaded: ${brand.name}` : 'No brand loaded',
+          live ? React.createElement('span', { className: 'badge mode-pill-live' }, usingEnv ? 'Live (.env)' : 'Live (manual key)') : React.createElement('span', { className: 'badge mode-pill-demo' }, 'Demo Mode')
         )
-      );
+      )
+    ),
+    React.createElement('div', { className: 'flex items-center gap-2' },
+      React.createElement('input', { type: 'password', placeholder: usingEnv ? '.env key active' : 'Paste OpenRouter API key', className: 'input-field text-sm', style: { width: 300 }, value: manualKey, onChange: e => setManualKey(e.target.value) })
+    )
+  );
+}
+
+// ═══════════ NAVBAR ═══════════
+function NavBar({ page, setPage }) {
+  const items = [
+    { id: 'generate', label: 'Generate', icon: '\u26A1' },
+    { id: 'calendar', label: 'Calendar', icon: '\uD83D\uDCC5' },
+    { id: 'saved', label: 'Saved', icon: '\uD83D\uDCBE' },
+    { id: 'images', label: 'Images', icon: '\uD83D\uDDBC' },
+    { id: 'settings', label: 'Settings', icon: '\u2699' },
+  ];
+  return React.createElement('nav', { className: 'border-b border-gray-700 px-6 flex gap-1 py-2' },
+    items.map(n => React.createElement('button', { key: n.id, className: `px-4 py-2 rounded-lg text-sm font-medium transition-all ${page === n.id ? 'tab-active' : 'tab-inactive'}`, onClick: () => setPage(n.id) }, `${n.icon} ${n.label}`))
+  );
+}
+
+// ═══════════ FORMATTED POST RENDERER ═══════════
+function renderInline(text) {
+  if (!text) return text;
+  const parts = []; let remaining = text; let key = 0;
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      const idx = remaining.indexOf(boldMatch[0]);
+      if (idx > 0) parts.push(React.createElement('span', { key: key++ }, remaining.substring(0, idx)));
+      parts.push(React.createElement('strong', { key: key++, className: 'font-bold text-gray-900' }, boldMatch[1]));
+      remaining = remaining.substring(idx + boldMatch[0].length);
+      continue;
     }
+    parts.push(React.createElement('span', { key: key++ }, remaining));
+    break;
+  }
+  return parts.length === 1 ? parts[0] : parts;
+}
 
-    // ─── NAVBAR COMPONENT ───
-    function NavBar({ page, setPage }) {
-      const NAV_ITEMS = [
-        { id: 'generate', label: 'Generate', icon: '⚡' },
-        { id: 'calendar', label: 'Calendar', icon: '📅' },
-        { id: 'saved', label: 'Saved', icon: '💾' },
-        { id: 'images', label: 'Images', icon: '🖼️' },
-        { id: 'settings', label: 'Settings', icon: '⚙' },
-      ];
-
-      return React.createElement(
-        'nav',
-        { className: 'border-b border-gray-700 px-6 flex gap-1 py-2' },
-        NAV_ITEMS.map((n) =>
-          React.createElement(
-            'button',
-            {
-              key: n.id,
-              className: `px-4 py-2 rounded-lg text-sm font-medium transition-all ${page === n.id ? 'tab-active' : 'tab-inactive'}`,
-              onClick: () => setPage(n.id),
-            },
-            `${n.icon} ${n.label}`
-          )
-        )
-      );
+function FormattedPost({ text }) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() === '') { elements.push(React.createElement('div', { key: i, className: 'h-2' })); continue; }
+    const bulletMatch = line.match(/^\s*([\u2192\u2022\-\*]|\d+[\.\)])\s+(.*)/);
+    if (bulletMatch) {
+      const marker = bulletMatch[1];
+      const content = bulletMatch[2];
+      elements.push(React.createElement('div', { key: i, className: 'flex items-start gap-2 pl-2 py-0.5' },
+        React.createElement('span', { className: 'text-blue-500 font-bold shrink-0 mt-0.5' }, marker === '-' || marker === '*' ? '\u2192' : marker),
+        React.createElement('span', null, renderInline(content))
+      ));
+      continue;
     }
+    elements.push(React.createElement('p', { key: i, className: 'py-0.5' }, renderInline(line)));
+  }
+  return React.createElement(React.Fragment, null, ...elements);
+}
 
-    // ─── CALENDAR PAGE ───
-    function CalendarPage({ brand }) {
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      const sched = brand.schedule.length > 0
-        ? brand.schedule
-        : [
-            { day: 'Monday', time: '9:00 AM', pillar: 'Educational', audience: 'Primary', imageStyle: 'stat' },
-            { day: 'Tuesday', time: '12:00 PM', pillar: 'Storytelling', audience: 'Both', imageStyle: 'quote' },
-            { day: 'Wednesday', time: '9:00 AM', pillar: 'Industry', audience: 'Primary', imageStyle: 'multi' },
-            { day: 'Thursday', time: '12:00 PM', pillar: 'Lead Magnet', audience: 'Primary', imageStyle: 'stat' },
-          ];
-      const styleColors = { stat: '#3b82f6', quote: '#8b5cf6', multi: '#10b981' };
-      const styleLabels = { stat: 'Stat Card', quote: 'Quote Card', multi: 'Multi-Set' };
+// ═══════════ GENERATE PAGE ═══════════
+function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
+  const IMAGE_COUNT = 5;
+  const [platform, setPlatform] = useState('LinkedIn');
+  const [pillarIdx, setPillarIdx] = useState(0);
+  const [audience, setAudience] = useState('');
+  const [topic, setTopic] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [tone, setTone] = useState('authoritative');
+  const [ctaType, setCtaType] = useState('question');
+  const [formatting, setFormatting] = useState('balanced');
+  const [useEmoji, setUseEmoji] = useState(false);
+  const [keywords, setKeywords] = useState('');
+  const [keyPhrases, setKeyPhrases] = useState('');
+  const [avoidTopics, setAvoidTopics] = useState('');
+  const [imageStyle, setImageStyle] = useState('stat');
+  const [imageMode, setImageMode] = useState('ai');
+  const [post, setPost] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgProgress, setImgProgress] = useState('');
+  const [error, setError] = useState('');
+  const [images, setImages] = useState([]);
+  const [selectedImg, setSelectedImg] = useState(0);
+  const cvRef = useRef(null);
+  const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
+  const parseList = str => str.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
 
-      const CHECKLIST = [
-        { t: 'Before Posting', d: 'Spend 20 min engaging with target audience posts. Thoughtful comments warm the algorithm.' },
-        { t: 'First 30 Minutes', d: 'Reply to every comment within 30 min. LinkedIn measures comments/min in the first hour.' },
-        { t: 'The 1+3 Rule', d: 'Leave 3 comments: behind-the-scenes context, an educational tip, and a question.' },
-        { t: 'End of Day', d: "Return to yesterday's post. Late engagement extends distribution." },
-      ];
-
-      return React.createElement(
-        'div',
-        { className: 'animate-fade-in' },
-        React.createElement('h2', { className: 'text-2xl font-bold text-white mb-6' }, '📅 Weekly Content Calendar'),
-        React.createElement(
-          'div',
-          { className: 'card p-6 mb-6' },
-          React.createElement(
-            'div',
-            { className: 'grid grid-cols-5 gap-4' },
-            days.map((d) => {
-              const ds = sched.filter((s) => s.day === d);
-              return React.createElement(
-                'div',
-                { key: d },
-                React.createElement('h3', { className: 'font-bold text-white mb-3 text-center pb-2 border-b border-gray-600' }, d),
-                React.createElement(
-                  'div',
-                  { className: 'space-y-2' },
-                  ds.length > 0
-                    ? ds.map((s, i) =>
-                        React.createElement(
-                          'div',
-                          { key: i, className: 'bg-gray-800 rounded-lg p-3 border border-gray-700 hover:border-blue-500 transition-all' },
-                          React.createElement('div', { className: 'text-xs text-gray-400 mb-1' }, s.time),
-                          React.createElement('div', { className: 'text-sm font-semibold text-white mb-1' }, s.pillar),
-                          React.createElement('div', { className: 'text-xs text-gray-400 mb-2' }, `→ ${s.audience}`),
-                          React.createElement('span', { className: 'badge text-xs', style: { background: styleColors[s.imageStyle] || '#475569', color: '#fff' } }, styleLabels[s.imageStyle] || s.imageStyle)
-                        )
-                      )
-                    : React.createElement('div', { className: 'text-center text-gray-600 text-sm py-4' }, 'No posts')
-                )
-              );
-            })
-          )
-        ),
-        React.createElement(
-          'div',
-          { className: 'card p-6' },
-          React.createElement('h3', { className: 'text-lg font-bold text-white mb-4' }, '🔥 Daily Engagement Checklist'),
-          React.createElement(
-            'div',
-            { className: 'grid grid-cols-2 gap-4' },
-            CHECKLIST.map((item, i) =>
-              React.createElement(
-                'div',
-                { key: i, className: 'bg-gray-800 rounded-lg p-4 border border-gray-700' },
-                React.createElement('div', { className: 'text-blue-400 font-bold text-sm mb-1' }, item.t),
-                React.createElement('div', { className: 'text-gray-300 text-sm' }, item.d)
-              )
-            )
-          )
-        )
-      );
+  const makeBrandedImages = () => {
+    const cv = cvRef.current; if (!cv) return;
+    const results = []; const dp = brand.dataPoints || [];
+    if (imageStyle === 'stat') {
+      const usedDp = dp.length > 0 ? dp : ['86,000 projected physician shortage by 2036','$1M+ lost annually per unfilled physician position','65% of hospitals below capacity due to staffing','6-12 months average permanent physician search','60% rural physician shortage vs 10% urban'];
+      for (let i=0; i<Math.min(IMAGE_COUNT,usedDp.length); i++) { const d=usedDp[i]; const m=d.match(/^([\$\d,\.%\+]+)\s*(.*)/); generateStatCard(cv,{stat:m?m[1]:d.split(' ')[0],label:m?m[2]:d,category:pillar.name,brandName:brand.name,tagline:brand.tagline,subtitle:`Source: Industry Data \u00B7 ${pillar.name}`,colors:brand.colors}); results.push({url:cv.toDataURL('image/png'),prompt:`Stat card: ${d}`,error:null}); }
+    } else if (imageStyle === 'quote') {
+      const quotes = [{quote:topic||"A strong locum tenens strategy is not a backup plan. It's a competitive advantage.",context:'Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.',closing:'Pay less. Every time.'},{quote:'The physician shortage isn\'t coming. It\'s here.',context:'86,000 fewer physicians by 2036.\nRural hospitals hit hardest.',closing:'Plan now or pay later.'},{quote:'Proactive beats reactive. Every. Single. Time.',context:'Coverage risk calendars.\nPre-credentialed physicians.',closing:'That\'s infrastructure.'},{quote:'Your staffing problem is a timing problem.',context:'Retirements are predictable.\nSeasonal surges are predictable.',closing:'So why are we still scrambling?'},{quote:'The best time to plan for a coverage gap is before it exists.',context:'5-step proactive framework.\nSpecialty risk matrix.',closing:'Start today.'}];
+      for (let i=0;i<IMAGE_COUNT;i++){const q=quotes[i%quotes.length];generateQuoteCard(cv,{quote:q.quote,context:q.context,closingLine:q.closing,brandName:brand.name,role:brand.tagline,tagline:brand.tagline,colors:brand.colors});results.push({url:cv.toDataURL('image/png'),prompt:`Quote card: ${q.quote}`,error:null});}
+    } else {
+      const cards=[{num:'1',topic:'THE COST OF DOING NOTHING',title:'$1M+',sub:'Lost annually per unfilled physician position.',subSub:"That's lost billings, diverted patients."},{num:'2',topic:'THE SHORTAGE IS HERE',title:'86,000',sub:'Projected physician shortage by 2036.',subSub:'Rural hospitals face 60% shortfall.'},{num:'3',topic:'THE PROACTIVE FIX',title:'5 Steps',sub:'Build your coverage infrastructure now.',subSub:'Risk calendars. Pre-credentialing.'},{num:'1',topic:'REACTIVE VS PROACTIVE',title:'Higher Rates',sub:'Reactive staffing always costs more.',subSub:'Urgency = premium pricing.'},{num:'2',topic:'THE MATCH ISN\'T ENOUGH',title:'41,482',sub:'Positions filled in 2026 Match.',subSub:'Still not enough.'}];
+      for (let i=0;i<IMAGE_COUNT;i++){const c=cards[i%cards.length];generateMultiCard(cv,{cardNumber:c.num,totalCards:'3',topicLabel:c.topic,title:c.title,subtitle:c.sub,subSubtitle:c.subSub,tagLabel:pillar.name,brandName:brand.name,colors:brand.colors});results.push({url:cv.toDataURL('image/png'),prompt:`Multi card ${c.num}: ${c.topic}`,error:null});}
     }
+    setImages(results); setSelectedImg(0);
+  };
 
-    // ─── SAVED PAGE ───
-    function SavedPage({ savedPosts, setSavedPosts, showToast }) {
-      if (!savedPosts.length) {
-        return React.createElement(
-          'div',
-          { className: 'text-center py-20 animate-fade-in' },
-          React.createElement('div', { className: 'text-6xl mb-4' }, '💾'),
-          React.createElement('h2', { className: 'text-xl font-bold text-white mb-2' }, 'No saved posts yet'),
-          React.createElement('p', { className: 'text-gray-400' }, 'Generate and save content from the Generate tab')
-        );
-      }
+  const makeAIImages = async (postText) => {
+    setImgLoading(true); setImgProgress('Analyzing content for image prompts...'); setImages([]);
+    try {
+      const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
+      const results = await generateMultipleImages(manualKey, selImgModel, prompts, (i, total) => { setImgProgress(`Generating image ${i+1} of ${total}...`); });
+      const successful = results.filter(r => r.url);
+      if (successful.length === 0) { showToast('AI images failed \u2014 using branded cards'); makeBrandedImages(); }
+      else { setImages(results); setSelectedImg(0); showToast(`${successful.length} AI images generated!`); }
+    } catch (e) { console.error('[LeadGen] Multi-image generation failed:', e); showToast('AI images failed \u2014 using branded cards'); makeBrandedImages(); }
+    setImgLoading(false); setImgProgress('');
+  };
 
-      const exportAll = () => {
-        const blob = new Blob([JSON.stringify(savedPosts, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'saved-posts.json';
-        a.click();
-        showToast('Exported!');
-      };
+  const generate = async () => {
+    setLoading(true); setError(''); setPost(''); setImages([]); setSelectedImg(0);
+    const advancedOpts = { tone, ctaType, useEmoji, formatting };
+    const contentOpts = { keywords: parseList(keywords), keyPhrases: parseList(keyPhrases), avoidTopics: parseList(avoidTopics) };
+    try {
+      let txt;
+      if (live) { txt = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform, advancedOpts), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)); }
+      else { await new Promise(r=>setTimeout(r,1500)); const pp=MOCK_POSTS[platform.toLowerCase()]||MOCK_POSTS.linkedin; const pl=pp[pillar.name]||pp['Educational']||Object.values(pp)[0]; txt=pl[Math.floor(Math.random()*pl.length)]; }
+      setPost(txt); setLoading(false);
+      if (imageMode === 'ai' && live) { await makeAIImages(txt); } else { makeBrandedImages(); }
+    } catch (e) { setError(e.message); setLoading(false); }
+  };
 
-      return React.createElement(
-        'div',
-        { className: 'animate-fade-in' },
-        React.createElement(
-          'div',
-          { className: 'flex items-center justify-between mb-6' },
-          React.createElement('h2', { className: 'text-2xl font-bold text-white' }, `💾 Saved Posts (${savedPosts.length})`),
-          React.createElement('button', { className: 'btn-ghost text-sm', onClick: exportAll }, '📤 Export All')
+  const savePost = () => {
+    if (!post) return;
+    setSavedPosts(p => [...p, { id: Date.now(), text: post, platform, pillar: pillar.name, tone, ctaType, imageStyle, imageMode, imageData: images[selectedImg]?.url || null, allImages: images.filter(i=>i.url).map(i=>i.url), createdAt: new Date().toLocaleString() }]);
+    showToast('Post saved!');
+  };
+
+  const downloadImage = (url, idx) => { const a=document.createElement('a'); a.download=`${brand.name||'post'}-${imageStyle}-${idx+1}-${Date.now()}.png`; a.href=url; a.click(); showToast('Downloaded!'); };
+  const downloadAll = () => { images.filter(i=>i.url).forEach((img,idx)=>{setTimeout(()=>{const a=document.createElement('a');a.download=`${brand.name||'post'}-${imageStyle}-${idx+1}-${Date.now()}.png`;a.href=img.url;a.click();},idx*300);}); showToast(`Downloading ${images.filter(i=>i.url).length} images...`); };
+
+  const TONES = [{id:'authoritative',label:'Authoritative',desc:'Expert, data-driven'},{id:'conversational',label:'Conversational',desc:'Warm, relatable'},{id:'provocative',label:'Provocative',desc:'Bold, contrarian'},{id:'storytelling',label:'Storytelling',desc:'Narrative-driven'},{id:'educational',label:'Educational',desc:'Clear, instructive'}];
+  const CTA_TYPES = [{id:'question',label:'Question',desc:'Invite comments'},{id:'dm',label:'DM CTA',desc:'DM me "GUIDE"'},{id:'link',label:'Link CTA',desc:'Point to resource'},{id:'engage',label:'Engage',desc:'Share experience'},{id:'none',label:'None',desc:'No CTA'}];
+  const FORMAT_OPTS = [{id:'minimal',label:'Minimal',desc:'Flowing prose'},{id:'balanced',label:'Balanced',desc:'Mix of prose & lists'},{id:'heavy',label:'Structured',desc:'Bullets & bold'}];
+  const IMAGE_STYLES = [{id:'stat',l:'\uD83D\uDCCA Stat Card',d:'Bold number'},{id:'quote',l:'\uD83D\uDCAC Quote Card',d:'Perspective'},{id:'multi',l:'\uD83D\uDCD1 Multi-Set',d:'3 images'}];
+  const successfulImages = images.filter(i => i.url);
+
+  const h = React.createElement;
+
+  // Helper for grid of selectable buttons
+  const selGrid = (items, current, setter, cols = 3) =>
+    h('div', { className: `grid grid-cols-${cols} gap-1.5` },
+      items.map(item => h('button', { key: item.id, className: `py-2 px-2 rounded-lg text-xs font-medium transition-all ${current === item.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`, onClick: () => setter(item.id) },
+        h('div', { className: 'font-semibold' }, item.label),
+        h('div', { className: 'opacity-70 mt-0.5' }, item.desc)
+      ))
+    );
+
+  return h('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in' },
+    // LEFT: CONTROLS
+    h('div', { className: 'space-y-4' },
+      h('div', { className: 'card p-5' },
+        h('h2', { className: 'text-lg font-bold text-white mb-4' }, '\u26A1 Generate Content + Images'),
+        // Platform
+        h('div', { className: 'flex gap-2 mb-4' },
+          ['LinkedIn','Facebook'].map(p => h('button',{key:p,className:`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${platform===p?'tab-active':'tab-inactive'}`,onClick:()=>setPlatform(p)},p==='LinkedIn'?'\uD83D\uDCBC ':'\uD83D\uDC65 ',p))
         ),
-        React.createElement(
-          'div',
-          { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
-          savedPosts.slice().reverse().map((p) =>
-            React.createElement(
-              'div',
-              { key: p.id, className: 'card p-4 card-hover' },
-              React.createElement(
-                'div',
-                { className: 'flex items-center justify-between mb-2' },
-                React.createElement(
-                  'div',
-                  { className: 'flex items-center gap-2' },
-                  React.createElement('span', { className: 'badge', style: { background: p.platform === 'LinkedIn' ? '#0a66c2' : '#1877f2', color: '#fff' } }, p.platform),
-                  React.createElement('span', { className: 'badge', style: { background: '#334155', color: '#94a3b8' } }, p.pillar)
-                ),
-                React.createElement('span', { className: 'text-xs text-gray-500' }, p.createdAt)
-              ),
-              p.imageData && React.createElement('img', { src: p.imageData, className: 'w-full rounded-lg mb-3', alt: '' }),
-              React.createElement('p', { className: 'text-sm text-gray-300 whitespace-pre-wrap mb-3', style: { maxHeight: 150, overflow: 'hidden' } }, `${p.text.substring(0, 300)}${p.text.length > 300 ? '...' : ''}`),
-              React.createElement(
-                'div',
-                { className: 'flex gap-2' },
-                React.createElement('button', { className: 'btn-secondary text-xs flex-1', onClick: () => { navigator.clipboard.writeText(p.text); showToast('Copied!'); } }, '📋 Copy'),
-                React.createElement('button', { className: 'btn-ghost text-xs', onClick: () => setSavedPosts((pr) => pr.filter((x) => x.id !== p.id)) }, '🗑')
-              )
-            )
-          )
-        )
-      );
-    }
-
-    // ─── SETTINGS PAGE ───
-    function SettingsPage({ brand, setBrand, manualKey, setManualKey, selModel, setSelModel, selImgModel, setSelImgModel, live }) {
-      const [preset, setPreset] = useState('steadfast');
-      const [eb, setEb] = useState({ ...brand });
-      const [np, setNp] = useState({ name: '', audience: '', description: '' });
-      const [ndp, setNdp] = useState('');
-      const usingEnv = isUsingEnvKey(manualKey);
-
-      const load = (p) => {
-        const d = p === 'steadfast' ? STEADFAST_PRESET : BLANK_PRESET;
-        setBrand(d);
-        setEb(d);
-        setPreset(p);
-      };
-
-      const upd = (field, value) => {
-        const u = { ...eb, [field]: value };
-        setEb(u);
-        setBrand(u);
-      };
-
-      const updColor = (key, value) => {
-        const colors = { ...eb.colors, [key]: value };
-        const u = { ...eb, colors };
-        setEb(u);
-        setBrand(u);
-      };
-
-      return React.createElement(
-        'div',
-        { className: 'max-w-3xl mx-auto space-y-6 animate-fade-in' },
-        // API Configuration
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '🔑 AI Configuration'),
-          React.createElement(
-            'div',
-            { className: `mb-4 p-3 rounded-lg border ${live ? 'border-green-700' : 'border-yellow-700'}`, style: { background: live ? 'rgba(34,197,94,.1)' : 'rgba(234,179,8,.1)' } },
-            React.createElement(
-              'div',
-              { className: 'flex items-center gap-2' },
-              React.createElement('div', { className: `w-2.5 h-2.5 rounded-full ${live ? 'bg-green-400' : 'bg-yellow-400'}` }),
-              React.createElement('span', { className: `text-sm font-medium ${live ? 'text-green-300' : 'text-yellow-300'}` }, live ? (usingEnv ? 'Live Mode — using .env key' : 'Live Mode — using manual key') : 'Demo Mode — no API key detected')
-            ),
-            !live && React.createElement('p', { className: 'text-xs text-gray-400 mt-1 ml-5' }, 'Add VITE_OPENROUTER_API_KEY to your .env file, or paste a key in the header.')
-          ),
-          React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Manual API Key Override'),
-          React.createElement('input', { type: 'password', className: 'input-field mb-1', placeholder: usingEnv ? '.env key active — override here' : 'sk-or-...', value: manualKey, onChange: (e) => setManualKey(e.target.value) }),
-          React.createElement('p', { className: 'text-xs text-gray-500 mb-4' }, 'Get your key at openrouter.ai/keys'),
-          React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Content Writing Model'),
-          React.createElement(
-            'select',
-            { className: 'input-field mb-4', value: selModel, onChange: (e) => setSelModel(e.target.value) },
-            React.createElement('optgroup', { label: 'Premium' }, TEXT_MODELS.filter((m) => m.tier === 'premium').map((m) => React.createElement('option', { key: m.id, value: m.id }, m.name))),
-            React.createElement('optgroup', { label: 'Budget' }, TEXT_MODELS.filter((m) => m.tier === 'budget').map((m) => React.createElement('option', { key: m.id, value: m.id }, m.name)))
-          ),
-          React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Generation Model'),
-          React.createElement(
-            'select',
-            { className: 'input-field', value: selImgModel, onChange: (e) => setSelImgModel(e.target.value) },
-            IMAGE_MODELS.map((m) => React.createElement('option', { key: m.id, value: m.id }, m.name))
-          )
+        // Pillar
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Content Pillar'),
+        h('select',{className:'input-field mb-3',value:pillarIdx,onChange:e=>setPillarIdx(Number(e.target.value))},
+          brand.pillars.map((p,i)=>h('option',{key:i,value:i},`${p.name} \u2014 ${p.audience}`))
         ),
-        // Presets
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '📦 Brand Presets'),
-          React.createElement(
-            'div',
-            { className: 'flex gap-3' },
-            React.createElement('button', {
-              className: `flex-1 p-4 rounded-lg border text-left transition-all ${preset === 'steadfast' ? 'border-blue-500 bg-blue-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500'}`,
-              onClick: () => load('steadfast'),
-            }, React.createElement('div', { className: 'font-bold text-white' }, '🏥 Steadfast Physician Partners'), React.createElement('div', { className: 'text-xs text-gray-400 mt-1' }, '4321 framework, 4 pillars, schedule, data points')),
-            React.createElement('button', {
-              className: `flex-1 p-4 rounded-lg border text-left transition-all ${preset === 'blank' ? 'border-blue-500 bg-blue-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500'}`,
-              onClick: () => load('blank'),
-            }, React.createElement('div', { className: 'font-bold text-white' }, '✨ Blank Template'), React.createElement('div', { className: 'text-xs text-gray-400 mt-1' }, 'Start fresh'))
-          )
+        // Audience
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Target Audience ',h('span',{className:'text-gray-500'},'(optional)')),
+        h('input',{className:'input-field mb-3',placeholder:pillar.audience,value:audience,onChange:e=>setAudience(e.target.value)}),
+        // Topic
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Topic / Angle ',h('span',{className:'text-gray-500'},'(optional)')),
+        h('textarea',{className:'input-field mb-3',placeholder:'e.g., The hidden cost of reactive physician staffing...',value:topic,onChange:e=>setTopic(e.target.value),rows:2}),
+
+        // Advanced toggle
+        h('button',{className:'w-full flex items-center justify-between py-2.5 px-3 rounded-lg mb-3 text-sm font-medium transition-all bg-gray-800 border border-gray-600 hover:border-gray-500 text-gray-300',onClick:()=>setShowAdvanced(!showAdvanced)},
+          h('span',null,'\u2699\uFE0F Advanced Content Options'),
+          h('span',{className:`transition-transform ${showAdvanced?'rotate-180':''}`},'\u25BC')
         ),
-        // Brand Identity
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '🏢 Brand Identity'),
-          React.createElement(
-            'div',
-            { className: 'grid grid-cols-2 gap-4' },
-            React.createElement(
-              'div',
-              null,
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Company Name'),
-              React.createElement('input', { className: 'input-field', value: eb.name, onChange: (e) => upd('name', e.target.value) })
-            ),
-            React.createElement(
-              'div',
-              null,
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Tagline'),
-              React.createElement('input', { className: 'input-field', value: eb.tagline, onChange: (e) => upd('tagline', e.target.value) })
+
+        // Advanced panel
+        showAdvanced && h('div',{className:'space-y-4 mb-4 p-4 rounded-lg border border-gray-700 bg-gray-800 bg-opacity-50'},
+          h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-2'},'Voice & Tone'),selGrid(TONES,tone,setTone)),
+          h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-2'},'Call-to-Action Style'),selGrid(CTA_TYPES,ctaType,setCtaType)),
+          h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-2'},'Formatting Style'),selGrid(FORMAT_OPTS,formatting,setFormatting)),
+          // Emoji toggle
+          h('div',{className:'flex items-center justify-between'},
+            h('label',{className:'text-sm font-medium text-gray-300'},'Use Emojis'),
+            h('button',{className:`relative w-11 h-6 rounded-full transition-all ${useEmoji?'bg-blue-600':'bg-gray-700'}`,onClick:()=>setUseEmoji(!useEmoji)},
+              h('div',{className:`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${useEmoji?'left-5':'left-0.5'}`})
             )
           ),
-          React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1 mt-3' }, 'Category Positioning'),
-          React.createElement('textarea', { className: 'input-field', value: eb.category, onChange: (e) => upd('category', e.target.value), rows: 2 }),
-          React.createElement(
-            'div',
-            { className: 'mt-4' },
-            React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-2' }, 'Brand Colors'),
-            React.createElement(
-              'div',
-              { className: 'flex gap-4 flex-wrap' },
-              ['primary', 'secondary', 'accent'].map((k) =>
-                React.createElement(
-                  'div',
-                  { key: k, className: 'flex items-center gap-2' },
-                  React.createElement('input', { type: 'color', value: eb.colors[k] || '#1a365d', onChange: (e) => updColor(k, e.target.value), className: 'w-10 h-10 rounded cursor-pointer border-0' }),
-                  React.createElement('span', { className: 'text-xs text-gray-400 capitalize' }, k)
-                )
-              )
-            )
+          h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Keywords ',h('span',{className:'text-gray-500'},'(comma-separated)')),h('input',{className:'input-field',placeholder:'e.g., locum tenens, physician shortage, staffing ROI',value:keywords,onChange:e=>setKeywords(e.target.value)})),
+          h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Key Phrases to Include'),h('textarea',{className:'input-field',placeholder:'e.g., proactive beats reactive\ncoverage risk calendar',value:keyPhrases,onChange:e=>setKeyPhrases(e.target.value),rows:3})),
+          h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Topics to Avoid'),h('input',{className:'input-field',placeholder:'e.g., politics, specific competitors',value:avoidTopics,onChange:e=>setAvoidTopics(e.target.value)}))
+        ),
+
+        // Image options
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Image Style'),
+        h('div',{className:'grid grid-cols-3 gap-2 mb-3'},
+          IMAGE_STYLES.map(s=>h('button',{key:s.id,className:`p-2.5 rounded-lg text-center transition-all ${imageStyle===s.id?'bg-blue-600 border-blue-500 border':'bg-gray-800 border border-gray-600 hover:border-gray-500'}`,onClick:()=>setImageStyle(s.id)},h('div',{className:'text-sm font-semibold'},s.l),h('div',{className:'text-xs text-gray-400 mt-0.5'},s.d)))
+        ),
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},`Image Generation (${IMAGE_COUNT} per post)`),
+        h('div',{className:'flex gap-2 mb-4'},
+          h('button',{className:`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode==='ai'?'purple-active':'bg-gray-800 border border-gray-600 text-gray-300'}`,onClick:()=>setImageMode('ai')},h('div',{className:'font-semibold'},'\uD83E\uDD16 AI Generated'),h('div',{className:'text-xs opacity-70 mt-0.5'},live?'Content-matched AI images':'Requires API key')),
+          h('button',{className:`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode==='branded'?'purple-active':'bg-gray-800 border border-gray-600 text-gray-300'}`,onClick:()=>setImageMode('branded')},h('div',{className:'font-semibold'},'\uD83C\uDFA8 Branded Cards'),h('div',{className:'text-xs opacity-70 mt-0.5'},'Canvas-based, instant'))
+        ),
+        // Generate button
+        h('button',{className:'btn-primary w-full py-3 text-lg flex items-center justify-center gap-2',onClick:generate,disabled:loading||imgLoading},
+          loading ? [h('span',{key:'s',className:'spinner'}),' Generating content...'] :
+          imgLoading ? [h('span',{key:'s',className:'spinner'}),` ${imgProgress||'Generating images...'}`] :
+          `\u26A1 Generate Post + ${IMAGE_COUNT} Images`
+        ),
+        error && h('p',{className:'text-red-400 text-sm mt-2'},`Error: ${error}`)
+      ),
+      // Data points
+      brand.dataPoints?.length > 0 && h('div',{className:'card p-4'},
+        h('h3',{className:'text-sm font-semibold text-gray-300 mb-2'},'\uD83D\uDCCB Available Data Points'),
+        h('div',{className:'space-y-1'},brand.dataPoints.map((dp,i)=>h('div',{key:i,className:'text-xs text-gray-400 flex items-start gap-2'},h('span',{className:'text-blue-400 mt-0.5'},'\u2192'),dp)))
+      )
+    ),
+
+    // RIGHT: OUTPUT
+    h('div',{className:'space-y-4'},
+      // Post preview
+      h('div',{className:'card p-5'},
+        h('div',{className:'flex items-center justify-between mb-4'},
+          h('h2',{className:'text-lg font-bold text-white'},`${platform} Post Preview`),
+          post && h('div',{className:'flex gap-2'},
+            h('button',{className:'btn-secondary text-sm',onClick:()=>{navigator.clipboard.writeText(post);showToast('Copied!')}},'\uD83D\uDCCB Copy'),
+            h('button',{className:'btn-secondary text-sm',onClick:savePost},'\uD83D\uDCBE Save'),
+            h('button',{className:'btn-ghost text-sm',onClick:generate,disabled:loading||imgLoading},'\uD83D\uDD04')
           )
         ),
-        // Content Pillars
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '📌 Content Pillars'),
-          React.createElement(
-            'div',
-            { className: 'space-y-2 mb-4' },
-            eb.pillars.map((p, i) =>
-              React.createElement(
-                'div',
-                { key: i, className: 'flex items-center gap-3 bg-gray-800 p-3 rounded-lg' },
-                React.createElement(
-                  'div',
-                  { className: 'flex-1' },
-                  React.createElement('span', { className: 'font-semibold text-white' }, p.name),
-                  React.createElement('span', { className: 'text-gray-400 text-sm ml-2' }, `→ ${p.audience}`),
-                  p.description && React.createElement('div', { className: 'text-xs text-gray-500 mt-1' }, p.description)
-                ),
-                React.createElement('button', { className: 'text-red-400 hover:text-red-300 text-sm', onClick: () => upd('pillars', eb.pillars.filter((_, j) => j !== i)) }, '✕')
-              )
-            )
+        post ? h('div',{className:'bg-white rounded-lg p-5 text-gray-800 text-sm leading-relaxed',style:{maxHeight:500,overflowY:'auto'}},
+          h('div',{className:'flex items-center gap-3 mb-4 pb-3 border-b border-gray-200'},
+            h('div',{className:'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg',style:{background:brand.colors.primary}},(brand.name||'B')[0]),
+            h('div',null,h('div',{className:'font-bold text-gray-900'},brand.name||'Your Brand'),h('div',{className:'text-xs text-gray-500'},brand.tagline||''))
           ),
-          React.createElement(
-            'div',
-            { className: 'grid grid-cols-3 gap-2' },
-            React.createElement('input', { className: 'input-field', placeholder: 'Pillar name', value: np.name, onChange: (e) => setNp((p) => ({ ...p, name: e.target.value })) }),
-            React.createElement('input', { className: 'input-field', placeholder: 'Audience', value: np.audience, onChange: (e) => setNp((p) => ({ ...p, audience: e.target.value })) }),
-            React.createElement('button', {
-              className: 'btn-secondary',
-              onClick: () => {
-                if (!np.name) return;
-                upd('pillars', [...eb.pillars, { ...np }]);
-                setNp({ name: '', audience: '', description: '' });
-              },
-            }, '+ Add')
+          h(FormattedPost,{text:post}),
+          h('div',{className:'flex gap-2 mt-4 pt-3 border-t border-gray-200'},
+            h('span',{className:'text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium'},tone),
+            h('span',{className:'text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium'},`CTA: ${ctaType}`),
+            h('span',{className:'text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium'},formatting)
+          )
+        ) : h('div',{className:'text-center py-16 text-gray-500'},h('div',{className:'text-4xl mb-3'},'\u270D\uFE0F'),h('p',null,'Your generated post will appear here'),h('p',{className:'text-sm mt-1'},live?'Live AI mode active':'Demo mode \u2014 add API key for live AI'))
+      ),
+
+      // Image gallery
+      h('div',{className:'card p-5'},
+        h('div',{className:'flex items-center justify-between mb-4'},
+          h('h2',{className:'text-lg font-bold text-white'},imageMode==='ai'?'\uD83E\uDD16':'\uD83D\uDDBC',' Images',successfulImages.length>0&&h('span',{className:'text-sm font-normal text-gray-400 ml-2'},`(${successfulImages.length}/${IMAGE_COUNT})`)),
+          successfulImages.length>0&&h('div',{className:'flex gap-2'},
+            h('button',{className:'btn-secondary text-sm',onClick:downloadAll},'\u2B07\uFE0F All'),
+            imageMode==='ai'&&live&&post&&h('button',{className:'btn-ghost text-sm',onClick:()=>makeAIImages(post),disabled:imgLoading},'\uD83D\uDD04 Regen')
           )
         ),
-        // Data Points
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '📊 Data Points'),
-          React.createElement(
-            'div',
-            { className: 'space-y-1 mb-3' },
-            (eb.dataPoints || []).map((dp, i) =>
-              React.createElement(
-                'div',
-                { key: i, className: 'flex items-center gap-2 text-sm' },
-                React.createElement('span', { className: 'text-blue-400' }, '→'),
-                React.createElement('span', { className: 'text-gray-300 flex-1' }, dp),
-                React.createElement('button', { className: 'text-red-400 hover:text-red-300 text-xs', onClick: () => upd('dataPoints', eb.dataPoints.filter((_, j) => j !== i)) }, '✕')
-              )
-            )
+        h('canvas',{ref:cvRef,style:{display:'none'}}),
+        imgLoading ? h('div',{className:'text-center py-14 text-gray-500'},
+          h('div',{className:'spinner mx-auto mb-4',style:{width:40,height:40}}),
+          h('p',{className:'font-medium text-gray-300'},imgProgress||'Generating images...'),
+          h('p',{className:'text-sm mt-1'},`Creating ${IMAGE_COUNT} content-matched images`)
+        ) : successfulImages.length > 0 ? h('div',null,
+          h('div',{className:'relative mb-3'},
+            images[selectedImg]?.url && h('img',{src:images[selectedImg].url,className:'w-full rounded-lg shadow-lg',alt:`Generated image ${selectedImg+1}`}),
+            h('div',{className:'absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1'},`${selectedImg+1} / ${successfulImages.length}`),
+            h('button',{className:'absolute top-2 right-2 btn-secondary text-xs',onClick:()=>downloadImage(images[selectedImg].url,selectedImg)},'\u2B07\uFE0F')
           ),
-          React.createElement(
-            'div',
-            { className: 'flex gap-2' },
-            React.createElement('input', {
-              className: 'input-field flex-1',
-              placeholder: 'e.g., 86,000 projected physician shortage by 2036',
-              value: ndp,
-              onChange: (e) => setNdp(e.target.value),
-              onKeyDown: (e) => {
-                if (e.key === 'Enter' && ndp) {
-                  upd('dataPoints', [...(eb.dataPoints || []), ndp]);
-                  setNdp('');
-                }
-              },
-            }),
-            React.createElement('button', {
-              className: 'btn-secondary',
-              onClick: () => {
-                if (!ndp) return;
-                upd('dataPoints', [...(eb.dataPoints || []), ndp]);
-                setNdp('');
-              },
-            }, '+ Add')
-          )
-        )
-      );
-    }
-
-    // ─── IMAGE STUDIO PAGE ───
-    function ImageStudioPage({ brand, manualKey, selImgModel, live, showToast }) {
-      const [tab, setTab] = useState('branded');
-      const [style, setStyle] = useState('stat');
-      const [stat, setStat] = useState('86,000');
-      const [label, setLabel] = useState('Projected U.S. physician shortage by 2036.');
-      const [subtitle, setSubtitle] = useState('The gap is real. The time to plan is now.');
-      const [category, setCategory] = useState('PHYSICIAN WORKFORCE INSIGHT');
-      const [quote, setQuote] = useState("A strong locum tenens strategy is not a backup plan. It's a competitive advantage.");
-      const [context, setContext] = useState('Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.');
-      const [closingLine, setClosingLine] = useState('Pay less. Every time.');
-      const [multiTitle, setMultiTitle] = useState('$1M+');
-      const [multiSub, setMultiSub] = useState('Lost annually per unfilled physician position.');
-      const [multiTopic, setMultiTopic] = useState('THE COST OF DOING NOTHING');
-      const [multiTag, setMultiTag] = useState('WORKFORCE DATA');
-      const [cardNum, setCardNum] = useState('1');
-      const [aiPrompt, setAiPrompt] = useState('');
-      const [aiModel, setAiModel] = useState(selImgModel || IMAGE_MODELS[0].id);
-      const [aiLoading, setAiLoading] = useState(false);
-      const [aiProgress, setAiProgress] = useState('');
-      const [aiError, setAiError] = useState('');
-      const [images, setImages] = useState([]);
-      const [selectedImg, setSelectedImg] = useState(0);
-      const [imgCount, setImgCount] = useState(5);
-      const cvRef = useRef(null);
-
-      const makeBranded = () => {
-        const cv = cvRef.current;
-        if (!cv) return;
-        if (style === 'stat') {
-          generateStatCard(cv, { stat, label, subtitle, category, brandName: brand.name, tagline: brand.tagline, colors: brand.colors });
-        } else if (style === 'quote') {
-          generateQuoteCard(cv, { quote, context, closingLine, brandName: brand.name, role: brand.tagline, tagline: brand.tagline, colors: brand.colors });
-        } else {
-          generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, tagLabel: multiTag, brandName: brand.name, colors: brand.colors });
-        }
-        setImages([{ url: cv.toDataURL('image/png'), prompt: `Branded ${style} card`, error: null }]);
-        setSelectedImg(0);
-      };
-
-      const makeAI = async () => {
-        if (!live) { showToast('API key required'); return; }
-        if (!aiPrompt.trim()) { showToast('Enter a prompt'); return; }
-        setAiLoading(true);
-        setAiError('');
-        setImages([]);
-        setSelectedImg(0);
-
-        const prompts = [];
-        prompts.push(aiPrompt);
-        const variations = [
-          'Close-up detailed view. ',
-          'Wide-angle establishing shot. ',
-          'Minimalist flat design. ',
-          'Cinematic dramatic lighting. ',
-          'Isometric 3D illustration style. ',
-        ];
-        for (let i = 1; i < imgCount; i++) {
-          prompts.push(variations[i % variations.length] + aiPrompt);
-        }
-
-        const results = await generateMultipleImages(manualKey, aiModel, prompts, (i, total) => {
-          setAiProgress(`Generating image ${i + 1} of ${total}...`);
-        });
-
-        const successful = results.filter((r) => r.url);
-        if (successful.length === 0) {
-          setAiError('All images failed. Try a different model or prompt.');
-        } else {
-          showToast(`${successful.length} images generated!`);
-        }
-        setImages(results);
-        setSelectedImg(0);
-        setAiLoading(false);
-        setAiProgress('');
-      };
-
-      useEffect(() => {
-        if (tab === 'branded') makeBranded();
-      }, [style, tab]);
-
-      const QUICK_PROMPTS = [
-        { l: 'Stat Card', p: `Professional dark navy infographic card for ${brand.name || 'a healthcare company'}. One large bold stat "86,000". Clean, modern. "Projected U.S. physician shortage by 2036" below. 16:9.` },
-        { l: 'Quote Card', p: 'Thought leadership social media card. Steel blue gradient. Large quotation mark. "A strong locum tenens strategy is not a backup plan." Split layout. 16:9.' },
-        { l: 'Hospital Scene', p: 'Modern hospital corridor, physician in white coat walking confidently. Warm, hopeful. Natural candid composition. Landscape 16:9.' },
-        { l: 'Data Viz', p: 'Clean data visualization on dark background. Upward trend line. Blue/teal palette. "Physician Demand Forecast 2024-2036". Elegant, LinkedIn-ready. 16:9.' },
-      ];
-
-      const successfulImages = images.filter((i) => i.url);
-
-      const downloadAll = () => {
-        successfulImages.forEach((img, idx) => {
-          setTimeout(() => {
-            const a = document.createElement('a');
-            a.download = `image-studio-${idx + 1}-${Date.now()}.png`;
-            a.href = img.url;
-            a.click();
-          }, idx * 300);
-        });
-        showToast(`Downloading ${successfulImages.length} images...`);
-      };
-
-      return React.createElement(
-        'div',
-        { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in' },
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '🖼️ Image Studio'),
-          React.createElement(
-            'div',
-            { className: 'flex gap-2 mb-5' },
-            React.createElement('button', { className: `flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${tab === 'branded' ? 'purple-active' : 'tab-inactive'}`, onClick: () => setTab('branded') }, '🎨 Branded Cards'),
-            React.createElement('button', { className: `flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${tab === 'ai' ? 'purple-active' : 'tab-inactive'}`, onClick: () => setTab('ai') }, '🤖 AI Image Gen ', !live && React.createElement('span', { className: 'text-xs opacity-60 ml-1' }, '(key needed)'))
+          h('div',{className:'grid grid-cols-5 gap-2'},
+            images.map((img,i)=>h('button',{key:i,className:`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${selectedImg===i?'border-blue-500 shadow-lg shadow-blue-500/20':'border-gray-600 hover:border-gray-400'} ${!img.url?'opacity-40':''}`,onClick:()=>img.url&&setSelectedImg(i),disabled:!img.url},
+              img.url ? h('img',{src:img.url,className:'w-full h-full object-cover',alt:`Thumb ${i+1}`}) : h('div',{className:'w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400'},'\u2717'),
+              h('div',{className:'absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-0.5'},i+1)
+            ))
           ),
-          tab === 'branded' && React.createElement(
-            'div',
-            null,
-            React.createElement(
-              'div',
-              { className: 'flex gap-2 mb-4' },
-              [{ id: 'stat', l: '📊 Stat' }, { id: 'quote', l: '💬 Quote' }, { id: 'multi', l: '📖 Multi' }].map((s) =>
-                React.createElement('button', { key: s.id, className: `flex-1 py-2 rounded-lg text-sm font-semibold ${style === s.id ? 'tab-active' : 'tab-inactive'}`, onClick: () => setStyle(s.id) }, s.l)
-              )
-            ),
-            style === 'stat' && React.createElement(
-              'div',
-              { className: 'space-y-3' },
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Category'),
-              React.createElement('input', { className: 'input-field', value: category, onChange: (e) => setCategory(e.target.value) }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Main Stat'),
-              React.createElement('input', { className: 'input-field', value: stat, onChange: (e) => setStat(e.target.value) }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Description'),
-              React.createElement('input', { className: 'input-field', value: label, onChange: (e) => setLabel(e.target.value) }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Subtitle'),
-              React.createElement('input', { className: 'input-field', value: subtitle, onChange: (e) => setSubtitle(e.target.value) })
-            ),
-            style === 'quote' && React.createElement(
-              'div',
-              { className: 'space-y-3' },
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Main Quote'),
-              React.createElement('textarea', { className: 'input-field', value: quote, onChange: (e) => setQuote(e.target.value), rows: 3 }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Context'),
-              React.createElement('textarea', { className: 'input-field', value: context, onChange: (e) => setContext(e.target.value), rows: 4 }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Closing Line'),
-              React.createElement('input', { className: 'input-field', value: closingLine, onChange: (e) => setClosingLine(e.target.value) })
-            ),
-            style === 'multi' && React.createElement(
-              'div',
-              { className: 'space-y-3' },
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Card #'),
-              React.createElement(
-                'div',
-                { className: 'flex gap-2' },
-                ['1', '2', '3'].map((n) =>
-                  React.createElement('button', { key: n, className: `flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'tab-active' : 'tab-inactive'}`, onClick: () => setCardNum(n) }, `Card ${n}`)
-                )
-              ),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Topic'),
-              React.createElement('input', { className: 'input-field', value: multiTopic, onChange: (e) => setMultiTopic(e.target.value) }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Title'),
-              React.createElement('input', { className: 'input-field', value: multiTitle, onChange: (e) => setMultiTitle(e.target.value) }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Subtitle'),
-              React.createElement('input', { className: 'input-field', value: multiSub, onChange: (e) => setMultiSub(e.target.value) }),
-              React.createElement('label', { className: 'block text-sm font-medium text-gray-300' }, 'Tag'),
-              React.createElement('input', { className: 'input-field', value: multiTag, onChange: (e) => setMultiTag(e.target.value) })
-            ),
-            React.createElement('button', { className: 'btn-primary w-full mt-4', onClick: makeBranded }, '🎨 Generate Branded Card')
-          ),
-          tab === 'ai' && React.createElement(
-            'div',
-            { className: 'space-y-4' },
-            React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Model'),
-            React.createElement(
-              'select',
-              { className: 'input-field', value: aiModel, onChange: (e) => setAiModel(e.target.value) },
-              IMAGE_MODELS.map((m) => React.createElement('option', { key: m.id, value: m.id }, m.name))
-            ),
-            React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Images to Generate'),
-            React.createElement(
-              'div',
-              { className: 'flex gap-2' },
-              [1, 3, 5].map((n) =>
-                React.createElement('button', { key: n, className: `flex-1 py-2 rounded-lg text-sm font-semibold ${imgCount === n ? 'tab-active' : 'tab-inactive'}`, onClick: () => setImgCount(n) }, `${n} ${n === 1 ? 'image' : 'images'}`)
-              )
-            ),
-            React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-2' }, 'Quick Templates'),
-            React.createElement(
-              'div',
-              { className: 'grid grid-cols-2 gap-2' },
-              QUICK_PROMPTS.map((q, i) => React.createElement('button', { key: i, className: 'btn-ghost text-xs text-left py-2', onClick: () => setAiPrompt(q.p) }, q.l))
-            ),
-            React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Prompt'),
-            React.createElement('textarea', { className: 'input-field', value: aiPrompt, onChange: (e) => setAiPrompt(e.target.value), rows: 6, placeholder: 'Describe the image you want... variations will be auto-generated for multiple images.' }),
-            aiError && React.createElement('p', { className: 'text-red-400 text-sm' }, `Error: ${aiError}`),
-            React.createElement('button', { className: 'btn-primary w-full py-3', onClick: makeAI, disabled: aiLoading || !live }, aiLoading ? (aiProgress || 'Generating...') : !live ? 'API Key Required' : `🤖 Generate ${imgCount} AI Image${imgCount > 1 ? 's' : ''}`),
-            !live && React.createElement('p', { className: 'text-xs text-gray-500 text-center' }, 'Set your OpenRouter API key in .env or paste in the header bar.')
-          )
-        ),
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement(
-            'div',
-            { className: 'flex items-center justify-between mb-4' },
-            React.createElement('h2', { className: 'text-lg font-bold text-white' }, `Preview${successfulImages.length > 1 ? ` (${successfulImages.length} images)` : ''}`),
-            successfulImages.length > 0 && React.createElement(
-              'div',
-              { className: 'flex gap-2' },
-              successfulImages.length > 1 && React.createElement('button', { className: 'btn-secondary text-sm', onClick: downloadAll }, '⬇️ All'),
-              React.createElement('button', {
-                className: 'btn-secondary text-sm',
-                onClick: () => {
-                  const img = images[selectedImg];
-                  if (!img?.url) return;
-                  const a = document.createElement('a');
-                  a.download = `image-${selectedImg + 1}-${Date.now()}.png`;
-                  a.href = img.url;
-                  a.click();
-                  showToast('Downloaded!');
-                },
-              }, '⬇️ Download')
-            )
-          ),
-          React.createElement('canvas', { ref: cvRef, style: { display: 'none' } }),
-          aiLoading
-            ? React.createElement(
-                'div',
-                { className: 'text-center py-20 text-gray-500' },
-                React.createElement('div', { className: 'spinner mx-auto mb-4', style: { width: 48, height: 48 } }),
-                React.createElement('p', { className: 'font-medium text-gray-300' }, aiProgress || 'Generating...'),
-                React.createElement('p', { className: 'text-sm mt-1' }, imgCount > 1 ? `Creating ${imgCount} image variations` : '10-30 seconds typically')
-              )
-            : successfulImages.length > 0
-            ? React.createElement(
-                'div',
-                null,
-                React.createElement(
-                  'div',
-                  { className: 'relative mb-3' },
-                  React.createElement('img', { src: images[selectedImg]?.url, className: 'w-full rounded-lg shadow-lg', alt: 'Preview', onError: () => { showToast('Load error'); } }),
-                  successfulImages.length > 1 && React.createElement('div', { className: 'absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1' }, `${selectedImg + 1} / ${successfulImages.length}`)
-                ),
-                images.length > 1 && React.createElement(
-                  'div',
-                  { className: 'grid grid-cols-5 gap-2' },
-                  images.map((img, i) =>
-                    React.createElement(
-                      'button',
-                      {
-                        key: i,
-                        className: `relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${selectedImg === i ? 'border-blue-500' : 'border-gray-600 hover:border-gray-400'} ${!img.url ? 'opacity-40' : ''}`,
-                        onClick: () => img.url && setSelectedImg(i),
-                        disabled: !img.url,
-                      },
-                      img.url
-                        ? React.createElement('img', { src: img.url, className: 'w-full h-full object-cover', alt: `Thumb ${i + 1}` })
-                        : React.createElement('div', { className: 'w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400' }, '✕')
-                    )
-                  )
-                )
-              )
-            : React.createElement(
-                'div',
-                { className: 'text-center py-20 text-gray-500' },
-                React.createElement('div', { className: 'text-5xl mb-3' }, tab === 'ai' ? '🤖' : '🎨'),
-                React.createElement('p', null, 'Click Generate to create your images')
-              )
-        )
-      );
-    }
+          images[selectedImg]?.prompt && h('div',{className:'mt-3 p-2 bg-gray-800 rounded-lg'},h('p',{className:'text-xs text-gray-400 truncate',title:images[selectedImg].prompt},'\uD83C\uDFA8 ',images[selectedImg].prompt))
+        ) : h('div',{className:'text-center py-12 text-gray-500'},h('div',{className:'text-4xl mb-3'},'\uD83D\uDDBC'),h('p',null,`${IMAGE_COUNT} images will be generated with your post`))
+      )
+    )
+  );
+}
 
-    // ─── GENERATE PAGE (simplified) ───
-    function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
-      const [platform, setPlatform] = useState('LinkedIn');
-      const [post, setPost] = useState('');
-      const [loading, setLoading] = useState(false);
-      const [error, setError] = useState('');
+// ═══════════ CALENDAR PAGE ═══════════
+function CalendarPage({ brand }) {
+  const h = React.createElement;
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const sched = brand.schedule.length>0 ? brand.schedule : [{day:'Monday',time:'9:00 AM',pillar:'Educational',audience:'Primary',imageStyle:'stat'},{day:'Tuesday',time:'12:00 PM',pillar:'Storytelling',audience:'Both',imageStyle:'quote'},{day:'Wednesday',time:'9:00 AM',pillar:'Industry',audience:'Primary',imageStyle:'multi'},{day:'Thursday',time:'12:00 PM',pillar:'Lead Magnet',audience:'Primary',imageStyle:'stat'}];
+  const styleColors={stat:'#3b82f6',quote:'#8b5cf6',multi:'#10b981'};
+  const styleLabels={stat:'Stat Card',quote:'Quote Card',multi:'Multi-Set'};
+  const CHECKLIST=[{t:'Before Posting',d:'Spend 20 min engaging with target audience posts.'},{t:'First 30 Minutes',d:'Reply to every comment within 30 min.'},{t:'The 1+3 Rule',d:'Leave 3 comments: behind-the-scenes, educational tip, question.'},{t:'End of Day',d:"Return to yesterday's post. Late engagement extends distribution."}];
+  return h('div',{className:'animate-fade-in'},
+    h('h2',{className:'text-2xl font-bold text-white mb-6'},'\uD83D\uDCC5 Weekly Content Calendar'),
+    h('div',{className:'card p-6 mb-6'},h('div',{className:'grid grid-cols-5 gap-4'},
+      days.map(d=>{const ds=sched.filter(s=>s.day===d);return h('div',{key:d},h('h3',{className:'font-bold text-white mb-3 text-center pb-2 border-b border-gray-600'},d),h('div',{className:'space-y-2'},ds.length>0?ds.map((s,i)=>h('div',{key:i,className:'bg-gray-800 rounded-lg p-3 border border-gray-700 hover:border-blue-500 transition-all'},h('div',{className:'text-xs text-gray-400 mb-1'},s.time),h('div',{className:'text-sm font-semibold text-white mb-1'},s.pillar),h('div',{className:'text-xs text-gray-400 mb-2'},'\u2192 ',s.audience),h('span',{className:'badge text-xs',style:{background:styleColors[s.imageStyle]||'#475569',color:'#fff'}},styleLabels[s.imageStyle]||s.imageStyle))):h('div',{className:'text-center text-gray-600 text-sm py-4'},'No posts')));})
+    )),
+    h('div',{className:'card p-6'},h('h3',{className:'text-lg font-bold text-white mb-4'},'\uD83D\uDD25 Daily Engagement Checklist'),h('div',{className:'grid grid-cols-2 gap-4'},CHECKLIST.map((item,i)=>h('div',{key:i,className:'bg-gray-800 rounded-lg p-4 border border-gray-700'},h('div',{className:'text-blue-400 font-bold text-sm mb-1'},item.t),h('div',{className:'text-gray-300 text-sm'},item.d)))))
+  );
+}
 
-      const generate = async () => {
-        setLoading(true);
-        setError('');
-        setPost('');
-        try {
-          if (live) {
-            const txt = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform), buildUserPrompt(brand.pillars[0], '', '', brand.dataPoints, 'stat'));
-            setPost(txt);
-            showToast('Generated!');
-          } else {
-            await new Promise((r) => setTimeout(r, 1500));
-            const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
-            const pl = Object.values(pp)[0];
-            setPost(pl[Math.floor(Math.random() * pl.length)]);
-            showToast('Demo post generated!');
-          }
-        } catch (e) {
-          setError(e.message);
-        }
-        setLoading(false);
-      };
+// ═══════════ SAVED PAGE ═══════════
+function SavedPage({ savedPosts, setSavedPosts, showToast }) {
+  const h = React.createElement;
+  if (!savedPosts.length) return h('div',{className:'text-center py-20 animate-fade-in'},h('div',{className:'text-6xl mb-4'},'\uD83D\uDCBE'),h('h2',{className:'text-xl font-bold text-white mb-2'},'No saved posts yet'),h('p',{className:'text-gray-400'},'Generate and save content from the Generate tab'));
+  const exportAll=()=>{const blob=new Blob([JSON.stringify(savedPosts,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='saved-posts.json';a.click();showToast('Exported!');};
+  return h('div',{className:'animate-fade-in'},
+    h('div',{className:'flex items-center justify-between mb-6'},h('h2',{className:'text-2xl font-bold text-white'},`\uD83D\uDCBE Saved Posts (${savedPosts.length})`),h('button',{className:'btn-ghost text-sm',onClick:exportAll},'\uD83D\uDCE4 Export All')),
+    h('div',{className:'grid grid-cols-1 md:grid-cols-2 gap-4'},
+      savedPosts.slice().reverse().map(p=>h('div',{key:p.id,className:'card p-4 card-hover'},
+        h('div',{className:'flex items-center justify-between mb-2'},h('div',{className:'flex items-center gap-2'},h('span',{className:'badge',style:{background:p.platform==='LinkedIn'?'#0a66c2':'#1877f2',color:'#fff'}},p.platform),h('span',{className:'badge',style:{background:'#334155',color:'#94a3b8'}},p.pillar)),h('span',{className:'text-xs text-gray-500'},p.createdAt)),
+        p.imageData&&h('img',{src:p.imageData,className:'w-full rounded-lg mb-3',alt:''}),
+        h('p',{className:'text-sm text-gray-300 whitespace-pre-wrap mb-3',style:{maxHeight:150,overflow:'hidden'}},p.text.substring(0,300),p.text.length>300?'...':''),
+        h('div',{className:'flex gap-2'},h('button',{className:'btn-secondary text-xs flex-1',onClick:()=>{navigator.clipboard.writeText(p.text);showToast('Copied!')}},'\uD83D\uDCCB Copy'),h('button',{className:'btn-ghost text-xs',onClick:()=>setSavedPosts(pr=>pr.filter(x=>x.id!==p.id))},'\uD83D\uDDD1'))
+      ))
+    )
+  );
+}
 
-      const savePost = () => {
-        if (!post) return;
-        setSavedPosts((p) => [...p, {
-          id: Date.now(),
-          text: post,
-          platform,
-          pillar: brand.pillars[0].name,
-          imageStyle: 'stat',
-          imageMode: 'branded',
-          imageData: null,
-          allImages: [],
-          createdAt: new Date().toLocaleString(),
-        }]);
-        showToast('Post saved!');
-      };
+// ═══════════ IMAGE STUDIO PAGE ═══════════
+function ImageStudioPage({ brand, manualKey, selImgModel, live, showToast }) {
+  const h = React.createElement;
+  const [tab,setTab]=useState('branded');
+  const [style,setStyle]=useState('stat');
+  const [stat,setStat]=useState('86,000');
+  const [label,setLabel]=useState('Projected U.S. physician shortage by 2036.');
+  const [subtitle,setSubtitle]=useState('The gap is real. The time to plan is now.');
+  const [category,setCategory]=useState('PHYSICIAN WORKFORCE INSIGHT');
+  const [quote,setQuote]=useState("A strong locum tenens strategy is not a backup plan. It's a competitive advantage.");
+  const [context,setContext]=useState('Reactive staffing model:\nHigher rates.\n\nProactive staffing model:\nLower cost.');
+  const [closingLine,setClosingLine]=useState('Pay less. Every time.');
+  const [multiTitle,setMultiTitle]=useState('$1M+');
+  const [multiSub,setMultiSub]=useState('Lost annually per unfilled physician position.');
+  const [multiTopic,setMultiTopic]=useState('THE COST OF DOING NOTHING');
+  const [multiTag,setMultiTag]=useState('WORKFORCE DATA');
+  const [cardNum,setCardNum]=useState('1');
+  const [aiPrompt,setAiPrompt]=useState('');
+  const [aiModel,setAiModel]=useState(selImgModel||IMAGE_MODELS[0].id);
+  const [aiLoading,setAiLoading]=useState(false);
+  const [aiProgress,setAiProgress]=useState('');
+  const [aiError,setAiError]=useState('');
+  const [images,setImages]=useState([]);
+  const [selectedImg,setSelectedImg]=useState(0);
+  const [imgCount,setImgCount]=useState(5);
+  const cvRef=useRef(null);
 
-      return React.createElement(
-        'div',
-        { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in' },
-        React.createElement(
-          'div',
-          { className: 'space-y-4' },
-          React.createElement(
-            'div',
-            { className: 'card p-5' },
-            React.createElement('h2', { className: 'text-lg font-bold text-white mb-4' }, '⚡ Generate Content'),
-            React.createElement(
-              'div',
-              { className: 'flex gap-2 mb-4' },
-              ['LinkedIn', 'Facebook'].map((p) =>
-                React.createElement('button', {
-                  key: p,
-                  className: `flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${platform === p ? 'tab-active' : 'tab-inactive'}`,
-                  onClick: () => setPlatform(p),
-                }, `${p === 'LinkedIn' ? '💼' : '👥'} ${p}`)
-              )
-            ),
-            React.createElement('button', {
-              className: 'btn-primary w-full py-3 text-lg flex items-center justify-center gap-2',
-              onClick: generate,
-              disabled: loading,
-            }, loading ? (React.createElement(React.Fragment, null, React.createElement('span', { className: 'spinner' }), ' Generating...')) : React.createElement(React.Fragment, null, '⚡ Generate Post')),
-            error && React.createElement('p', { className: 'text-red-400 text-sm mt-2' }, `Error: ${error}`)
-          )
-        ),
-        React.createElement(
-          'div',
-          { className: 'card p-5' },
-          React.createElement(
-            'div',
-            { className: 'flex items-center justify-between mb-4' },
-            React.createElement('h2', { className: 'text-lg font-bold text-white' }, `${platform} Post Preview`),
-            post && React.createElement(
-              'div',
-              { className: 'flex gap-2' },
-              React.createElement('button', { className: 'btn-secondary text-sm', onClick: () => { navigator.clipboard.writeText(post); showToast('Copied!'); } }, '📋 Copy'),
-              React.createElement('button', { className: 'btn-secondary text-sm', onClick: savePost }, '💾 Save')
-            )
-          ),
-          post
-            ? React.createElement('div', { className: 'bg-white rounded-lg p-5 text-gray-900 text-sm leading-relaxed whitespace-pre-wrap', style: { maxHeight: 400, overflowY: 'auto' } }, post)
-            : React.createElement('div', { className: 'text-center py-16 text-gray-500' }, React.createElement('div', { className: 'text-4xl mb-3' }, '✏️'), React.createElement('p', null, 'Your generated post will appear here'))
-        )
-      );
-    }
+  const makeBranded=()=>{const cv=cvRef.current;if(!cv)return;if(style==='stat')generateStatCard(cv,{stat,label,subtitle,category,brandName:brand.name,tagline:brand.tagline,colors:brand.colors});else if(style==='quote')generateQuoteCard(cv,{quote,context,closingLine,brandName:brand.name,role:brand.tagline,tagline:brand.tagline,colors:brand.colors});else generateMultiCard(cv,{cardNumber:cardNum,totalCards:'3',topicLabel:multiTopic,title:multiTitle,subtitle:multiSub,tagLabel:multiTag,brandName:brand.name,colors:brand.colors});setImages([{url:cv.toDataURL('image/png'),prompt:`Branded ${style} card`,error:null}]);setSelectedImg(0);};
 
-    // ─── APP COMPONENT ───
-    function App() {
-      const [page, setPage] = useState('generate');
-      const [brand, setBrand] = useState(STEADFAST_PRESET);
-      const [manualKey, setManualKey] = useState('');
-      const [selModel, setSelModel] = useState(TEXT_MODELS[0].id);
-      const [selImgModel, setSelImgModel] = useState(IMAGE_MODELS[0].id);
-      const [toast, setToast] = useState(null);
-      const [savedPosts, setSavedPosts] = useState([]);
+  const makeAI=async()=>{if(!live){showToast('API key required');return;}if(!aiPrompt.trim()){showToast('Enter a prompt');return;}setAiLoading(true);setAiError('');setImages([]);setSelectedImg(0);const prompts=[aiPrompt];const vars=['Close-up detailed view. ','Wide-angle establishing shot. ','Minimalist flat design. ','Cinematic dramatic lighting. ','Isometric 3D illustration style. '];for(let i=1;i<imgCount;i++)prompts.push(vars[i%vars.length]+aiPrompt);const results=await generateMultipleImages(manualKey,aiModel,prompts,(i,total)=>{setAiProgress(`Generating image ${i+1} of ${total}...`);});const ok=results.filter(r=>r.url);if(ok.length===0)setAiError('All images failed.');else showToast(`${ok.length} images generated!`);setImages(results);setSelectedImg(0);setAiLoading(false);setAiProgress('');};
 
-      const live = isLiveMode(manualKey);
-      const showToast = (msg) => setToast(msg);
+  useEffect(()=>{if(tab==='branded')makeBranded();},[style,tab]);
+  const QUICK=[{l:'Stat Card',p:`Professional dark navy infographic card for ${brand.name||'a healthcare company'}. Bold stat "86,000". 16:9.`},{l:'Quote Card',p:'Thought leadership social media card. Steel blue gradient. Large quotation mark. 16:9.'},{l:'Hospital Scene',p:'Modern hospital corridor, physician in white coat. Warm, hopeful. 16:9.'},{l:'Data Viz',p:'Clean data visualization on dark background. Upward trend line. Blue/teal palette. 16:9.'}];
+  const successfulImages=images.filter(i=>i.url);
+  const downloadAll=()=>{successfulImages.forEach((img,idx)=>{setTimeout(()=>{const a=document.createElement('a');a.download=`image-studio-${idx+1}-${Date.now()}.png`;a.href=img.url;a.click();},idx*300);});showToast(`Downloading ${successfulImages.length} images...`);};
 
-      return React.createElement(
-        'div',
-        { className: 'min-h-screen gradient-bg' },
-        React.createElement(Header, { brand, manualKey, setManualKey, live }),
-        React.createElement(NavBar, { page, setPage }),
-        React.createElement(
-          'main',
-          { className: 'p-6 max-w-7xl mx-auto' },
-          page === 'generate' && React.createElement(GeneratePage, { brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }),
-          page === 'calendar' && React.createElement(CalendarPage, { brand }),
-          page === 'saved' && React.createElement(SavedPage, { savedPosts, setSavedPosts, showToast }),
-          page === 'images' && React.createElement(ImageStudioPage, { brand, manualKey, selImgModel, live, showToast }),
-          page === 'settings' && React.createElement(SettingsPage, { brand, setBrand, manualKey, setManualKey, selModel, setSelModel, selImgModel, setSelImgModel, live })
-        ),
-        toast && React.createElement(Toast, { message: toast, onClose: () => setToast(null) })
-      );
-    }
+  return h('div',{className:'grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in'},
+    h('div',{className:'card p-5'},
+      h('h2',{className:'text-lg font-bold text-white mb-4'},'\uD83D\uDDBC Image Studio'),
+      h('div',{className:'flex gap-2 mb-5'},
+        h('button',{className:`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${tab==='branded'?'purple-active':'tab-inactive'}`,onClick:()=>setTab('branded')},'\uD83C\uDFA8 Branded Cards'),
+        h('button',{className:`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${tab==='ai'?'purple-active':'tab-inactive'}`,onClick:()=>setTab('ai')},'\uD83E\uDD16 AI Image Gen',!live&&h('span',{className:'text-xs opacity-60 ml-1'},'(key needed)'))
+      ),
+      tab==='branded'&&h('div',null,
+        h('div',{className:'flex gap-2 mb-4'},[{id:'stat',l:'\uD83D\uDCCA Stat'},{id:'quote',l:'\uD83D\uDCAC Quote'},{id:'multi',l:'\uD83D\uDCD1 Multi'}].map(s=>h('button',{key:s.id,className:`flex-1 py-2 rounded-lg text-sm font-semibold ${style===s.id?'tab-active':'tab-inactive'}`,onClick:()=>setStyle(s.id)},s.l))),
+        style==='stat'&&h('div',{className:'space-y-3'},h('label',{className:'block text-sm font-medium text-gray-300'},'Category'),h('input',{className:'input-field',value:category,onChange:e=>setCategory(e.target.value)}),h('label',{className:'block text-sm font-medium text-gray-300'},'Main Stat'),h('input',{className:'input-field',value:stat,onChange:e=>setStat(e.target.value)}),h('label',{className:'block text-sm font-medium text-gray-300'},'Description'),h('input',{className:'input-field',value:label,onChange:e=>setLabel(e.target.value)}),h('label',{className:'block text-sm font-medium text-gray-300'},'Subtitle'),h('input',{className:'input-field',value:subtitle,onChange:e=>setSubtitle(e.target.value)})),
+        style==='quote'&&h('div',{className:'space-y-3'},h('label',{className:'block text-sm font-medium text-gray-300'},'Main Quote'),h('textarea',{className:'input-field',value:quote,onChange:e=>setQuote(e.target.value),rows:3}),h('label',{className:'block text-sm font-medium text-gray-300'},'Context'),h('textarea',{className:'input-field',value:context,onChange:e=>setContext(e.target.value),rows:4}),h('label',{className:'block text-sm font-medium text-gray-300'},'Closing Line'),h('input',{className:'input-field',value:closingLine,onChange:e=>setClosingLine(e.target.value)})),
+        style==='multi'&&h('div',{className:'space-y-3'},h('label',{className:'block text-sm font-medium text-gray-300'},'Card #'),h('div',{className:'flex gap-2'},['1','2','3'].map(n=>h('button',{key:n,className:`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum===n?'tab-active':'tab-inactive'}`,onClick:()=>setCardNum(n)},`Card ${n}`))),h('label',{className:'block text-sm font-medium text-gray-300'},'Topic'),h('input',{className:'input-field',value:multiTopic,onChange:e=>setMultiTopic(e.target.value)}),h('label',{className:'block text-sm font-medium text-gray-300'},'Title'),h('input',{className:'input-field',value:multiTitle,onChange:e=>setMultiTitle(e.target.value)}),h('label',{className:'block text-sm font-medium text-gray-300'},'Subtitle'),h('input',{className:'input-field',value:multiSub,onChange:e=>setMultiSub(e.target.value)}),h('label',{className:'block text-sm font-medium text-gray-300'},'Tag'),h('input',{className:'input-field',value:multiTag,onChange:e=>setMultiTag(e.target.value)})),
+        h('button',{className:'btn-primary w-full mt-4',onClick:makeBranded},'\uD83C\uDFA8 Generate Branded Card')
+      ),
+      tab==='ai'&&h('div',{className:'space-y-4'},
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Image Model'),h('select',{className:'input-field',value:aiModel,onChange:e=>setAiModel(e.target.value)},IMAGE_MODELS.map(m=>h('option',{key:m.id,value:m.id},m.name))),
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Images to Generate'),h('div',{className:'flex gap-2'},[1,3,5].map(n=>h('button',{key:n,className:`flex-1 py-2 rounded-lg text-sm font-semibold ${imgCount===n?'tab-active':'tab-inactive'}`,onClick:()=>setImgCount(n)},`${n} ${n===1?'image':'images'}`))),
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-2'},'Quick Templates'),h('div',{className:'grid grid-cols-2 gap-2'},QUICK.map((q,i)=>h('button',{key:i,className:'btn-ghost text-xs text-left py-2',onClick:()=>setAiPrompt(q.p)},q.l))),
+        h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Image Prompt'),h('textarea',{className:'input-field',value:aiPrompt,onChange:e=>setAiPrompt(e.target.value),rows:6,placeholder:'Describe the image you want...'}),
+        aiError&&h('p',{className:'text-red-400 text-sm'},`Error: ${aiError}`),
+        h('button',{className:'btn-primary w-full py-3',onClick:makeAI,disabled:aiLoading||!live},aiLoading?(aiProgress||'Generating...'):!live?'API Key Required':`\uD83E\uDD16 Generate ${imgCount} AI Image${imgCount>1?'s':''}`),
+        !live&&h('p',{className:'text-xs text-gray-500 text-center'},'Paste your OpenRouter API key in the header bar.')
+      )
+    ),
+    // Preview
+    h('div',{className:'card p-5'},
+      h('div',{className:'flex items-center justify-between mb-4'},h('h2',{className:'text-lg font-bold text-white'},'Preview',successfulImages.length>1&&h('span',{className:'text-sm font-normal text-gray-400 ml-2'},`(${successfulImages.length} images)`)),successfulImages.length>0&&h('div',{className:'flex gap-2'},successfulImages.length>1&&h('button',{className:'btn-secondary text-sm',onClick:downloadAll},'\u2B07\uFE0F All'),h('button',{className:'btn-secondary text-sm',onClick:()=>{const img=images[selectedImg];if(!img?.url)return;const a=document.createElement('a');a.download=`image-${selectedImg+1}-${Date.now()}.png`;a.href=img.url;a.click();showToast('Downloaded!')}},'\u2B07\uFE0F Download'))),
+      h('canvas',{ref:cvRef,style:{display:'none'}}),
+      aiLoading?h('div',{className:'text-center py-20 text-gray-500'},h('div',{className:'spinner mx-auto mb-4',style:{width:48,height:48}}),h('p',{className:'font-medium text-gray-300'},aiProgress||'Generating...')):
+      successfulImages.length>0?h('div',null,
+        h('div',{className:'relative mb-3'},h('img',{src:images[selectedImg]?.url,className:'w-full rounded-lg shadow-lg',alt:'Preview'}),successfulImages.length>1&&h('div',{className:'absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1'},`${selectedImg+1} / ${successfulImages.length}`)),
+        images.length>1&&h('div',{className:'grid grid-cols-5 gap-2'},images.map((img,i)=>h('button',{key:i,className:`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${selectedImg===i?'border-blue-500':'border-gray-600 hover:border-gray-400'} ${!img.url?'opacity-40':''}`,onClick:()=>img.url&&setSelectedImg(i),disabled:!img.url},img.url?h('img',{src:img.url,className:'w-full h-full object-cover',alt:`Thumb ${i+1}`}):h('div',{className:'w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400'},'\u2717'))))
+      ):h('div',{className:'text-center py-20 text-gray-500'},h('div',{className:'text-5xl mb-3'},tab==='ai'?'\uD83E\uDD16':'\uD83C\uDFA8'),h('p',null,'Click Generate to create your images'))
+    )
+  );
+}
 
-    // ─── RENDER ───
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
-  </script>
+// ═══════════ SETTINGS PAGE ═══════════
+function SettingsPage({ brand, setBrand, manualKey, setManualKey, selModel, setSelModel, selImgModel, setSelImgModel, live }) {
+  const h = React.createElement;
+  const [preset,setPreset]=useState('steadfast');
+  const [eb,setEb]=useState({...brand});
+  const [np,setNp]=useState({name:'',audience:'',description:''});
+  const [ndp,setNdp]=useState('');
+  const usingEnv=isUsingEnvKey(manualKey);
+  const load=p=>{const d=p==='steadfast'?STEADFAST_PRESET:BLANK_PRESET;setBrand(d);setEb(d);setPreset(p);};
+  const upd=(field,value)=>{const u={...eb,[field]:value};setEb(u);setBrand(u);};
+  const updColor=(key,value)=>{const colors={...eb.colors,[key]:value};const u={...eb,colors};setEb(u);setBrand(u);};
+
+  return h('div',{className:'max-w-3xl mx-auto space-y-6 animate-fade-in'},
+    // API Config
+    h('div',{className:'card p-5'},
+      h('h2',{className:'text-lg font-bold text-white mb-4'},'\uD83D\uDD11 AI Configuration'),
+      h('div',{className:`mb-4 p-3 rounded-lg border ${live?'border-green-700':'border-yellow-700'}`,style:{background:live?'rgba(34,197,94,.1)':'rgba(234,179,8,.1)'}},
+        h('div',{className:'flex items-center gap-2'},h('div',{className:`w-2.5 h-2.5 rounded-full ${live?'bg-green-400':'bg-yellow-400'}`}),h('span',{className:`text-sm font-medium ${live?'text-green-300':'text-yellow-300'}`},live?(usingEnv?'Live Mode \u2014 using .env key':'Live Mode \u2014 using manual key'):'Demo Mode \u2014 no API key detected')),
+        !live&&h('p',{className:'text-xs text-gray-400 mt-1 ml-5'},'Paste a key in the header.')
+      ),
+      h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Manual API Key Override'),
+      h('input',{type:'password',className:'input-field mb-1',placeholder:usingEnv?'.env key active':'sk-or-...',value:manualKey,onChange:e=>setManualKey(e.target.value)}),
+      h('p',{className:'text-xs text-gray-500 mb-4'},'Get your key at openrouter.ai/keys'),
+      h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Content Writing Model'),
+      h('select',{className:'input-field mb-4',value:selModel,onChange:e=>setSelModel(e.target.value)},
+        h('optgroup',{label:'Premium'},TEXT_MODELS.filter(m=>m.tier==='premium').map(m=>h('option',{key:m.id,value:m.id},m.name))),
+        h('optgroup',{label:'Budget'},TEXT_MODELS.filter(m=>m.tier==='budget').map(m=>h('option',{key:m.id,value:m.id},m.name)))
+      ),
+      h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Image Generation Model'),
+      h('select',{className:'input-field',value:selImgModel,onChange:e=>setSelImgModel(e.target.value)},IMAGE_MODELS.map(m=>h('option',{key:m.id,value:m.id},m.name)))
+    ),
+    // Presets
+    h('div',{className:'card p-5'},
+      h('h2',{className:'text-lg font-bold text-white mb-4'},'\uD83D\uDCE6 Brand Presets'),
+      h('div',{className:'flex gap-3'},
+        h('button',{className:`flex-1 p-4 rounded-lg border text-left transition-all ${preset==='steadfast'?'border-blue-500 bg-blue-900 bg-opacity-20':'border-gray-600 hover:border-gray-500'}`,onClick:()=>load('steadfast')},h('div',{className:'font-bold text-white'},'\uD83C\uDFE5 Steadfast Physician Partners'),h('div',{className:'text-xs text-gray-400 mt-1'},'4 pillars, schedule, data points')),
+        h('button',{className:`flex-1 p-4 rounded-lg border text-left transition-all ${preset==='blank'?'border-blue-500 bg-blue-900 bg-opacity-20':'border-gray-600 hover:border-gray-500'}`,onClick:()=>load('blank')},h('div',{className:'font-bold text-white'},'\u2728 Blank Template'),h('div',{className:'text-xs text-gray-400 mt-1'},'Start fresh'))
+      )
+    ),
+    // Brand Identity
+    h('div',{className:'card p-5'},
+      h('h2',{className:'text-lg font-bold text-white mb-4'},'\uD83C\uDFE2 Brand Identity'),
+      h('div',{className:'grid grid-cols-2 gap-4'},
+        h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Company Name'),h('input',{className:'input-field',value:eb.name,onChange:e=>upd('name',e.target.value)})),
+        h('div',null,h('label',{className:'block text-sm font-medium text-gray-300 mb-1'},'Tagline'),h('input',{className:'input-field',value:eb.tagline,onChange:e=>upd('tagline',e.target.value)}))
+      ),
+      h('label',{className:'block text-sm font-medium text-gray-300 mb-1 mt-3'},'Category Positioning'),
+      h('textarea',{className:'input-field',value:eb.category,onChange:e=>upd('category',e.target.value),rows:2}),
+      h('div',{className:'mt-4'},h('label',{className:'block text-sm font-medium text-gray-300 mb-2'},'Brand Colors'),h('div',{className:'flex gap-4 flex-wrap'},['primary','secondary','accent'].map(k=>h('div',{key:k,className:'flex items-center gap-2'},h('input',{type:'color',value:eb.colors[k]||'#1a365d',onChange:e=>updColor(k,e.target.value),className:'w-10 h-10 rounded cursor-pointer border-0'}),h('span',{className:'text-xs text-gray-400 capitalize'},k)))))
+    ),
+    // Pillars
+    h('div',{className:'card p-5'},
+      h('h2',{className:'text-lg font-bold text-white mb-4'},'\uD83D\uDCCC Content Pillars'),
+      h('div',{className:'space-y-2 mb-4'},eb.pillars.map((p,i)=>h('div',{key:i,className:'flex items-center gap-3 bg-gray-800 p-3 rounded-lg'},h('div',{className:'flex-1'},h('span',{className:'font-semibold text-white'},p.name),h('span',{className:'text-gray-400 text-sm ml-2'},'\u2192 ',p.audience),p.description&&h('div',{className:'text-xs text-gray-500 mt-1'},p.description)),h('button',{className:'text-red-400 hover:text-red-300 text-sm',onClick:()=>upd('pillars',eb.pillars.filter((_,j)=>j!==i))},'\u2715')))),
+      h('div',{className:'grid grid-cols-3 gap-2'},h('input',{className:'input-field',placeholder:'Pillar name',value:np.name,onChange:e=>setNp(p=>({...p,name:e.target.value}))}),h('input',{className:'input-field',placeholder:'Audience',value:np.audience,onChange:e=>setNp(p=>({...p,audience:e.target.value}))}),h('button',{className:'btn-secondary',onClick:()=>{if(!np.name)return;upd('pillars',[...eb.pillars,{...np}]);setNp({name:'',audience:'',description:''});}},'+Add'))
+    ),
+    // Data Points
+    h('div',{className:'card p-5'},
+      h('h2',{className:'text-lg font-bold text-white mb-4'},'\uD83D\uDCCA Data Points'),
+      h('div',{className:'space-y-1 mb-3'},(eb.dataPoints||[]).map((dp,i)=>h('div',{key:i,className:'flex items-center gap-2 text-sm'},h('span',{className:'text-blue-400'},'\u2192'),h('span',{className:'text-gray-300 flex-1'},dp),h('button',{className:'text-red-400 hover:text-red-300 text-xs',onClick:()=>upd('dataPoints',eb.dataPoints.filter((_,j)=>j!==i))},'\u2715')))),
+      h('div',{className:'flex gap-2'},h('input',{className:'input-field flex-1',placeholder:'e.g., 86,000 projected physician shortage by 2036',value:ndp,onChange:e=>setNdp(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&ndp){upd('dataPoints',[...(eb.dataPoints||[]),ndp]);setNdp('');}}}),h('button',{className:'btn-secondary',onClick:()=>{if(!ndp)return;upd('dataPoints',[...(eb.dataPoints||[]),ndp]);setNdp('');}},'+ Add'))
+    )
+  );
+}
+
+// ═══════════ MAIN APP ═══════════
+function App() {
+  const h = React.createElement;
+  const [page,setPage]=useState('generate');
+  const [brand,setBrand]=useState(STEADFAST_PRESET);
+  const [manualKey,setManualKey]=useState('');
+  const [selModel,setSelModel]=useState(TEXT_MODELS[0].id);
+  const [selImgModel,setSelImgModel]=useState(IMAGE_MODELS[0].id);
+  const [toast,setToast]=useState(null);
+  const [savedPosts,setSavedPosts]=useState([]);
+  const live=isLiveMode(manualKey);
+  const showToast=msg=>setToast(msg);
+
+  return h('div',{className:'min-h-screen gradient-bg'},
+    h(Header,{brand,manualKey,setManualKey,live}),
+    h(NavBar,{page,setPage}),
+    h('main',{className:'p-6 max-w-7xl mx-auto'},
+      page==='generate'&&h(GeneratePage,{brand,manualKey,selModel,selImgModel,live,showToast,savedPosts,setSavedPosts}),
+      page==='calendar'&&h(CalendarPage,{brand}),
+      page==='saved'&&h(SavedPage,{savedPosts,setSavedPosts,showToast}),
+      page==='images'&&h(ImageStudioPage,{brand,manualKey,selImgModel,live,showToast}),
+      page==='settings'&&h(SettingsPage,{brand,setBrand,manualKey,setManualKey,selModel,setSelModel,selImgModel,setSelImgModel,live})
+    ),
+    toast&&h(Toast,{message:toast,onClose:()=>setToast(null)})
+  );
+}
+
+// ─── RENDER ───
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
 </body>
 </html>
