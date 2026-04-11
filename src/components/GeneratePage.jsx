@@ -1,26 +1,104 @@
 import { useState, useRef } from 'react';
-import { callOpenRouter, callImageAPI, generateImagePrompts, generateMultipleImages, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
+import { callOpenRouter, callImageAPI, generateImagePrompts, generateMultipleImages, buildSystemPrompt, buildUserPrompt, IMAGE_MODELS } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
 const IMAGE_COUNT = 5;
 
+// ─── RENDER FORMATTED POST TEXT ───
+function FormattedPost({ text }) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Empty line = paragraph break
+    if (line.trim() === '') {
+      elements.push(<div key={i} className="h-2" />);
+      continue;
+    }
+
+    // Bullet points: lines starting with →, -, •, *, or numbered (1. 2. etc)
+    const bulletMatch = line.match(/^\s*([\u2192\u2022\-\*]|\d+[\.\)])\s+(.*)/);
+    if (bulletMatch) {
+      const marker = bulletMatch[1];
+      const content = bulletMatch[2];
+      elements.push(
+        <div key={i} className="flex items-start gap-2 pl-2 py-0.5">
+          <span className="text-blue-500 font-bold shrink-0 mt-0.5">{marker === '-' || marker === '*' ? '\u2192' : marker}</span>
+          <span>{renderInline(content)}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Regular line with inline formatting
+    elements.push(<p key={i} className="py-0.5">{renderInline(line)}</p>);
+  }
+
+  return <>{elements}</>;
+}
+
+// Render inline bold (**text**) and italic (*text*)
+function renderInline(text) {
+  if (!text) return text;
+  const parts = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // Bold: **text**
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      const idx = remaining.indexOf(boldMatch[0]);
+      if (idx > 0) parts.push(<span key={key++}>{remaining.substring(0, idx)}</span>);
+      parts.push(<strong key={key++} className="font-bold text-gray-900">{boldMatch[1]}</strong>);
+      remaining = remaining.substring(idx + boldMatch[0].length);
+      continue;
+    }
+    parts.push(<span key={key++}>{remaining}</span>);
+    break;
+  }
+  return parts.length === 1 ? parts[0] : parts;
+}
+
 export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
+  // ─── CORE STATE ───
   const [platform, setPlatform] = useState('LinkedIn');
   const [pillarIdx, setPillarIdx] = useState(0);
   const [audience, setAudience] = useState('');
   const [topic, setTopic] = useState('');
+
+  // ─── ADVANCED CONTENT CONTROLS ───
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [tone, setTone] = useState('authoritative');
+  const [ctaType, setCtaType] = useState('question');
+  const [formatting, setFormatting] = useState('balanced');
+  const [useEmoji, setUseEmoji] = useState(false);
+  const [keywords, setKeywords] = useState('');
+  const [keyPhrases, setKeyPhrases] = useState('');
+  const [avoidTopics, setAvoidTopics] = useState('');
+
+  // ─── IMAGE STATE ───
   const [imageStyle, setImageStyle] = useState('stat');
-  const [imageMode, setImageMode] = useState('branded');
+  const [imageMode, setImageMode] = useState('ai');
+
+  // ─── OUTPUT STATE ───
   const [post, setPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
   const [imgProgress, setImgProgress] = useState('');
   const [error, setError] = useState('');
-  const [images, setImages] = useState([]); // array of {url, prompt, error}
+  const [images, setImages] = useState([]);
   const [selectedImg, setSelectedImg] = useState(0);
   const cvRef = useRef(null);
+
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
+
+  // ─── PARSE COMMA/NEWLINE LISTS ───
+  const parseList = (str) => str.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean);
 
   // ─── BRANDED CARD GENERATORS ───
   const makeBrandedImages = () => {
@@ -29,7 +107,6 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     const results = [];
     const dp = brand.dataPoints || [];
 
-    // Generate 5 different branded cards based on style
     if (imageStyle === 'stat') {
       const usedDp = dp.length > 0 ? dp : [
         '86,000 projected physician shortage by 2036',
@@ -47,7 +124,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           category: pillar.name,
           brandName: brand.name,
           tagline: brand.tagline,
-          subtitle: `Source: Industry Data · ${pillar.name}`,
+          subtitle: `Source: Industry Data \u00B7 ${pillar.name}`,
           colors: brand.colors,
         });
         results.push({ url: cv.toDataURL('image/png'), prompt: `Stat card: ${d}`, error: null });
@@ -89,17 +166,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setImgProgress('Analyzing content for image prompts...');
     setImages([]);
     try {
-      // Step 1: Use text AI to generate content-matched image prompts
       const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
-
-      // Step 2: Generate images from those prompts
       const results = await generateMultipleImages(manualKey, selImgModel, prompts, (i, total) => {
         setImgProgress(`Generating image ${i + 1} of ${total}...`);
       });
-
       const successful = results.filter((r) => r.url);
       if (successful.length === 0) {
-        showToast('AI images failed — using branded cards');
+        showToast('AI images failed \u2014 using branded cards');
         makeBrandedImages();
       } else {
         setImages(results);
@@ -108,7 +181,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       }
     } catch (e) {
       console.error('[LeadGen] Multi-image generation failed:', e);
-      showToast('AI images failed — using branded cards');
+      showToast('AI images failed \u2014 using branded cards');
       makeBrandedImages();
     }
     setImgLoading(false);
@@ -122,10 +195,28 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setPost('');
     setImages([]);
     setSelectedImg(0);
+
+    const advancedOpts = {
+      tone,
+      ctaType,
+      useEmoji,
+      formatting,
+    };
+    const contentOpts = {
+      keywords: parseList(keywords),
+      keyPhrases: parseList(keyPhrases),
+      avoidTopics: parseList(avoidTopics),
+    };
+
     try {
       let txt;
       if (live) {
-        txt = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle));
+        txt = await callOpenRouter(
+          manualKey,
+          selModel,
+          buildSystemPrompt(brand, platform, advancedOpts),
+          buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)
+        );
       } else {
         await new Promise((r) => setTimeout(r, 1500));
         const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
@@ -135,6 +226,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       setPost(txt);
       setLoading(false);
 
+      // Generate images
       if (imageMode === 'ai' && live) {
         await makeAIImages(txt);
       } else {
@@ -156,6 +248,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         text: post,
         platform,
         pillar: pillar.name,
+        tone,
+        ctaType,
         imageStyle,
         imageMode,
         imageData: currentImg,
@@ -186,6 +280,28 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     showToast(`Downloading ${images.filter((i) => i.url).length} images...`);
   };
 
+  const TONES = [
+    { id: 'authoritative', label: 'Authoritative', desc: 'Expert, data-driven' },
+    { id: 'conversational', label: 'Conversational', desc: 'Warm, relatable' },
+    { id: 'provocative', label: 'Provocative', desc: 'Bold, contrarian' },
+    { id: 'storytelling', label: 'Storytelling', desc: 'Narrative-driven' },
+    { id: 'educational', label: 'Educational', desc: 'Clear, instructive' },
+  ];
+
+  const CTA_TYPES = [
+    { id: 'question', label: 'Question', desc: 'Invite comments' },
+    { id: 'dm', label: 'DM CTA', desc: 'DM me "GUIDE"' },
+    { id: 'link', label: 'Link CTA', desc: 'Point to resource' },
+    { id: 'engage', label: 'Engage', desc: 'Share experience' },
+    { id: 'none', label: 'None', desc: 'No CTA' },
+  ];
+
+  const FORMAT_OPTS = [
+    { id: 'minimal', label: 'Minimal', desc: 'Flowing prose' },
+    { id: 'balanced', label: 'Balanced', desc: 'Mix of prose & lists' },
+    { id: 'heavy', label: 'Structured', desc: 'Bullets & bold' },
+  ];
+
   const IMAGE_STYLES = [
     { id: 'stat', l: '\uD83D\uDCCA Stat Card', d: 'Bold number' },
     { id: 'quote', l: '\uD83D\uDCAC Quote Card', d: 'Perspective' },
@@ -196,10 +312,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
-      {/* Left: Controls */}
+      {/* ═══════════ LEFT: CONTROLS ═══════════ */}
       <div className="space-y-4">
         <div className="card p-5">
-          <h2 className="text-lg font-bold text-white mb-4">{'\u26A1'} Generate Content</h2>
+          <h2 className="text-lg font-bold text-white mb-4">{'\u26A1'} Generate Content + Images</h2>
 
           {/* Platform */}
           <div className="flex gap-2 mb-4">
@@ -214,43 +330,128 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           <label className="block text-sm font-medium text-gray-300 mb-1">Content Pillar</label>
           <select className="input-field mb-3" value={pillarIdx} onChange={(e) => setPillarIdx(Number(e.target.value))}>
             {brand.pillars.map((p, i) => (
-              <option key={i} value={i}>{p.name} — {p.audience}</option>
+              <option key={i} value={i}>{p.name} \u2014 {p.audience}</option>
             ))}
           </select>
 
           {/* Audience */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Target Audience (optional)</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Target Audience <span className="text-gray-500">(optional)</span></label>
           <input className="input-field mb-3" placeholder={pillar.audience} value={audience} onChange={(e) => setAudience(e.target.value)} />
 
           {/* Topic */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle (optional)</label>
-          <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={3} />
+          <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">(optional)</span></label>
+          <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
 
-          {/* Image style */}
+          {/* ─── ADVANCED CONTENT OPTIONS ─── */}
+          <button
+            className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg mb-3 text-sm font-medium transition-all bg-gray-800 border border-gray-600 hover:border-gray-500 text-gray-300"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            <span>{'\u2699\uFE0F'} Advanced Content Options</span>
+            <span className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>{'\u25BC'}</span>
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-4 mb-4 p-4 rounded-lg border border-gray-700 bg-gray-800 bg-opacity-50">
+              {/* Tone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Voice & Tone</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {TONES.map((t) => (
+                    <button
+                      key={t.id}
+                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${tone === t.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`}
+                      onClick={() => setTone(t.id)}
+                    >
+                      <div className="font-semibold">{t.label}</div>
+                      <div className="opacity-70 mt-0.5">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Call-to-Action Style</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {CTA_TYPES.map((c) => (
+                    <button
+                      key={c.id}
+                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${ctaType === c.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`}
+                      onClick={() => setCtaType(c.id)}
+                    >
+                      <div className="font-semibold">{c.label}</div>
+                      <div className="opacity-70 mt-0.5">{c.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Formatting */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Formatting Style</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {FORMAT_OPTS.map((f) => (
+                    <button
+                      key={f.id}
+                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${formatting === f.id ? 'bg-blue-600 text-white border border-blue-500' : 'bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-500'}`}
+                      onClick={() => setFormatting(f.id)}
+                    >
+                      <div className="font-semibold">{f.label}</div>
+                      <div className="opacity-70 mt-0.5">{f.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Emoji toggle */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-300">Use Emojis</label>
+                <button
+                  className={`relative w-11 h-6 rounded-full transition-all ${useEmoji ? 'bg-blue-600' : 'bg-gray-700'}`}
+                  onClick={() => setUseEmoji(!useEmoji)}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${useEmoji ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+
+              {/* Keywords */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Keywords <span className="text-gray-500">(comma-separated)</span></label>
+                <input className="input-field" placeholder="e.g., locum tenens, physician shortage, staffing ROI" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+              </div>
+
+              {/* Key Phrases */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Key Phrases to Include <span className="text-gray-500">(one per line or comma-separated)</span></label>
+                <textarea className="input-field" placeholder="e.g., proactive beats reactive&#10;coverage risk calendar&#10;the shortage is here" value={keyPhrases} onChange={(e) => setKeyPhrases(e.target.value)} rows={3} />
+              </div>
+
+              {/* Avoid Topics */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Topics to Avoid <span className="text-gray-500">(comma-separated)</span></label>
+                <input className="input-field" placeholder="e.g., politics, specific competitors" value={avoidTopics} onChange={(e) => setAvoidTopics(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* ─── IMAGE OPTIONS ─── */}
           <label className="block text-sm font-medium text-gray-300 mb-1">Image Style</label>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {IMAGE_STYLES.map((s) => (
               <button
                 key={s.id}
-                className={`p-3 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'}`}
+                className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'}`}
                 onClick={() => setImageStyle(s.id)}
               >
                 <div className="text-sm font-semibold">{s.l}</div>
-                <div className="text-xs text-gray-400 mt-1">{s.d}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{s.d}</div>
               </button>
             ))}
           </div>
 
-          {/* Image mode */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} images per post)</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} per post)</label>
           <div className="flex gap-2 mb-4">
-            <button
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`}
-              onClick={() => setImageMode('branded')}
-            >
-              <div className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</div>
-              <div className="text-xs opacity-70 mt-0.5">Canvas-based, instant</div>
-            </button>
             <button
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'ai' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`}
               onClick={() => setImageMode('ai')}
@@ -258,12 +459,19 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               <div className="font-semibold">{'\uD83E\uDD16'} AI Generated</div>
               <div className="text-xs opacity-70 mt-0.5">{live ? 'Content-matched AI images' : 'Requires API key'}</div>
             </button>
+            <button
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`}
+              onClick={() => setImageMode('branded')}
+            >
+              <div className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</div>
+              <div className="text-xs opacity-70 mt-0.5">Canvas-based, instant</div>
+            </button>
           </div>
 
           {/* Generate button */}
           <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading}>
             {loading ? (
-              <><span className="spinner" /> Generating post...</>
+              <><span className="spinner" /> Generating content...</>
             ) : imgLoading ? (
               <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
             ) : (
@@ -273,7 +481,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}
         </div>
 
-        {/* Data points */}
+        {/* Data points reference */}
         {brand.dataPoints?.length > 0 && (
           <div className="card p-4">
             <h3 className="text-sm font-semibold text-gray-300 mb-2">{'\uD83D\uDCCB'} Available Data Points</h3>
@@ -288,7 +496,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         )}
       </div>
 
-      {/* Right: Preview */}
+      {/* ═══════════ RIGHT: OUTPUT ═══════════ */}
       <div className="space-y-4">
         {/* Post preview */}
         <div className="card p-5">
@@ -298,14 +506,15 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               <div className="flex gap-2">
                 <button className="btn-secondary text-sm" onClick={() => { navigator.clipboard.writeText(post); showToast('Post copied!'); }}>{'\uD83D\uDCCB'} Copy</button>
                 <button className="btn-secondary text-sm" onClick={savePost}>{'\uD83D\uDCBE'} Save</button>
-                <button className="btn-ghost text-sm" onClick={generate} disabled={loading || imgLoading}>{'\uD83D\uDD04'} Regen</button>
+                <button className="btn-ghost text-sm" onClick={generate} disabled={loading || imgLoading}>{'\uD83D\uDD04'}</button>
               </div>
             )}
           </div>
           {post ? (
-            <div className="bg-white rounded-lg p-5 text-gray-900 text-sm leading-relaxed whitespace-pre-wrap" style={{ maxHeight: 400, overflowY: 'auto' }}>
+            <div className="bg-white rounded-lg p-5 text-gray-800 text-sm leading-relaxed" style={{ maxHeight: 500, overflowY: 'auto' }}>
+              {/* Brand header */}
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold" style={{ background: brand.colors.primary }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{ background: brand.colors.primary }}>
                   {(brand.name || 'B')[0]}
                 </div>
                 <div>
@@ -313,13 +522,20 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                   <div className="text-xs text-gray-500">{brand.tagline || ''}</div>
                 </div>
               </div>
-              {post}
+              {/* Formatted post content */}
+              <FormattedPost text={post} />
+              {/* Tone/CTA badges */}
+              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200">
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{tone}</span>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">CTA: {ctaType}</span>
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{formatting}</span>
+              </div>
             </div>
           ) : (
             <div className="text-center py-16 text-gray-500">
               <div className="text-4xl mb-3">{'\u270D\uFE0F'}</div>
               <p>Your generated post will appear here</p>
-              <p className="text-sm">{live ? 'Live AI mode active' : 'Demo mode — add API key for live AI'}</p>
+              <p className="text-sm mt-1">{live ? 'Live AI mode active' : 'Demo mode \u2014 add API key for live AI'}</p>
             </div>
           )}
         </div>
@@ -333,9 +549,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             </h2>
             {successfulImages.length > 0 && (
               <div className="flex gap-2">
-                <button className="btn-secondary text-sm" onClick={downloadAll}>{'\u2B07\uFE0F'} Download All</button>
+                <button className="btn-secondary text-sm" onClick={downloadAll}>{'\u2B07\uFE0F'} All</button>
                 {imageMode === 'ai' && live && post && (
-                  <button className="btn-ghost text-sm" onClick={() => makeAIImages(post)} disabled={imgLoading}>{'\uD83D\uDD04'} Regen All</button>
+                  <button className="btn-ghost text-sm" onClick={() => makeAIImages(post)} disabled={imgLoading}>{'\uD83D\uDD04'} Regen</button>
                 )}
               </div>
             )}
@@ -344,11 +560,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           <canvas ref={cvRef} style={{ display: 'none' }} />
 
           {imgLoading ? (
-            <div className="text-center py-16 text-gray-500">
+            <div className="text-center py-14 text-gray-500">
               <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
               <p className="font-medium text-gray-300">{imgProgress || 'Generating images...'}</p>
-              <p className="text-sm mt-1">AI is creating {IMAGE_COUNT} content-matched images</p>
-              {/* Progress dots */}
+              <p className="text-sm mt-1">Creating {IMAGE_COUNT} content-matched images</p>
               <div className="flex justify-center gap-2 mt-4">
                 {Array.from({ length: IMAGE_COUNT }).map((_, i) => (
                   <div key={i} className={`w-3 h-3 rounded-full transition-all ${
@@ -360,7 +575,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             </div>
           ) : successfulImages.length > 0 ? (
             <div>
-              {/* Main selected image */}
+              {/* Main image */}
               <div className="relative mb-3">
                 <img
                   src={images[selectedImg]?.url}
@@ -376,10 +591,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                 <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">
                   {selectedImg + 1} / {successfulImages.length}
                 </div>
-                <button
-                  className="absolute top-2 right-2 btn-secondary text-xs"
-                  onClick={() => downloadImage(images[selectedImg].url, selectedImg)}
-                >
+                <button className="absolute top-2 right-2 btn-secondary text-xs" onClick={() => downloadImage(images[selectedImg].url, selectedImg)}>
                   {'\u2B07\uFE0F'}
                 </button>
               </div>
@@ -396,25 +608,24 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                     disabled={!img.url}
                   >
                     {img.url ? (
-                      <img src={img.url} className="w-full h-full object-cover" alt={`Thumbnail ${i + 1}`} />
+                      <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i + 1}`} />
                     ) : (
-                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">
-                        {'\u2717'}
-                      </div>
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">{'\u2717'}</div>
                     )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-0.5">
-                      {i + 1}
-                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-0.5">{i + 1}</div>
                   </button>
                 ))}
               </div>
 
-              {/* Prompt info for selected image */}
+              {/* Prompt info */}
               {images[selectedImg]?.prompt && (
                 <div className="mt-3 p-2 bg-gray-800 rounded-lg">
                   <p className="text-xs text-gray-400 truncate" title={images[selectedImg].prompt}>
                     {'\uD83C\uDFA8'} {images[selectedImg].prompt}
                   </p>
+                  {images[selectedImg]?.model && (
+                    <p className="text-xs text-gray-500 mt-0.5">Model: {images[selectedImg].model}</p>
+                  )}
                 </div>
               )}
             </div>

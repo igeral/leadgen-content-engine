@@ -23,13 +23,13 @@ export const TEXT_MODELS = [
   { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick (Open source)', tier: 'budget' },
 ];
 
-// ─── IMAGE MODELS ───
+// ─── IMAGE MODELS (verified live on OpenRouter) ───
 export const IMAGE_MODELS = [
-  { id: 'openai/gpt-image-1', name: 'GPT Image 1 (Best quality)', modalities: ['image', 'text'] },
-  { id: 'google/gemini-2.5-flash-preview:image-generation', name: 'Gemini Flash Image (Fast + cheap)', modalities: ['image', 'text'] },
-  { id: 'black-forest-labs/flux-1.1-pro', name: 'FLUX 1.1 Pro (Photorealistic)', modalities: ['image'] },
-  { id: 'black-forest-labs/flux-schnell', name: 'FLUX Schnell (Fastest)', modalities: ['image'] },
-  { id: 'stability/stable-diffusion-3.5-large', name: 'Stable Diffusion 3.5 Large', modalities: ['image'] },
+  { id: 'openai/gpt-5-image', name: 'GPT-5 Image (Best quality)', modalities: ['image', 'text'] },
+  { id: 'openai/gpt-5-image-mini', name: 'GPT-5 Image Mini (Fast)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image (Cheapest)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image (High quality)', modalities: ['image', 'text'] },
+  { id: 'google/gemini-3.1-flash-image-preview', name: 'Gemini 3.1 Flash Image (Newest)', modalities: ['image', 'text'] },
 ];
 
 // ─── SHARED HEADERS ───
@@ -70,14 +70,17 @@ function extractImageUrl(data) {
   const msg = data.choices?.[0]?.message;
   const content = msg?.content;
 
-  // 1. Check native_images first (most reliable)
-  if (data.choices?.[0]?.native_images?.length > 0) {
-    return data.choices[0].native_images[0];
+  // 1. Check message.images array (Gemini & GPT-5 Image format)
+  if (msg?.images?.length > 0) {
+    const img = msg.images[0];
+    if (typeof img === 'string') return img;
+    if (img?.image_url?.url) return img.image_url.url;
+    if (img?.url) return img.url;
   }
 
-  // 2. Check message-level images array
-  if (msg?.images?.length > 0) {
-    return msg.images[0];
+  // 2. Check native_images
+  if (data.choices?.[0]?.native_images?.length > 0) {
+    return data.choices[0].native_images[0];
   }
 
   // 3. Handle structured content arrays
@@ -87,9 +90,7 @@ function extractImageUrl(data) {
         return part.image_url?.url || part.url;
       }
       if (part.type === 'image') {
-        if (part.source?.data) {
-          return `data:${part.source.media_type || 'image/png'};base64,${part.source.data}`;
-        }
+        if (part.source?.data) return `data:${part.source.media_type || 'image/png'};base64,${part.source.data}`;
         if (part.image_url?.url) return part.image_url.url;
         if (part.url) return part.url;
       }
@@ -98,19 +99,12 @@ function extractImageUrl(data) {
 
   // 4. Handle string responses
   if (typeof content === 'string') {
-    // Markdown image
-    const md = content.match(/!\[.*?\]\((.*?)\)/);
-    if (md) return md[1];
-    // Base64 data URI
     const b64 = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
     if (b64) return b64[0];
-    // Any URL with image extension
+    const md = content.match(/!\[.*?\]\((.*?)\)/);
+    if (md) return md[1];
     const extUrl = content.match(/(https?:\/\/[^\s"'\)]+\.(png|jpg|jpeg|webp|gif)[^\s"'\)]*)/i);
     if (extUrl) return extUrl[1];
-    // OpenRouter/OpenAI generation URLs (no extension but valid image)
-    const genUrl = content.match(/(https?:\/\/[^\s"'\)]+\/(generation|image|img)[^\s"'\)]*)/i);
-    if (genUrl) return genUrl[1];
-    // Any https URL on its own line (likely an image URL)
     const lineUrl = content.trim().match(/^(https?:\/\/[^\s]+)$/m);
     if (lineUrl) return lineUrl[1];
   }
@@ -128,10 +122,6 @@ export async function callImageAPI(manualKey, model, prompt) {
     messages: [{ role: 'user', content: prompt }],
     modalities: mc.modalities,
   };
-  // Only add image_config for models that support it
-  if (mc.modalities.includes('text')) {
-    body.image_config = { aspect_ratio: '16:9' };
-  }
 
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -148,15 +138,21 @@ export async function callImageAPI(manualKey, model, prompt) {
   const url = extractImageUrl(data);
   if (url) return url;
 
-  // Debug: log what we got back so user can report
-  console.error('[LeadGen] Image response format unrecognized:', JSON.stringify(data).substring(0, 500));
+  console.error('[LeadGen] Unrecognized image response:', JSON.stringify(data).substring(0, 800));
   throw new Error('No image in response. Try a different model.');
 }
 
-// ─── GENERATE MULTIPLE CONTENT-MATCHED IMAGE PROMPTS ───
+// ─── GENERATE CONTENT-MATCHED IMAGE PROMPTS ───
 export async function generateImagePrompts(manualKey, textModel, postText, brand, count = 5) {
   const key = getApiKey(manualKey);
-  const prompt = `You are a social media visual strategist. Based on the post below, generate exactly ${count} different image descriptions for AI image generation. Each image must directly illustrate a different aspect of the post content.
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: apiHeaders(key),
+    body: JSON.stringify({
+      model: textModel,
+      messages: [{
+        role: 'user',
+        content: `You are a social media visual strategist. Based on the LinkedIn/Facebook post below, generate exactly ${count} different image descriptions for AI image generation.
 
 POST:
 ${postText}
@@ -165,72 +161,84 @@ BRAND: ${brand.name || 'B2B Company'}
 BRAND COLORS: navy (#1a365d), steel blue (#2c5282), accent blue (#3182ce)
 
 RULES:
-- Each description must be a specific, detailed image generation prompt (2-3 sentences)
-- Images must be professional, modern, corporate — suitable for LinkedIn/Facebook
-- Each image should cover a DIFFERENT angle/message from the post
+- Each description must be a specific, detailed prompt for AI image generation (2-3 sentences)
+- Each image covers a DIFFERENT angle or message from the post
+- Professional, modern, corporate — suitable for LinkedIn/Facebook
 - Include composition, mood, color palette, and style details
-- Format: 16:9 landscape, clean and modern
-- No text overlay in images — purely visual
+- 16:9 landscape format
+- No text/words/letters in the images
+- Mix: data visualizations, professional scenes, conceptual illustrations, environmental shots
 - No stock photo cliches (no handshakes, no pointing at screens)
-- Types to mix: data visualizations, professional scenes, conceptual illustrations, environmental shots, abstract representations
 
-Return ONLY a JSON array of ${count} strings. No commentary, no markdown, no code blocks. Example:
-["prompt 1", "prompt 2", "prompt 3", "prompt 4", "prompt 5"]`;
-
-  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: apiHeaders(key),
-    body: JSON.stringify({
-      model: textModel,
-      messages: [{ role: 'user', content: prompt }],
+Return ONLY a JSON array of ${count} strings. No markdown, no code blocks.
+["prompt 1", "prompt 2", "prompt 3", "prompt 4", "prompt 5"]`
+      }],
       temperature: 0.9,
       max_tokens: 1500,
     }),
   });
 
-  if (!resp.ok) {
-    throw new Error('Failed to generate image prompts');
-  }
+  if (!resp.ok) throw new Error('Failed to generate image prompts');
 
   const data = await resp.json();
   let raw = data.choices?.[0]?.message?.content || '';
-
-  // Strip markdown code blocks if present
   raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
   try {
     const prompts = JSON.parse(raw);
-    if (Array.isArray(prompts) && prompts.length >= 1) {
-      return prompts.slice(0, count);
-    }
+    if (Array.isArray(prompts) && prompts.length >= 1) return prompts.slice(0, count);
   } catch {
-    // Fallback: try to extract quoted strings
     const matches = raw.match(/"([^"]{20,})"/g);
-    if (matches && matches.length >= 1) {
-      return matches.slice(0, count).map((s) => s.replace(/^"|"$/g, ''));
-    }
+    if (matches?.length >= 1) return matches.slice(0, count).map((s) => s.replace(/^"|"$/g, ''));
   }
-
-  throw new Error('Could not parse image prompts from AI response');
+  throw new Error('Could not parse image prompts');
 }
 
-// ─── BATCH IMAGE GENERATION ───
+// ─── BATCH IMAGE GENERATION WITH FALLBACK ───
 export async function generateMultipleImages(manualKey, imageModel, prompts, onProgress) {
   const results = [];
+  const fallbackModels = IMAGE_MODELS.filter((m) => m.id !== imageModel).map((m) => m.id);
+
   for (let i = 0; i < prompts.length; i++) {
     if (onProgress) onProgress(i, prompts.length);
-    try {
-      const url = await callImageAPI(manualKey, imageModel, prompts[i]);
-      results.push({ url, prompt: prompts[i], error: null });
-    } catch (e) {
-      results.push({ url: null, prompt: prompts[i], error: e.message });
+    let success = false;
+
+    // Try primary model first, then fallbacks
+    const modelsToTry = [imageModel, ...fallbackModels.slice(0, 2)];
+    for (const model of modelsToTry) {
+      try {
+        const url = await callImageAPI(manualKey, model, prompts[i]);
+        results.push({ url, prompt: prompts[i], error: null, model });
+        success = true;
+        break;
+      } catch (e) {
+        console.warn(`[LeadGen] Image ${i + 1} failed on ${model}:`, e.message);
+      }
+    }
+    if (!success) {
+      results.push({ url: null, prompt: prompts[i], error: 'All models failed' });
     }
   }
   return results;
 }
 
 // ─── PROMPT BUILDERS ───
-export function buildSystemPrompt(brand, platform) {
+export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, formatting } = {}) {
+  const toneMap = {
+    authoritative: 'Direct, authoritative, data-driven voice. You are the expert.',
+    conversational: 'Warm, conversational, relatable voice. Like talking to a smart colleague.',
+    provocative: 'Bold, contrarian, thought-provoking voice. Challenge conventional thinking.',
+    storytelling: 'Narrative-driven voice. Open with a scene or moment. Pull the reader in.',
+    educational: 'Clear, instructive voice. Teach something valuable. Be specific.',
+  };
+  const ctaMap = {
+    question: 'End with a thought-provoking question that invites comments.',
+    dm: 'End with a DM-based CTA (e.g., DM me "GUIDE" to get...).',
+    link: 'End with a CTA pointing to a link or resource.',
+    engage: 'End by asking readers to share their experience or opinion.',
+    none: 'No explicit CTA. Let the content speak for itself.',
+  };
+
   return `You are an expert social media content strategist for B2B lead generation on ${platform}.
 
 BRAND: ${brand.name || 'the client'}
@@ -238,37 +246,47 @@ Tagline: ${brand.tagline || 'N/A'}
 Category: ${brand.category || 'N/A'}
 Pillars: ${brand.pillars.map((p) => p.name).join(', ')}
 
-RULES:
-- Direct, authoritative voice
-- Short paragraphs, line breaks for readability
-- Hook in first 2 lines
-- CTA or question at end
-- ${platform === 'LinkedIn' ? 'Use arrow symbols for lists. Professional but human.' : 'Warmer tone, occasional emojis. Shareable.'}
-- 3-5 hashtags at end
-- 150-300 words
-- No filler. Every sentence earns its place.`;
+VOICE & TONE:
+${toneMap[tone] || toneMap.authoritative}
+
+FORMATTING RULES:
+- Hook in first 2 lines — this determines if anyone reads the rest
+- Short paragraphs (1-3 sentences max), generous line breaks
+- ${formatting === 'heavy' ? 'Use bullet points with → arrows, numbered lists, and bold structural markers (**bold** for key phrases)' : formatting === 'minimal' ? 'Minimal formatting. Flowing prose. No lists unless absolutely necessary.' : 'Mix of short paragraphs and → arrow lists where they add clarity. Use **bold** for 1-2 key phrases.'}
+- ${platform === 'LinkedIn' ? 'Professional but human. Use → arrow symbols for lists.' : 'Warmer tone, more shareable. Occasional emojis OK.'}
+- ${useEmoji ? 'Use 2-3 relevant emojis to break up text and add visual interest.' : 'No emojis. Let the words do the work.'}
+- 3-5 relevant hashtags at end
+- 200-350 words
+- Every sentence earns its place. No filler.
+
+CTA STYLE:
+${ctaMap[ctaType] || ctaMap.question}`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics } = {}) {
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
-  if (topic) p += `\n\nTopic: ${topic}`;
-  if (dataPoints?.length) {
-    p += `\n\nData points (use 1-2 max):\n${dataPoints.map((d) => `- ${d}`).join('\n')}`;
-  }
-  if (imageStyle === 'stat') p += '\n\nPaired with a single-stat image card. Reference a key number.';
-  if (imageStyle === 'multi') p += '\n\nPaired with a 3-image set (problem→context→solution).';
-  if (imageStyle === 'quote') p += '\n\nPaired with a quote card. Lead with a strong opinion.';
-  p += '\n\nReturn ONLY the raw post text. No labels or commentary.';
+
+  if (topic) p += `\n\nTopic/Angle: ${topic}`;
+  if (keywords?.length) p += `\n\nKeywords to weave in naturally (don't force them): ${keywords.join(', ')}`;
+  if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
+  if (avoidTopics?.length) p += `\n\nAvoid these topics/angles: ${avoidTopics.join(', ')}`;
+  if (dataPoints?.length) p += `\n\nData points (use 1-2 max, weave naturally):\n${dataPoints.map((d) => `- ${d}`).join('\n')}`;
+
+  if (imageStyle === 'stat') p += '\n\nThis post is paired with a bold stat-card image. Reference a striking number early.';
+  if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem→context→solution). Structure the post to match.';
+  if (imageStyle === 'quote') p += '\n\nThis post is paired with a quote card. Lead with a strong, quotable opinion.';
+
+  p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for key phrases.';
   return p;
 }
 
 export function buildImagePrompt(brand, pillar, style) {
-  const base = `Professional social media image for ${brand.name || 'a B2B company'}. Colors: navy (#1a365d), steel blue (#2c5282), accent (#3182ce). Clean, modern, corporate. No stock cliches. 16:9 landscape.`;
+  const base = `Professional social media image for ${brand.name || 'a B2B company'}. Colors: navy (#1a365d), steel blue (#2c5282), accent (#3182ce). Clean, modern, corporate. No text or words in image. 16:9 landscape.`;
   if (style === 'stat') {
-    return base + ` Bold single-statistic infographic. One large striking number. Dark navy gradient. Minimal text. Data-driven feel. Topic: ${pillar.name}.`;
+    return base + ` Bold data visualization or infographic feel. Dark navy gradient background. Abstract charts, graphs, or data-flow elements. Topic: ${pillar.name}.`;
   }
   if (style === 'quote') {
-    return base + ' Thought leadership quote card. Steel blue gradient. Large quotation mark. Main quote left, context panel right. Authoritative.';
+    return base + ' Thought leadership feel. Steel blue gradient. Abstract geometric shapes suggesting insight and clarity. Authoritative mood.';
   }
-  return base + ' First card of a 3-part carousel. Light bg, dark navy sidebar showing "1 of 3". Topic label, large title, bullet points.';
+  return base + ' Clean, structured layout suggesting a multi-part story. Light background with navy accents. Sequential/progression visual.';
 }
