@@ -281,6 +281,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const savePost = () => {
     if (!post) return;
     const currentImg = images[selectedImg]?.url || null;
+    const now = new Date();
+    const weekdayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const weekday = WD.includes(weekdayName) ? weekdayName : 'Monday';
     setSavedPosts((p) => [
       ...p,
       {
@@ -288,6 +292,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         text: post,
         platform,
         pillar: pillar.name,
+        audience: pillar.audience,
         tone,
         ctaType,
         trendingTopic: selectedTrending?.topic || null,
@@ -295,10 +300,11 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         imageMode,
         imageData: currentImg,
         allImages: images.filter((i) => i.url).map((i) => i.url),
-        createdAt: new Date().toLocaleString(),
+        createdAt: now.toLocaleString(),
+        weekday,
       },
     ]);
-    showToast('Post saved!');
+    showToast('Post saved to Archive!');
   };
 
   const downloadImage = (url, idx) => {
@@ -368,7 +374,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           <label className="block text-sm font-medium text-gray-300 mb-1">Content Pillar</label>
           <select className="input-field mb-3" value={pillarIdx} onChange={(e) => setPillarIdx(Number(e.target.value))}>
             {brand.pillars.map((p, i) => (
-              <option key={i} value={i}>{p.name} \u2014 {p.audience}</option>
+              <option key={i} value={i}>{`${p.name} — ${p.audience}`}</option>
             ))}
           </select>
 
@@ -453,7 +459,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Topic (manual - shown when no trending selected) */}
           {!selectedTrending && (
             <>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">(optional \u2014 or use trending above)</span></label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional — or use trending above)'}</span></label>
               <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
             </>
           )}

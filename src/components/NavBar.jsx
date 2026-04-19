@@ -1,6 +1,7 @@
 const NAV_ITEMS = [
   { id: 'generate', label: 'Generate', icon: '\u26A1' },
   { id: 'calendar', label: 'Calendar', icon: '\uD83D\uDCC5' },
+  { id: 'archive', label: 'Archive', icon: '\uD83D\uDDC2' },
   { id: 'saved', label: 'Saved', icon: '\uD83D\uDCBE' },
   { id: 'images', label: 'Images', icon: '\uD83D\uDDBC' },
   { id: 'settings', label: 'Settings', icon: '\u2699' },

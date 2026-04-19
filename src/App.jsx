@@ -6,6 +6,7 @@ import NavBar from './components/NavBar';
 import GeneratePage from './components/GeneratePage';
 import CalendarPage from './components/CalendarPage';
 import SavedPage from './components/SavedPage';
+import ArchivePage from './components/ArchivePage';
 import ImageStudioPage from './components/ImageStudioPage';
 import SettingsPage from './components/SettingsPage';
 import Toast from './components/Toast';
@@ -33,6 +34,7 @@ export default function App() {
         )}
         {page === 'calendar' && <CalendarPage brand={brand} />}
         {page === 'saved' && <SavedPage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />}
+        {page === 'archive' && <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />}
         {page === 'images' && <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />}
         {page === 'settings' && (
           <SettingsPage brand={brand} setBrand={setBrand} manualKey={manualKey} setManualKey={setManualKey} selModel={selModel} setSelModel={setSelModel} selImgModel={selImgModel} setSelImgModel={setSelImgModel} live={live} />
