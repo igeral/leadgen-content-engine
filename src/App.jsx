@@ -29,16 +29,25 @@ export default function App() {
       <NavBar page={page} setPage={setPage} />
 
       <main className="p-6 max-w-7xl mx-auto">
-        {page === 'generate' && (
+        {/* Always-mounted pages preserve state across navigation. Only the active page is visible. */}
+        <div style={{ display: page === 'generate' ? 'block' : 'none' }}>
           <GeneratePage brand={brand} manualKey={manualKey} selModel={selModel} selImgModel={selImgModel} live={live} showToast={showToast} savedPosts={savedPosts} setSavedPosts={setSavedPosts} />
-        )}
-        {page === 'calendar' && <CalendarPage brand={brand} />}
-        {page === 'saved' && <SavedPage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />}
-        {page === 'archive' && <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />}
-        {page === 'images' && <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />}
-        {page === 'settings' && (
+        </div>
+        <div style={{ display: page === 'calendar' ? 'block' : 'none' }}>
+          <CalendarPage brand={brand} />
+        </div>
+        <div style={{ display: page === 'archive' ? 'block' : 'none' }}>
+          <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
+        </div>
+        <div style={{ display: page === 'saved' ? 'block' : 'none' }}>
+          <SavedPage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
+        </div>
+        <div style={{ display: page === 'images' ? 'block' : 'none' }}>
+          <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />
+        </div>
+        <div style={{ display: page === 'settings' ? 'block' : 'none' }}>
           <SettingsPage brand={brand} setBrand={setBrand} manualKey={manualKey} setManualKey={setManualKey} selModel={selModel} setSelModel={setSelModel} selImgModel={selImgModel} setSelImgModel={setSelImgModel} live={live} />
-        )}
+        </div>
       </main>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

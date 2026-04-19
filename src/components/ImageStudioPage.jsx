@@ -31,11 +31,11 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     const cv = cvRef.current;
     if (!cv) return;
     if (style === 'stat') {
-      generateStatCard(cv, { stat, label, subtitle, category, brandName: brand.name, tagline: brand.tagline, colors: brand.colors });
+      generateStatCard(cv, { stat, label, subtitle, brandName: brand.name, orientation: 'portrait', variant: 'dark' });
     } else if (style === 'quote') {
-      generateQuoteCard(cv, { quote, context, closingLine, brandName: brand.name, role: brand.tagline, tagline: brand.tagline, colors: brand.colors });
+      generateQuoteCard(cv, { quote, context, closingLine, brandName: brand.name, orientation: 'portrait', variant: 'light' });
     } else {
-      generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, tagLabel: multiTag, brandName: brand.name, colors: brand.colors });
+      generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, brandName: brand.name, orientation: 'portrait' });
     }
     setImages([{ url: cv.toDataURL('image/png'), prompt: `Branded ${style} card`, error: null }]);
     setSelectedImg(0);

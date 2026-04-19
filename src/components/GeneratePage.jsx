@@ -122,9 +122,11 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // ─── BRANDED CARD GENERATORS ───
   const makeBrandedImages = () => {
     const cv = cvRef.current;
-    if (!cv) return;
+    if (!cv) return [];
     const results = [];
     const dp = brand.dataPoints || [];
+    // Alternate variant: even = dark, odd = light — produces mixed set like examples
+    const variantFor = (i) => (i % 2 === 0 ? 'dark' : 'light');
 
     if (imageStyle === 'stat') {
       const usedDp = dp.length > 0 ? dp : [
@@ -134,53 +136,69 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         '6-12 months average permanent physician search',
         '60% rural physician shortage vs 10% urban',
       ];
-      // Shuffle for variety
       const shuffled = [...usedDp].sort(() => Math.random() - 0.5);
       for (let i = 0; i < Math.min(IMAGE_COUNT, shuffled.length); i++) {
         const d = shuffled[i];
-        const m = d.match(/^([\$\d,\.%\+]+)\s*(.*)/);
+        const m = d.match(/^([\$\d,\.%\+]+[KMB]?%?)\s*(.*)/);
         generateStatCard(cv, {
           stat: m ? m[1] : d.split(' ')[0],
-          label: m ? m[2] : d,
-          category: pillar.name,
+          label: m ? (m[2] || d) : d,
+          subtitle: `${pillar.name} \u00B7 ${brand.tagline || ''}`.trim(),
           brandName: brand.name,
-          tagline: brand.tagline,
-          subtitle: `Source: Industry Data \u00B7 ${pillar.name}`,
-          colors: brand.colors,
+          orientation: 'portrait',
+          variant: variantFor(i),
         });
         results.push({ url: cv.toDataURL('image/png'), prompt: `Stat card: ${d}`, error: null });
       }
     } else if (imageStyle === 'quote') {
       const quotes = [
         { quote: topic || "A strong locum tenens strategy is not a backup plan. It's a competitive advantage.", context: 'Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.', closing: 'Pay less. Every time.' },
-        { quote: 'The physician shortage isn\'t coming. It\'s here.', context: '86,000 fewer physicians by 2036.\nRural hospitals hit hardest.\nEvery unfilled position costs $1M+.', closing: 'Plan now or pay later.' },
-        { quote: 'Proactive beats reactive. Every. Single. Time.', context: 'Coverage risk calendars.\nPre-credentialed physicians.\nPartners who know your facility.', closing: 'That\'s infrastructure.' },
+        { quote: "The physician shortage isn't coming. It's here.", context: '86,000 fewer physicians by 2036.\nRural hospitals hit hardest.\nEvery unfilled position costs $1M+.', closing: 'Plan now or pay later.' },
+        { quote: 'Proactive beats reactive. Every. Single. Time.', context: 'Coverage risk calendars.\nPre-credentialed physicians.\nPartners who know your facility.', closing: "That's infrastructure." },
         { quote: 'Your staffing problem is a timing problem.', context: 'Retirements are predictable.\nSeasonal surges are predictable.\nRecruitment timelines are predictable.', closing: 'So why are we still scrambling?' },
         { quote: 'The best time to plan for a coverage gap is before it exists.', context: '5-step proactive framework.\nSpecialty risk matrix.\nCredentialing timeline templates.', closing: 'Start today.' },
       ];
       const shuffled = [...quotes].sort(() => Math.random() - 0.5);
       for (let i = 0; i < IMAGE_COUNT; i++) {
         const q = shuffled[i % shuffled.length];
-        generateQuoteCard(cv, { quote: q.quote, context: q.context, closingLine: q.closing, brandName: brand.name, role: brand.tagline, tagline: brand.tagline, colors: brand.colors });
+        generateQuoteCard(cv, {
+          quote: q.quote,
+          context: q.context,
+          closingLine: q.closing,
+          brandName: brand.name,
+          orientation: 'portrait',
+          variant: variantFor(i),
+        });
         results.push({ url: cv.toDataURL('image/png'), prompt: `Quote card: ${q.quote}`, error: null });
       }
     } else {
+      // Multi-image set: 5 slides, running as a coherent set (01/05 .. 05/05)
       const cards = [
-        { num: '1', topic: 'THE COST OF DOING NOTHING', title: '$1M+', sub: 'Lost annually per unfilled physician position.', subSub: "That's lost billings, diverted patients, overtime premiums." },
-        { num: '2', topic: 'THE SHORTAGE IS HERE', title: '86,000', sub: 'Projected physician shortage by 2036.', subSub: 'Rural hospitals face 60% shortfall vs 10% urban.' },
-        { num: '3', topic: 'THE PROACTIVE FIX', title: '5 Steps', sub: 'Build your coverage infrastructure now.', subSub: 'Risk calendars. Pre-credentialing. Locum integration.' },
-        { num: '1', topic: 'REACTIVE VS PROACTIVE', title: 'Higher Rates', sub: 'Reactive staffing always costs more.', subSub: 'Urgency = premium pricing. Planning = controlled costs.' },
-        { num: '2', topic: 'THE MATCH ISN\'T ENOUGH', title: '41,482', sub: 'Positions filled in 2026 Match.', subSub: 'Still not enough to fix the 86,000 deficit.' },
+        { topic: 'THE COST OF DOING NOTHING', title: '$1M+ Lost', sub: 'Per unfilled physician position, every year.', subSub: "Lost billings, diverted patients, overtime premiums \u2014 they add up fast." },
+        { topic: 'THE SHORTAGE IS HERE', title: '86,000', sub: 'Projected physician shortage by 2036.', subSub: 'Rural hospitals face 60% shortfall vs 10% urban.' },
+        { topic: 'THE PROACTIVE FIX', title: '5 Steps', sub: 'Build your coverage infrastructure now.', subSub: 'Risk calendars. Pre-credentialing. Locum integration.' },
+        { topic: 'REACTIVE VS PROACTIVE', title: 'Pay Less.\nEvery Time.', sub: 'Reactive staffing always costs more.', subSub: 'Urgency = premium pricing. Planning = controlled costs.' },
+        { topic: "THE MATCH ISN'T ENOUGH", title: '41,482', sub: 'Positions filled in the 2026 Match.', subSub: 'Still not enough to close the 86,000 deficit.' },
       ];
-      const shuffled = [...cards].sort(() => Math.random() - 0.5);
       for (let i = 0; i < IMAGE_COUNT; i++) {
-        const c = shuffled[i % shuffled.length];
-        generateMultiCard(cv, { cardNumber: c.num, totalCards: '3', topicLabel: c.topic, title: c.title, subtitle: c.sub, subSubtitle: c.subSub, tagLabel: pillar.name, brandName: brand.name, colors: brand.colors });
-        results.push({ url: cv.toDataURL('image/png'), prompt: `Multi card ${c.num}: ${c.topic}`, error: null });
+        const c = cards[i % cards.length];
+        generateMultiCard(cv, {
+          cardNumber: String(i + 1),
+          totalCards: String(IMAGE_COUNT),
+          topicLabel: c.topic,
+          title: c.title,
+          subtitle: c.sub,
+          subSubtitle: c.subSub,
+          brandName: brand.name,
+          orientation: 'portrait',
+          // Let generateMultiCard default (dark for odd, light for even) so we get the alternating pattern
+        });
+        results.push({ url: cv.toDataURL('image/png'), prompt: `Multi card ${i + 1}: ${c.topic}`, error: null });
       }
     }
     setImages(results);
     setSelectedImg(0);
+    return results;
   };
 
   // ─── AI IMAGE GENERATION ───
@@ -188,6 +206,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setImgLoading(true);
     setImgProgress('Analyzing content for unique image prompts...');
     setImages([]);
+    let finalResults = [];
     try {
       const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
       const results = await generateMultipleImages(manualKey, selImgModel, prompts, (i, total) => {
@@ -196,19 +215,50 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       const successful = results.filter((r) => r.url);
       if (successful.length === 0) {
         showToast('AI images failed \u2014 using branded cards');
-        makeBrandedImages();
+        finalResults = makeBrandedImages() || [];
       } else {
         setImages(results);
         setSelectedImg(0);
         showToast(`${successful.length} unique AI images generated!`);
+        finalResults = results;
       }
     } catch (e) {
       console.error('[LeadGen] Multi-image generation failed:', e);
       showToast('AI images failed \u2014 using branded cards');
-      makeBrandedImages();
+      finalResults = makeBrandedImages() || [];
     }
     setImgLoading(false);
     setImgProgress('');
+    return finalResults;
+  };
+
+  // ─── AUTO-SAVE TO ARCHIVE ───
+  const autoSaveToArchive = (txt, imgs, ctx) => {
+    if (!txt) return;
+    const successImgs = (imgs || []).filter((i) => i && i.url);
+    const now = new Date();
+    const weekdayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const weekday = WD.includes(weekdayName) ? weekdayName : 'Monday';
+    const entry = {
+      id: Date.now(),
+      text: txt,
+      platform: ctx.platform,
+      pillar: ctx.pillar.name,
+      audience: ctx.pillar.audience,
+      tone: ctx.tone,
+      ctaType: ctx.ctaType,
+      trendingTopic: ctx.trendingTopic || null,
+      imageStyle: ctx.imageStyle,
+      imageMode: ctx.imageMode,
+      imageData: successImgs[0]?.url || null,
+      allImages: successImgs.map((i) => i.url),
+      createdAt: now.toLocaleString(),
+      weekday,
+      autoSaved: true,
+    };
+    setSavedPosts((p) => [...p, entry]);
+    showToast(`Auto-saved to Archive \u2192 ${weekday}`);
   };
 
   // ─── MAIN GENERATE ───
@@ -266,11 +316,23 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       setGenPhase('');
 
       // Step 3: Generate images
+      let imgResults = [];
       if (imageMode === 'ai' && live) {
-        await makeAIImages(txt);
+        imgResults = await makeAIImages(txt);
       } else {
-        makeBrandedImages();
+        imgResults = makeBrandedImages() || [];
       }
+
+      // Step 4: Auto-save to Archive (weekday-organized)
+      autoSaveToArchive(txt, imgResults, {
+        platform,
+        pillar,
+        tone,
+        ctaType,
+        trendingTopic: selectedTrending?.topic || null,
+        imageStyle,
+        imageMode,
+      });
     } catch (e) {
       setError(e.message);
       setLoading(false);
