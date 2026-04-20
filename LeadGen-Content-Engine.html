@@ -772,66 +772,94 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     return finalResults;
   };
 
+  // Weekday-balanced auto-save: picks the day with the fewest posts (ties -> Monday first)
   const autoSaveToArchive = (txt, imgs, ctx) => {
     if (!txt) return;
     const successImgs = (imgs || []).filter((i) => i && i.url);
     const now = new Date();
-    const wdName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const weekday = WD.indexOf(wdName) >= 0 ? wdName : 'Monday';
-    const entry = {
-      id: Date.now(),
-      text: txt,
-      platform: ctx.platform,
-      pillar: ctx.pillar.name,
-      audience: ctx.pillar.audience,
-      tone: ctx.tone,
-      ctaType: ctx.ctaType,
-      trendingTopic: ctx.trendingTopic || null,
-      imageStyle: ctx.imageStyle,
-      imageMode: ctx.imageMode,
-      imageData: successImgs[0] && successImgs[0].url || null,
-      allImages: successImgs.map((i) => i.url),
-      createdAt: now.toLocaleString(),
-      weekday: weekday,
-      autoSaved: true,
-    };
-    setSavedPosts((p) => [...p, entry]);
-    showToast('Auto-saved to Archive \u2192 ' + weekday);
+    setSavedPosts((current) => {
+      const counts = WD.map((d) => current.filter((p) => p.weekday === d).length);
+      const minCount = Math.min.apply(null, counts);
+      const weekday = WD[counts.indexOf(minCount)];
+      const entry = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        text: txt,
+        platform: ctx.platform,
+        pillar: ctx.pillar.name,
+        audience: ctx.pillar.audience,
+        tone: ctx.tone,
+        ctaType: ctx.ctaType,
+        trendingTopic: ctx.trendingTopic || null,
+        imageStyle: ctx.imageStyle,
+        imageMode: ctx.imageMode,
+        imageData: successImgs[0] && successImgs[0].url || null,
+        allImages: successImgs.map((i) => i.url),
+        createdAt: now.toLocaleString(),
+        weekday: weekday,
+        autoSaved: true,
+      };
+      return [...current, entry];
+    });
+    showToast('Auto-saved to Archive');
+  };
+
+  // Core single-post generation — shared by single + batch paths
+  const runSingleGeneration = async (opts) => {
+    opts = opts || {};
+    const forcedTrending = opts.forcedTrending || null;
+    setPost(''); setImages([]); setSelectedImg(0);
+    const advancedOpts = { tone, ctaType, useEmoji, formatting };
+    const contentOpts = { keywords: parseList(keywords), keyPhrases: parseList(keyPhrases), avoidTopics: parseList(avoidTopics), trendingTopic: null };
+    let txt;
+    let activeTrending = forcedTrending || selectedTrending;
+    if (live) {
+      if (!forcedTrending && autoTrending && !selectedTrending && !topic) {
+        setGenPhase('Discovering trending topics...');
+        try {
+          const topics = await fetchTrendingTopics(manualKey, selModel, brand, pillar, platform, 5);
+          setTrendingTopics(topics);
+          activeTrending = topics.find(t => t.engagementPotential === 'viral') || topics.find(t => t.engagementPotential === 'high') || topics[0];
+          setSelectedTrending(activeTrending);
+        } catch (e) { console.warn('[LeadGen] Auto-trending failed:', e.message); }
+      }
+      contentOpts.trendingTopic = activeTrending;
+      setGenPhase(activeTrending ? 'Writing about: ' + activeTrending.topic.substring(0, 50) + '...' : 'Generating fresh content...');
+      txt = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform, advancedOpts), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts));
+    } else {
+      await new Promise((r) => setTimeout(r, 1500));
+      const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
+      const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
+      txt = pl[Math.floor(Math.random() * pl.length)];
+    }
+    setPost(txt); setGenPhase('');
+    let imgResults = [];
+    if (imageMode === 'ai' && live) { imgResults = await makeAIImages(txt); }
+    else { imgResults = makeBrandedImages() || []; }
+    autoSaveToArchive(txt, imgResults, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle, imageMode });
+    return { txt: txt, imgResults: imgResults };
   };
 
   const generate = async () => {
-    setLoading(true); setError(''); setPost(''); setImages([]); setSelectedImg(0);
-    const advancedOpts = { tone, ctaType, useEmoji, formatting };
-    const contentOpts = { keywords: parseList(keywords), keyPhrases: parseList(keyPhrases), avoidTopics: parseList(avoidTopics), trendingTopic: null };
-    try {
-      let txt;
-      let activeTrending = selectedTrending;
-      if (live) {
-        if (autoTrending && !selectedTrending && !topic) {
-          setGenPhase('Discovering trending topics...');
-          try {
-            const topics = await fetchTrendingTopics(manualKey, selModel, brand, pillar, platform, 5);
-            setTrendingTopics(topics);
-            activeTrending = topics.find(t => t.engagementPotential === 'viral') || topics.find(t => t.engagementPotential === 'high') || topics[0];
-            setSelectedTrending(activeTrending);
-          } catch (e) { console.warn('[LeadGen] Auto-trending failed:', e.message); }
-        }
-        contentOpts.trendingTopic = activeTrending;
-        setGenPhase(activeTrending ? 'Writing about: ' + activeTrending.topic.substring(0, 50) + '...' : 'Generating fresh content...');
-        txt = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform, advancedOpts), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts));
-      } else {
-        await new Promise((r) => setTimeout(r, 1500));
-        const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
-        const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
-        txt = pl[Math.floor(Math.random() * pl.length)];
-      }
-      setPost(txt); setLoading(false); setGenPhase('');
-      let imgResults = [];
-      if (imageMode === 'ai' && live) { imgResults = await makeAIImages(txt); }
-      else { imgResults = makeBrandedImages() || []; }
-      autoSaveToArchive(txt, imgResults, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle, imageMode });
-    } catch (e) { setError(e.message); setLoading(false); setGenPhase(''); }
+    setLoading(true); setError('');
+    try { await runSingleGeneration(); } catch (e) { setError(e.message); }
+    setLoading(false); setGenPhase('');
+  };
+
+  const generateAllTrending = async () => {
+    if (!trendingTopics || trendingTopics.length === 0) { showToast('No trending topics \u2014 click "Find Now" first'); return; }
+    if (!live) { showToast('Live API mode required for batch generation'); return; }
+    setLoading(true); setError('');
+    let count = 0; const total = trendingTopics.length;
+    for (let i = 0; i < total; i++) {
+      setGenPhase('Batch ' + (i + 1) + '/' + total + ': ' + trendingTopics[i].topic.substring(0, 40) + '\u2026');
+      try {
+        await runSingleGeneration({ forcedTrending: trendingTopics[i] });
+        count++;
+      } catch (e) { console.error('[LeadGen] Batch item failed:', trendingTopics[i].topic, e); }
+    }
+    setLoading(false); setGenPhase('');
+    showToast('Batch complete: ' + count + '/' + total + ' posts auto-saved to Archive');
   };
 
   const savePost = () => {
@@ -903,6 +931,12 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
               React.createElement('div', { className: 'text-xs text-gray-500 mt-1.5' }, t.whyTrending),
               selectedTrending === t && t.suggestedHook && React.createElement('div', { className: 'text-xs text-indigo-300 mt-2 pt-2 border-t border-indigo-700' }, '\uD83C\uDFA3 Hook: "' + t.suggestedHook + '"')
             )),
+            React.createElement('button', {
+              className: 'w-full py-2 px-3 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all',
+              onClick: generateAllTrending,
+              disabled: loading || imgLoading || !live,
+              title: 'Generate one full post + 5 images for every trending topic, auto-saved across the week'
+            }, '\u26A1\u26A1 Generate all ' + trendingTopics.length + ' as posts (auto-spread Mon\u2192Fri)'),
             React.createElement('button', { className: 'text-xs text-indigo-400 hover:text-indigo-300 w-full text-center py-1', onClick: () => { setSelectedTrending(null); setTrendingTopics([]); } }, 'Clear trending topics (use manual topic instead)')
           )
         ),

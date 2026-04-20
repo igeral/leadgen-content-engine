@@ -232,39 +232,46 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     return finalResults;
   };
 
-  // ─── AUTO-SAVE TO ARCHIVE ───
+  // ─── AUTO-SAVE TO ARCHIVE (weekday-balanced) ───
+  // Picks the weekday with the fewest existing posts; ties resolve to the
+  // earliest weekday (Monday wins if all are empty). This produces a natural
+  // Mon\u2192Fri spread: 1st post lands on Monday, 2nd on Tuesday, etc., looping
+  // back to the lightest day after Friday.
   const autoSaveToArchive = (txt, imgs, ctx) => {
     if (!txt) return;
     const successImgs = (imgs || []).filter((i) => i && i.url);
     const now = new Date();
-    const weekdayName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const weekday = WD.includes(weekdayName) ? weekdayName : 'Monday';
-    const entry = {
-      id: Date.now(),
-      text: txt,
-      platform: ctx.platform,
-      pillar: ctx.pillar.name,
-      audience: ctx.pillar.audience,
-      tone: ctx.tone,
-      ctaType: ctx.ctaType,
-      trendingTopic: ctx.trendingTopic || null,
-      imageStyle: ctx.imageStyle,
-      imageMode: ctx.imageMode,
-      imageData: successImgs[0]?.url || null,
-      allImages: successImgs.map((i) => i.url),
-      createdAt: now.toLocaleString(),
-      weekday,
-      autoSaved: true,
-    };
-    setSavedPosts((p) => [...p, entry]);
-    showToast(`Auto-saved to Archive \u2192 ${weekday}`);
+    setSavedPosts((current) => {
+      const counts = WD.map((d) => current.filter((p) => p.weekday === d).length);
+      const minCount = Math.min(...counts);
+      const weekday = WD[counts.indexOf(minCount)];
+      const entry = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        text: txt,
+        platform: ctx.platform,
+        pillar: ctx.pillar.name,
+        audience: ctx.pillar.audience,
+        tone: ctx.tone,
+        ctaType: ctx.ctaType,
+        trendingTopic: ctx.trendingTopic || null,
+        imageStyle: ctx.imageStyle,
+        imageMode: ctx.imageMode,
+        imageData: successImgs[0]?.url || null,
+        allImages: successImgs.map((i) => i.url),
+        createdAt: now.toLocaleString(),
+        weekday,
+        autoSaved: true,
+      };
+      return [...current, entry];
+    });
+    showToast('Auto-saved to Archive');
   };
 
-  // ─── MAIN GENERATE ───
-  const generate = async () => {
-    setLoading(true);
-    setError('');
+  // ─── CORE SINGLE-POST GENERATION (shared by single + batch modes) ───
+  // forcedTrending: when provided, uses this trending topic instead of selectedTrending
+  //                 and skips the auto-trending fetch step.
+  const runSingleGeneration = async ({ forcedTrending = null } = {}) => {
     setPost('');
     setImages([]);
     setSelectedImg(0);
@@ -277,67 +284,98 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       trendingTopic: null,
     };
 
-    try {
-      let txt;
-      if (live) {
-        // Step 1: Auto-fetch trending topic if enabled and none selected
-        let activeTrending = selectedTrending;
-        if (autoTrending && !selectedTrending && !topic) {
-          setGenPhase('Discovering trending topics...');
-          try {
-            const topics = await fetchTrendingTopics(manualKey, selModel, brand, pillar, platform, 5);
-            setTrendingTopics(topics);
-            // Auto-pick the highest engagement one
-            activeTrending = topics.find(t => t.engagementPotential === 'viral') || topics.find(t => t.engagementPotential === 'high') || topics[0];
-            setSelectedTrending(activeTrending);
-          } catch (e) {
-            console.warn('[LeadGen] Auto-trending failed, generating without:', e.message);
-          }
+    let txt;
+    let activeTrending = forcedTrending || selectedTrending;
+
+    if (live) {
+      if (!forcedTrending && autoTrending && !selectedTrending && !topic) {
+        setGenPhase('Discovering trending topics...');
+        try {
+          const topics = await fetchTrendingTopics(manualKey, selModel, brand, pillar, platform, 5);
+          setTrendingTopics(topics);
+          activeTrending = topics.find((t) => t.engagementPotential === 'viral') || topics.find((t) => t.engagementPotential === 'high') || topics[0];
+          setSelectedTrending(activeTrending);
+        } catch (e) {
+          console.warn('[LeadGen] Auto-trending failed, generating without:', e.message);
         }
-
-        contentOpts.trendingTopic = activeTrending;
-
-        // Step 2: Generate content
-        setGenPhase(activeTrending ? `Writing about: ${activeTrending.topic.substring(0, 50)}...` : 'Generating fresh content...');
-        txt = await callOpenRouter(
-          manualKey,
-          selModel,
-          buildSystemPrompt(brand, platform, advancedOpts),
-          buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)
-        );
-      } else {
-        await new Promise((r) => setTimeout(r, 1500));
-        const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
-        const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
-        txt = pl[Math.floor(Math.random() * pl.length)];
       }
-      setPost(txt);
-      setLoading(false);
-      setGenPhase('');
+      contentOpts.trendingTopic = activeTrending;
+      setGenPhase(activeTrending ? `Writing about: ${activeTrending.topic.substring(0, 50)}...` : 'Generating fresh content...');
+      txt = await callOpenRouter(
+        manualKey,
+        selModel,
+        buildSystemPrompt(brand, platform, advancedOpts),
+        buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)
+      );
+    } else {
+      await new Promise((r) => setTimeout(r, 1500));
+      const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
+      const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
+      txt = pl[Math.floor(Math.random() * pl.length)];
+    }
 
-      // Step 3: Generate images
-      let imgResults = [];
-      if (imageMode === 'ai' && live) {
-        imgResults = await makeAIImages(txt);
-      } else {
-        imgResults = makeBrandedImages() || [];
-      }
+    setPost(txt);
+    setGenPhase('');
 
-      // Step 4: Auto-save to Archive (weekday-organized)
-      autoSaveToArchive(txt, imgResults, {
-        platform,
-        pillar,
-        tone,
-        ctaType,
-        trendingTopic: selectedTrending?.topic || null,
-        imageStyle,
-        imageMode,
-      });
+    let imgResults = [];
+    if (imageMode === 'ai' && live) {
+      imgResults = await makeAIImages(txt);
+    } else {
+      imgResults = makeBrandedImages() || [];
+    }
+
+    autoSaveToArchive(txt, imgResults, {
+      platform,
+      pillar,
+      tone,
+      ctaType,
+      trendingTopic: activeTrending?.topic || null,
+      imageStyle,
+      imageMode,
+    });
+
+    return { txt, imgResults };
+  };
+
+  // ─── MAIN GENERATE (single post) ───
+  const generate = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await runSingleGeneration();
     } catch (e) {
       setError(e.message);
-      setLoading(false);
-      setGenPhase('');
     }
+    setLoading(false);
+    setGenPhase('');
+  };
+
+  // ─── BATCH GENERATE (one post per trending topic) ───
+  const generateAllTrending = async () => {
+    if (!trendingTopics || trendingTopics.length === 0) {
+      showToast('No trending topics \u2014 click "Find Now" first');
+      return;
+    }
+    if (!live) {
+      showToast('Live API mode required for batch generation');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    let count = 0;
+    const total = trendingTopics.length;
+    for (let i = 0; i < total; i++) {
+      setGenPhase(`Batch ${i + 1}/${total}: ${trendingTopics[i].topic.substring(0, 40)}\u2026`);
+      try {
+        await runSingleGeneration({ forcedTrending: trendingTopics[i] });
+        count++;
+      } catch (e) {
+        console.error('[LeadGen] Batch item failed:', trendingTopics[i].topic, e);
+      }
+    }
+    setLoading(false);
+    setGenPhase('');
+    showToast(`Batch complete: ${count}/${total} posts auto-saved to Archive`);
   };
 
   const savePost = () => {
@@ -508,6 +546,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                     )}
                   </button>
                 ))}
+                <button
+                  className="w-full py-2 px-3 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  onClick={generateAllTrending}
+                  disabled={loading || imgLoading || !live}
+                  title="Generate one full post + 5 images for every trending topic, auto-saved across the week"
+                >
+                  {'\u26A1\u26A1'} Generate all {trendingTopics.length} as posts (auto-spread Mon\u2192Fri)
+                </button>
                 <button
                   className="text-xs text-indigo-400 hover:text-indigo-300 w-full text-center py-1"
                   onClick={() => { setSelectedTrending(null); setTrendingTopics([]); }}
