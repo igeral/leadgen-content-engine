@@ -69,9 +69,36 @@ const NUM_RX = /(\$?\d[\d,]*(?:\.\d+)?[KMB]?%?\+?)/g;
 const BULLET_RX = /^\s*([\u2192\u2022\u25BA\u25CF\-\*])\s+(.*)/;
 const NUMBERED_RX = /^\s*(\d+[\.\)])\s+(.*)/;
 
+// Strip markdown markers that LLMs leak into post text so they don't end up
+// rendered literally on the canvas (e.g. **bold**, *italic*, __underline__,
+// `code`, and "Label:" leading boldified labels).
+function stripMarkdown(s) {
+  if (!s) return '';
+  let out = String(s);
+  // Triple backticks / fenced code
+  out = out.replace(/```[\s\S]*?```/g, ' ');
+  // Inline code
+  out = out.replace(/`([^`]+)`/g, '$1');
+  // Bold/italic asterisks and underscores (greedy strip)
+  out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
+  out = out.replace(/\*([^*]+)\*/g, '$1');
+  out = out.replace(/__([^_]+)__/g, '$1');
+  out = out.replace(/_([^_]+)_/g, '$1');
+  // Stray asterisks/underscores
+  out = out.replace(/[*_]+/g, '');
+  // Markdown links [text](url) \u2192 text
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  // Headings/quote markers at line start
+  out = out.replace(/^[#>]+\s*/gm, '');
+  // Collapse whitespace
+  out = out.replace(/[ \t]+/g, ' ').trim();
+  return out;
+}
+
 function shortenWords(s, max) {
   if (!s) return '';
-  const w = String(s).trim().split(/\s+/);
+  const cleaned = stripMarkdown(String(s)).trim();
+  const w = cleaned.split(/\s+/);
   if (w.length <= max) return w.join(' ');
   return w.slice(0, max).join(' ') + '\u2026';
 }
@@ -97,7 +124,8 @@ function extractPostFacets(postText, trending, topicHint) {
       closing: '',
     };
   }
-  const raw = String(postText).trim();
+  // Strip markdown FIRST so headlines/bullets don't render literal ** or _
+  const raw = stripMarkdown(String(postText)).trim();
   const linesAll = raw.split('\n').map((l) => l.replace(HASHTAG_RX, '').trim());
   const lines = linesAll.filter((l) => l.length > 0);
 
@@ -143,22 +171,25 @@ function extractPostFacets(postText, trending, topicHint) {
 }
 
 function buildQuoteSlides(facets) {
-  const { hook, paragraphs, bullets, sentences, closing, topicLabel } = facets;
-  const candidates = [hook, ...sentences, ...bullets, closing]
+  const { hook, bullets, sentences, closing, topicLabel } = facets;
+  // Prefer punchy lines (≤ 18 words) for the headline; longer lines become context.
+  const punchy = [hook, ...sentences, ...bullets, closing]
     .map((s) => String(s || '').trim())
-    .filter((s) => s.length >= 8)
+    .filter((s) => s.length >= 8 && s.split(/\s+/).length <= 22)
     .filter((s, i, a) => a.indexOf(s) === i);
-  const picks = candidates.slice(0, 5);
+  const picks = punchy.slice(0, 5);
   while (picks.length < 5) picks.push(hook || topicLabel || 'Insight');
   return picks.map((q) => {
-    const contextLines = [...bullets, ...sentences]
-      .filter((x) => x && x !== q)
-      .slice(0, 3)
-      .join('\n');
+    // Single supporting line (≤ 18 words), distinct from the quote
+    const supporting = [...bullets, ...sentences]
+      .find((x) => x && x !== q && x.split(/\s+/).length <= 22) || '';
     return {
-      quote: shortenWords(q, 16),
-      context: contextLines,
-      closing: shortenWords(closing || hook || '', 10),
+      // Headline: 12-word cap so it wraps cleanly to 2-3 lines on the canvas.
+      quote: shortenWords(q, 12),
+      // Context: ONE short supporting line, no newlines, hard 16-word cap.
+      context: shortenWords(supporting, 16),
+      // Closing panel line: 8 words.
+      closing: shortenWords(closing || hook || '', 8),
     };
   });
 }

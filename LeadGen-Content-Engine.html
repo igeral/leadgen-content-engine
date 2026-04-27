@@ -480,7 +480,11 @@ function generateQuoteCard(cv, opts) {
   let bodyY = accentY + 42;
   if (opts.context) {
     const bodySize = orient === 'portrait' ? 28 : 24;
-    bodyY = sfParas(ctx, opts.context, pad, bodyY + bodySize, Math.round((W - pad * 2) * 0.78), bodySize + 10, s.body);
+    ctx.fillStyle = s.body;
+    ctx.font = '400 ' + bodySize + 'px Inter, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    // Hard-bound to 3 wrapped lines so context cannot overflow into the closing panel
+    bodyY = sfWrap(ctx, String(opts.context).replace(/\n+/g, ' '), pad, bodyY + bodySize, Math.round((W - pad * 2) * 0.92), bodySize + 10, 3);
   }
   if (opts.closingLine) {
     const calloutPad = 28;
@@ -1658,9 +1662,25 @@ const HASHTAG_RX = /#\w+/g;
 const NUM_RX = /(\$?\d[\d,]*(?:\.\d+)?[KMB]?%?\+?)/g;
 const BULLET_RX = /^\s*([\u2192\u2022\u25BA\u25CF\-\*])\s+(.*)/;
 const NUMBERED_RX = /^\s*(\d+[\.\)])\s+(.*)/;
+function stripMarkdown(s) {
+  if (!s) return '';
+  let out = String(s);
+  out = out.replace(/```[\s\S]*?```/g, ' ');
+  out = out.replace(/`([^`]+)`/g, '$1');
+  out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
+  out = out.replace(/\*([^*]+)\*/g, '$1');
+  out = out.replace(/__([^_]+)__/g, '$1');
+  out = out.replace(/_([^_]+)_/g, '$1');
+  out = out.replace(/[*_]+/g, '');
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  out = out.replace(/^[#>]+\s*/gm, '');
+  out = out.replace(/[ \t]+/g, ' ').trim();
+  return out;
+}
 function shortenWords(s, max) {
   if (!s) return '';
-  const w = String(s).trim().split(/\s+/);
+  const cleaned = stripMarkdown(String(s)).trim();
+  const w = cleaned.split(/\s+/);
   if (w.length <= max) return w.join(' ');
   return w.slice(0, max).join(' ') + '\u2026';
 }
@@ -1673,7 +1693,7 @@ function parseStatLine(line) {
 function extractPostFacets(postText, trending, topicHint) {
   const fallbackTopic = (trending && trending.topic) || topicHint || 'Insight';
   if (!postText) return { topic: fallbackTopic, topicLabel: String(fallbackTopic).toUpperCase(), hook: '', paragraphs: [], bullets: [], sentences: [], numericFacts: [], closing: '' };
-  const raw = String(postText).trim();
+  const raw = stripMarkdown(String(postText)).trim();
   const linesAll = raw.split('\n').map((l) => l.replace(HASHTAG_RX, '').trim());
   const lines = linesAll.filter((l) => l.length > 0);
   const bullets = []; const paragraphs = [];
@@ -1707,14 +1727,20 @@ function extractPostFacets(postText, trending, topicHint) {
   return { topic, topicLabel: String(topic).toUpperCase(), hook, paragraphs, bullets, sentences, numericFacts, closing };
 }
 function buildQuoteSlides(facets) {
-  const candidates = [facets.hook, ...facets.sentences, ...facets.bullets, facets.closing]
-    .map((s) => String(s || '').trim()).filter((s) => s.length >= 8)
+  const punchy = [facets.hook, ...facets.sentences, ...facets.bullets, facets.closing]
+    .map((s) => String(s || '').trim())
+    .filter((s) => s.length >= 8 && s.split(/\s+/).length <= 22)
     .filter((s, i, a) => a.indexOf(s) === i);
-  const picks = candidates.slice(0, 5);
+  const picks = punchy.slice(0, 5);
   while (picks.length < 5) picks.push(facets.hook || facets.topicLabel || 'Insight');
   return picks.map((q) => {
-    const contextLines = [...facets.bullets, ...facets.sentences].filter((x) => x && x !== q).slice(0, 3).join('\n');
-    return { quote: shortenWords(q, 16), context: contextLines, closing: shortenWords(facets.closing || facets.hook || '', 10) };
+    const supporting = [...facets.bullets, ...facets.sentences]
+      .find((x) => x && x !== q && x.split(/\s+/).length <= 22) || '';
+    return {
+      quote: shortenWords(q, 12),
+      context: shortenWords(supporting, 16),
+      closing: shortenWords(facets.closing || facets.hook || '', 8),
+    };
   });
 }
 function buildMultiSlides(facets, count) {

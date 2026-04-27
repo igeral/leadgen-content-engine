@@ -241,11 +241,16 @@ export function generateQuoteCard(canvas, opts) {
   const accentY = headEndY + 24;
   drawAccent(ctx, pad, accentY, Math.min(140, Math.round(W * 0.14)), s.accent, 5);
 
-  // Context / body
+  // Context / body — hard-bounded to 3 wrapped lines so it can never
+  // overflow into the closing-line panel below.
   let bodyY = accentY + 42;
   if (opts.context) {
     const bodySize = orient === 'portrait' ? 28 : 24;
-    bodyY = drawParagraphs(ctx, opts.context, pad, bodyY + bodySize, Math.round((W - pad * 2) * 0.78), bodySize + 10, s.body);
+    ctx.fillStyle = s.body;
+    ctx.font = `400 ${bodySize}px Inter, Helvetica, Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    // Use single wrapLine with maxLines so long context truncates with ellipsis
+    bodyY = wrapLine(ctx, String(opts.context).replace(/\n+/g, ' '), pad, bodyY + bodySize, Math.round((W - pad * 2) * 0.92), bodySize + 10, 3);
   }
 
   // Callout panel (closing statement)
