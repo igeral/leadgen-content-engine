@@ -61,6 +61,159 @@ function EngagementBadge({ level }) {
   );
 }
 
+// ═══════════ POST → CARD CONTENT EXTRACTION ═══════════
+// Parse the actual generated post into facets (topic, hook, bullets, numbers,
+// closing) so the branded cards reflect THIS post — not a hardcoded set.
+const HASHTAG_RX = /#\w+/g;
+const NUM_RX = /(\$?\d[\d,]*(?:\.\d+)?[KMB]?%?\+?)/g;
+const BULLET_RX = /^\s*([\u2192\u2022\u25BA\u25CF\-\*])\s+(.*)/;
+const NUMBERED_RX = /^\s*(\d+[\.\)])\s+(.*)/;
+
+function shortenWords(s, max) {
+  if (!s) return '';
+  const w = String(s).trim().split(/\s+/);
+  if (w.length <= max) return w.join(' ');
+  return w.slice(0, max).join(' ') + '\u2026';
+}
+
+function parseStatLine(line) {
+  const s = String(line || '').trim();
+  const m = s.match(/^([\$\d,\.%\+]+[KMB]?%?)\s*(.*)/);
+  if (m && m[1]) return { stat: m[1], label: (m[2] || '').trim() || s };
+  return { stat: shortenWords(s, 1) || 'Insight', label: shortenWords(s, 14) };
+}
+
+function extractPostFacets(postText, trending, topicHint) {
+  const fallbackTopic = (trending && trending.topic) || topicHint || 'Insight';
+  if (!postText) {
+    return {
+      topic: fallbackTopic,
+      topicLabel: String(fallbackTopic).toUpperCase(),
+      hook: '',
+      paragraphs: [],
+      bullets: [],
+      sentences: [],
+      numericFacts: [],
+      closing: '',
+    };
+  }
+  const raw = String(postText).trim();
+  const linesAll = raw.split('\n').map((l) => l.replace(HASHTAG_RX, '').trim());
+  const lines = linesAll.filter((l) => l.length > 0);
+
+  const bullets = [];
+  const paragraphs = [];
+  for (const l of lines) {
+    const bm = l.match(BULLET_RX);
+    const nm = l.match(NUMBERED_RX);
+    if (bm) bullets.push(bm[2].trim());
+    else if (nm) bullets.push(nm[2].trim());
+    else paragraphs.push(l);
+  }
+
+  const hook = paragraphs[0] || bullets[0] || lines[0] || '';
+  const closing = paragraphs[paragraphs.length - 1] || bullets[bullets.length - 1] || hook;
+
+  const sentences = [];
+  for (const p of paragraphs) {
+    const parts = p.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter((x) => x.length > 4);
+    for (const s of parts) sentences.push(s);
+  }
+
+  const numericFacts = [];
+  const seen = new Set();
+  for (const l of lines) {
+    const nums = l.match(NUM_RX) || [];
+    for (const n of nums) {
+      if (n.length < 2 && !/[KMB%$]/.test(n)) continue;
+      if (seen.has(n)) continue;
+      seen.add(n);
+      const label = l.replace(n, '').replace(/\s+/g, ' ').trim();
+      numericFacts.push({ stat: n, label: shortenWords(label, 14) || hook || fallbackTopic });
+      if (numericFacts.length >= 8) break;
+    }
+    if (numericFacts.length >= 8) break;
+  }
+
+  let topic = fallbackTopic;
+  if (!trending && !topicHint) topic = shortenWords(hook, 6) || fallbackTopic;
+  const topicLabel = String(topic).toUpperCase();
+
+  return { topic, topicLabel, hook, paragraphs, bullets, sentences, numericFacts, closing };
+}
+
+function buildQuoteSlides(facets) {
+  const { hook, paragraphs, bullets, sentences, closing, topicLabel } = facets;
+  const candidates = [hook, ...sentences, ...bullets, closing]
+    .map((s) => String(s || '').trim())
+    .filter((s) => s.length >= 8)
+    .filter((s, i, a) => a.indexOf(s) === i);
+  const picks = candidates.slice(0, 5);
+  while (picks.length < 5) picks.push(hook || topicLabel || 'Insight');
+  return picks.map((q) => {
+    const contextLines = [...bullets, ...sentences]
+      .filter((x) => x && x !== q)
+      .slice(0, 3)
+      .join('\n');
+    return {
+      quote: shortenWords(q, 16),
+      context: contextLines,
+      closing: shortenWords(closing || hook || '', 10),
+    };
+  });
+}
+
+function buildMultiSlides(facets, count) {
+  const { topicLabel, hook, paragraphs, bullets, numericFacts, closing } = facets;
+  const slides = [];
+
+  slides.push({
+    topic: topicLabel || 'INSIGHT',
+    title: shortenWords(hook, 8) || 'Insight',
+    sub: paragraphs[1] || '',
+    subSub: '',
+  });
+
+  if (numericFacts.length > 0) {
+    const nf = numericFacts[0];
+    slides.push({
+      topic: 'BY THE NUMBERS',
+      title: nf.stat,
+      sub: nf.label,
+      subSub: numericFacts[1] ? (numericFacts[1].stat + ' \u2014 ' + numericFacts[1].label) : '',
+    });
+  } else {
+    slides.push({
+      topic: 'CONTEXT',
+      title: shortenWords(paragraphs[1] || hook, 8),
+      sub: paragraphs[2] || '',
+      subSub: '',
+    });
+  }
+
+  if (bullets.length >= 2) {
+    const half = Math.ceil(bullets.length / 2);
+    slides.push({ topic: 'KEY POINTS', title: 'What matters:', points: bullets.slice(0, half).map((b) => shortenWords(b, 12)) });
+    slides.push({ topic: 'AND THEN', title: 'And then:', points: bullets.slice(half).map((b) => shortenWords(b, 12)) });
+  } else if (bullets.length === 1) {
+    slides.push({ topic: 'KEY POINT', title: shortenWords(bullets[0], 10), sub: '', subSub: '' });
+    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[2] || paragraphs[1] || closing, 10), sub: '', subSub: '' });
+  } else {
+    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[2] || paragraphs[1] || hook, 10), sub: paragraphs[3] || '', subSub: '' });
+    slides.push({ topic: 'INSIGHT', title: shortenWords(paragraphs[3] || paragraphs[2] || closing, 10), sub: '', subSub: '' });
+  }
+
+  slides.push({
+    topic: 'THE TAKEAWAY',
+    title: shortenWords(closing || hook, 10),
+    sub: '',
+    subSub: '',
+  });
+
+  while (slides.length < count) slides.push(slides[slides.length - 1]);
+  return slides.slice(0, count);
+}
+
 export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
   // ─── CORE STATE ───
   const [platform, setPlatform] = useState('LinkedIn');
@@ -119,47 +272,43 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   };
 
   // ─── BRANDED CARD GENERATORS ───
-  const makeBrandedImages = () => {
+  // Always alternate variants so a 5-card set is roughly half dark, half cream.
+  // Card content is derived from the actual generated post text so each card
+  // reflects what the post says, not a hardcoded placeholder set.
+  const makeBrandedImages = (postText, ctx) => {
     const cv = cvRef.current;
     if (!cv) return [];
     const results = [];
-    const dp = brand.dataPoints || [];
-    // Alternate variant: even = dark, odd = light — produces mixed set like examples
     const variantFor = (i) => (i % 2 === 0 ? 'dark' : 'light');
+    const facets = extractPostFacets(postText, ctx && ctx.trending, ctx && ctx.topicHint);
+    const dp = brand.dataPoints || [];
 
     if (imageStyle === 'stat') {
-      const usedDp = dp.length > 0 ? dp : [
-        '86,000 projected physician shortage by 2036',
-        '$1M+ lost annually per unfilled physician position',
-        '65% of hospitals below capacity due to staffing',
-        '6-12 months average permanent physician search',
-        '60% rural physician shortage vs 10% urban',
-      ];
-      const shuffled = [...usedDp].sort(() => Math.random() - 0.5);
-      for (let i = 0; i < Math.min(IMAGE_COUNT, shuffled.length); i++) {
-        const d = shuffled[i];
-        const m = d.match(/^([\$\d,\.%\+]+[KMB]?%?)\s*(.*)/);
+      // Prefer numeric facts pulled from the post; fall back to brand data points.
+      let statSlides = facets.numericFacts.length
+        ? facets.numericFacts
+        : (dp.length
+            ? dp.map((d) => parseStatLine(d))
+            : [{ stat: 'Insight', label: facets.hook || (pillar.name + ' insights') }]);
+      const slides = [];
+      for (let i = 0; i < IMAGE_COUNT; i++) slides.push(statSlides[i % statSlides.length]);
+      for (let i = 0; i < IMAGE_COUNT; i++) {
+        const sl = slides[i];
         generateStatCard(cv, {
-          stat: m ? m[1] : d.split(' ')[0],
-          label: m ? (m[2] || d) : d,
-          subtitle: `${pillar.name} \u00B7 ${brand.tagline || ''}`.trim(),
+          stat: sl.stat,
+          label: sl.label,
+          subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' · ' + (brand.tagline || '')).trim(),
           brandName: brand.name,
           orientation: 'portrait',
           variant: variantFor(i),
         });
-        results.push({ url: cv.toDataURL('image/png'), prompt: `Stat card: ${d}`, error: null });
+        results.push({ url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null });
       }
     } else if (imageStyle === 'quote') {
-      const quotes = [
-        { quote: topic || "A strong locum tenens strategy is not a backup plan. It's a competitive advantage.", context: 'Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.', closing: 'Pay less. Every time.' },
-        { quote: "The physician shortage isn't coming. It's here.", context: '86,000 fewer physicians by 2036.\nRural hospitals hit hardest.\nEvery unfilled position costs $1M+.', closing: 'Plan now or pay later.' },
-        { quote: 'Proactive beats reactive. Every. Single. Time.', context: 'Coverage risk calendars.\nPre-credentialed physicians.\nPartners who know your facility.', closing: "That's infrastructure." },
-        { quote: 'Your staffing problem is a timing problem.', context: 'Retirements are predictable.\nSeasonal surges are predictable.\nRecruitment timelines are predictable.', closing: 'So why are we still scrambling?' },
-        { quote: 'The best time to plan for a coverage gap is before it exists.', context: '5-step proactive framework.\nSpecialty risk matrix.\nCredentialing timeline templates.', closing: 'Start today.' },
-      ];
-      const shuffled = [...quotes].sort(() => Math.random() - 0.5);
+      // Quote cards: each pulls a different short impactful line from the post.
+      const quotes = buildQuoteSlides(facets);
       for (let i = 0; i < IMAGE_COUNT; i++) {
-        const q = shuffled[i % shuffled.length];
+        const q = quotes[i % quotes.length];
         generateQuoteCard(cv, {
           quote: q.quote,
           context: q.context,
@@ -168,19 +317,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           orientation: 'portrait',
           variant: variantFor(i),
         });
-        results.push({ url: cv.toDataURL('image/png'), prompt: `Quote card: ${q.quote}`, error: null });
+        results.push({ url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + q.quote.slice(0, 60), error: null });
       }
     } else {
-      // Multi-image set: 5 slides, running as a coherent set (01/05 .. 05/05)
-      const cards = [
-        { topic: 'THE COST OF DOING NOTHING', title: '$1M+ Lost', sub: 'Per unfilled physician position, every year.', subSub: "Lost billings, diverted patients, overtime premiums \u2014 they add up fast." },
-        { topic: 'THE SHORTAGE IS HERE', title: '86,000', sub: 'Projected physician shortage by 2036.', subSub: 'Rural hospitals face 60% shortfall vs 10% urban.' },
-        { topic: 'THE PROACTIVE FIX', title: '5 Steps', sub: 'Build your coverage infrastructure now.', subSub: 'Risk calendars. Pre-credentialing. Locum integration.' },
-        { topic: 'REACTIVE VS PROACTIVE', title: 'Pay Less.\nEvery Time.', sub: 'Reactive staffing always costs more.', subSub: 'Urgency = premium pricing. Planning = controlled costs.' },
-        { topic: "THE MATCH ISN'T ENOUGH", title: '41,482', sub: 'Positions filled in the 2026 Match.', subSub: 'Still not enough to close the 86,000 deficit.' },
-      ];
+      // Multi-image carousel: 5 slides built from the post's actual content.
+      const slides = buildMultiSlides(facets, IMAGE_COUNT);
       for (let i = 0; i < IMAGE_COUNT; i++) {
-        const c = cards[i % cards.length];
+        const c = slides[i];
         generateMultiCard(cv, {
           cardNumber: String(i + 1),
           totalCards: String(IMAGE_COUNT),
@@ -188,11 +331,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           title: c.title,
           subtitle: c.sub,
           subSubtitle: c.subSub,
+          points: c.points,
+          closingLine: c.closing,
           brandName: brand.name,
           orientation: 'portrait',
-          // Let generateMultiCard default (dark for odd, light for even) so we get the alternating pattern
+          variant: variantFor(i),
         });
-        results.push({ url: cv.toDataURL('image/png'), prompt: `Multi card ${i + 1}: ${c.topic}`, error: null });
+        results.push({ url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (i + 1) + ': ' + c.topic, error: null });
       }
     }
     setImages(results);
@@ -285,7 +430,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setPost(txt);
     setGenPhase('');
 
-    const imgResults = makeBrandedImages() || [];
+    const imgResults = makeBrandedImages(txt, { trending: activeTrending, topicHint: topic }) || [];
 
     autoSaveToArchive(txt, imgResults, {
       platform,

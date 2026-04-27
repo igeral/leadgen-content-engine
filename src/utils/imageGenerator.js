@@ -280,10 +280,11 @@ export function generateMultiCard(canvas, opts) {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
-  // Pattern: dark for slide 1, light for 2, dark for 3 — can be overridden
+  // Alternate dark / cream by slide number so a 5-card set is mixed (~50/50)
+  // instead of dark-heavy. Caller can override with opts.variant.
   const n = parseInt(opts.cardNumber || '1', 10);
   const total = parseInt(opts.totalCards || '3', 10);
-  const defaultVariant = n === 2 ? 'light' : 'dark';
+  const defaultVariant = n % 2 === 1 ? 'dark' : 'light';
   const variant = opts.variant === 'light' || opts.variant === 'dark' ? opts.variant : defaultVariant;
   const s = STYLE[variant];
   const pad = normalizePadding(W);
