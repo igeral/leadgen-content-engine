@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { callOpenRouter, callImageAPI, generateImagePrompts, generateMultipleImages, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt, IMAGE_MODELS } from '../utils/openrouter';
+import { callOpenRouter, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
@@ -86,7 +86,6 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   // ─── IMAGE STATE ───
   const [imageStyle, setImageStyle] = useState('stat');
-  const [imageMode, setImageMode] = useState('ai');
 
   // ─── OUTPUT STATE ───
   const [post, setPost] = useState('');
@@ -201,37 +200,6 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     return results;
   };
 
-  // ─── AI IMAGE GENERATION ───
-  const makeAIImages = async (postText) => {
-    setImgLoading(true);
-    setImgProgress('Analyzing content for unique image prompts...');
-    setImages([]);
-    let finalResults = [];
-    try {
-      const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
-      const results = await generateMultipleImages(manualKey, selImgModel, prompts, (i, total) => {
-        setImgProgress(`Generating image ${i + 1} of ${total}...`);
-      });
-      const successful = results.filter((r) => r.url);
-      if (successful.length === 0) {
-        showToast('AI images failed \u2014 using branded cards');
-        finalResults = makeBrandedImages() || [];
-      } else {
-        setImages(results);
-        setSelectedImg(0);
-        showToast(`${successful.length} unique AI images generated!`);
-        finalResults = results;
-      }
-    } catch (e) {
-      console.error('[LeadGen] Multi-image generation failed:', e);
-      showToast('AI images failed \u2014 using branded cards');
-      finalResults = makeBrandedImages() || [];
-    }
-    setImgLoading(false);
-    setImgProgress('');
-    return finalResults;
-  };
-
   // ─── AUTO-SAVE TO ARCHIVE (weekday-balanced) ───
   // Picks the weekday with the fewest existing posts; ties resolve to the
   // earliest weekday (Monday wins if all are empty). This produces a natural
@@ -256,7 +224,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         ctaType: ctx.ctaType,
         trendingTopic: ctx.trendingTopic || null,
         imageStyle: ctx.imageStyle,
-        imageMode: ctx.imageMode,
+        imageMode: 'branded',
         imageData: successImgs[0]?.url || null,
         allImages: successImgs.map((i) => i.url),
         createdAt: now.toLocaleString(),
@@ -317,12 +285,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setPost(txt);
     setGenPhase('');
 
-    let imgResults = [];
-    if (imageMode === 'ai' && live) {
-      imgResults = await makeAIImages(txt);
-    } else {
-      imgResults = makeBrandedImages() || [];
-    }
+    const imgResults = makeBrandedImages() || [];
 
     autoSaveToArchive(txt, imgResults, {
       platform,
@@ -331,7 +294,6 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       ctaType,
       trendingTopic: activeTrending?.topic || null,
       imageStyle,
-      imageMode,
     });
 
     return { txt, imgResults };
@@ -397,7 +359,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         ctaType,
         trendingTopic: selectedTrending?.topic || null,
         imageStyle,
-        imageMode,
+        imageMode: 'branded',
         imageData: currentImg,
         allImages: images.filter((i) => i.url).map((i) => i.url),
         createdAt: now.toLocaleString(),
@@ -655,16 +617,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ))}
           </div>
 
-          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} per post)</label>
-          <div className="flex gap-2 mb-4">
-            <button className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'ai' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`} onClick={() => setImageMode('ai')}>
-              <div className="font-semibold">{'\uD83E\uDD16'} AI Generated</div>
-              <div className="text-xs opacity-70 mt-0.5">{live ? 'Unique content-matched images' : 'Requires API key'}</div>
-            </button>
-            <button className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ${imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'}`} onClick={() => setImageMode('branded')}>
-              <div className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</div>
-              <div className="text-xs opacity-70 mt-0.5">Canvas-based, instant</div>
-            </button>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} branded cards per post)</label>
+          <div className="mb-4 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-gray-300 text-sm">
+            <span className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</span>
+            <span className="text-xs opacity-70 ml-2">Canvas-based, instant, on-brand</span>
           </div>
 
           {/* Generate button */}
@@ -752,15 +708,12 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">
-              {imageMode === 'ai' ? '\uD83E\uDD16' : '\uD83D\uDDBC'} Images
+              {'\uD83D\uDDBC'} Images
               {successfulImages.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">({successfulImages.length}/{IMAGE_COUNT})</span>}
             </h2>
             {successfulImages.length > 0 && (
               <div className="flex gap-2">
                 <button className="btn-secondary text-sm" onClick={downloadAll}>{'\u2B07\uFE0F'} All</button>
-                {imageMode === 'ai' && live && post && (
-                  <button className="btn-ghost text-sm" onClick={() => makeAIImages(post)} disabled={imgLoading}>{'\uD83D\uDD04'} Regen</button>
-                )}
               </div>
             )}
           </div>
@@ -771,7 +724,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="text-center py-14 text-gray-500">
               <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
               <p className="font-medium text-gray-300">{imgProgress || 'Generating images...'}</p>
-              <p className="text-sm mt-1">Creating {IMAGE_COUNT} unique content-matched images</p>
+              <p className="text-sm mt-1">Creating {IMAGE_COUNT} branded cards</p>
               <div className="flex justify-center gap-2 mt-4">
                 {Array.from({ length: IMAGE_COUNT }).map((_, i) => (
                   <div key={i} className={`w-3 h-3 rounded-full transition-all ${

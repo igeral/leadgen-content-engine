@@ -691,7 +691,6 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
   const [keyPhrases, setKeyPhrases] = useState('');
   const [avoidTopics, setAvoidTopics] = useState('');
   const [imageStyle, setImageStyle] = useState('stat');
-  const [imageMode, setImageMode] = useState('ai');
   const [post, setPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
@@ -758,20 +757,6 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     setImages(results); setSelectedImg(0); return results;
   };
 
-  const makeAIImages = async (postText) => {
-    setImgLoading(true); setImgProgress('Analyzing content for unique image prompts...'); setImages([]);
-    let finalResults = [];
-    try {
-      const prompts = await generateImagePrompts(manualKey, selModel, postText, brand, IMAGE_COUNT);
-      const results = await generateMultipleImages(manualKey, selImgModel, prompts, (i, total) => { setImgProgress('Generating image ' + (i+1) + ' of ' + total + '...'); });
-      const successful = results.filter((r) => r.url);
-      if (successful.length === 0) { showToast('AI images failed \u2014 using branded cards'); finalResults = makeBrandedImages() || []; }
-      else { setImages(results); setSelectedImg(0); showToast(successful.length + ' unique AI images generated!'); finalResults = results; }
-    } catch (e) { showToast('AI images failed \u2014 using branded cards'); finalResults = makeBrandedImages() || []; }
-    setImgLoading(false); setImgProgress('');
-    return finalResults;
-  };
-
   // Weekday-balanced auto-save: picks the day with the fewest posts (ties -> Monday first)
   const autoSaveToArchive = (txt, imgs, ctx) => {
     if (!txt) return;
@@ -792,7 +777,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         ctaType: ctx.ctaType,
         trendingTopic: ctx.trendingTopic || null,
         imageStyle: ctx.imageStyle,
-        imageMode: ctx.imageMode,
+        imageMode: 'branded',
         imageData: successImgs[0] && successImgs[0].url || null,
         allImages: successImgs.map((i) => i.url),
         createdAt: now.toLocaleString(),
@@ -833,10 +818,8 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
       txt = pl[Math.floor(Math.random() * pl.length)];
     }
     setPost(txt); setGenPhase('');
-    let imgResults = [];
-    if (imageMode === 'ai' && live) { imgResults = await makeAIImages(txt); }
-    else { imgResults = makeBrandedImages() || []; }
-    autoSaveToArchive(txt, imgResults, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle, imageMode });
+    const imgResults = makeBrandedImages() || [];
+    autoSaveToArchive(txt, imgResults, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle });
     return { txt: txt, imgResults: imgResults };
   };
 
@@ -868,7 +851,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     const wdName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     const weekday = WD.indexOf(wdName) >= 0 ? wdName : 'Monday';
-    setSavedPosts((p) => [...p, { id: Date.now(), text: post, platform, pillar: pillar.name, audience: pillar.audience, tone, ctaType, trendingTopic: selectedTrending && selectedTrending.topic || null, imageStyle, imageMode, imageData: images[selectedImg] && images[selectedImg].url || null, allImages: images.filter((i) => i.url).map((i) => i.url), createdAt: now.toLocaleString(), weekday: weekday }]);
+    setSavedPosts((p) => [...p, { id: Date.now(), text: post, platform, pillar: pillar.name, audience: pillar.audience, tone, ctaType, trendingTopic: selectedTrending && selectedTrending.topic || null, imageStyle, imageMode: 'branded', imageData: images[selectedImg] && images[selectedImg].url || null, allImages: images.filter((i) => i.url).map((i) => i.url), createdAt: now.toLocaleString(), weekday: weekday }]);
     showToast('Post saved to Archive!');
   };
 
@@ -1011,14 +994,10 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
             React.createElement('div', { className: 'text-sm font-semibold' }, s.l), React.createElement('div', { className: 'text-xs text-gray-400 mt-0.5' }, s.d)
           ))
         ),
-        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Generation (' + IMAGE_COUNT + ' per post)'),
-        React.createElement('div', { className: 'flex gap-2 mb-4' },
-          React.createElement('button', { className: 'flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ' + (imageMode === 'ai' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'), onClick: () => setImageMode('ai') },
-            React.createElement('div', { className: 'font-semibold' }, '\uD83E\uDD16 AI Generated'), React.createElement('div', { className: 'text-xs opacity-70 mt-0.5' }, live ? 'Unique content-matched images' : 'Requires API key')
-          ),
-          React.createElement('button', { className: 'flex-1 py-2 px-3 rounded-lg text-sm font-medium text-left transition-all ' + (imageMode === 'branded' ? 'purple-active' : 'bg-gray-800 border border-gray-600 text-gray-300'), onClick: () => setImageMode('branded') },
-            React.createElement('div', { className: 'font-semibold' }, '\uD83C\uDFA8 Branded Cards'), React.createElement('div', { className: 'text-xs opacity-70 mt-0.5' }, 'Canvas-based, instant')
-          )
+        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Generation (' + IMAGE_COUNT + ' branded cards per post)'),
+        React.createElement('div', { className: 'mb-4 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-gray-300 text-sm' },
+          React.createElement('span', { className: 'font-semibold' }, '\uD83C\uDFA8 Branded Cards'),
+          React.createElement('span', { className: 'text-xs opacity-70 ml-2' }, 'Canvas-based, instant, on-brand')
         ),
 
         // Generate button
@@ -1083,19 +1062,18 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
       React.createElement('div', { className: 'card p-5' },
         React.createElement('div', { className: 'flex items-center justify-between mb-4' },
           React.createElement('h2', { className: 'text-lg font-bold text-white' },
-            (imageMode === 'ai' ? '\uD83E\uDD16' : '\uD83D\uDDBC') + ' Images',
+            '\uD83D\uDDBC Images',
             successfulImages.length > 0 && React.createElement('span', { className: 'text-sm font-normal text-gray-400 ml-2' }, '(' + successfulImages.length + '/' + IMAGE_COUNT + ')')
           ),
           successfulImages.length > 0 && React.createElement('div', { className: 'flex gap-2' },
-            React.createElement('button', { className: 'btn-secondary text-sm', onClick: downloadAll }, '\u2B07\uFE0F All'),
-            imageMode === 'ai' && live && post && React.createElement('button', { className: 'btn-ghost text-sm', onClick: () => makeAIImages(post), disabled: imgLoading }, '\uD83D\uDD04 Regen')
+            React.createElement('button', { className: 'btn-secondary text-sm', onClick: downloadAll }, '\u2B07\uFE0F All')
           )
         ),
         React.createElement('canvas', { ref: cvRef, style: { display: 'none' } }),
         imgLoading ? React.createElement('div', { className: 'text-center py-14 text-gray-500' },
           React.createElement('div', { className: 'spinner mx-auto mb-4', style: { width: 40, height: 40 } }),
           React.createElement('p', { className: 'font-medium text-gray-300' }, imgProgress || 'Generating images...'),
-          React.createElement('p', { className: 'text-sm mt-1' }, 'Creating ' + IMAGE_COUNT + ' unique content-matched images')
+          React.createElement('p', { className: 'text-sm mt-1' }, 'Creating ' + IMAGE_COUNT + ' branded cards')
         ) : successfulImages.length > 0 ? React.createElement('div', null,
           React.createElement('div', { className: 'relative mb-3' },
             images[selectedImg] && images[selectedImg].url && React.createElement('img', { src: images[selectedImg].url, className: 'w-full rounded-lg shadow-lg', alt: 'Generated image ' + (selectedImg+1) }),
