@@ -510,7 +510,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           selModel,
           buildSystemPrompt(brand, platform, advancedOpts),
           buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts),
-          IMAGE_COUNT
+          IMAGE_COUNT,
+          { pillarName: pillar.name }
         );
       }
     } else {

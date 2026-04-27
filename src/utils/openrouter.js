@@ -113,33 +113,41 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
 // ─── MULTI-POST VARIATIONS ───
 // Generate N distinct post variations on the same topic. Each takes a different
 // angle so the user gets N separate posts (not N images of one post).
-export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userPromptCore, count) {
+export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userPromptCore, count, opts = {}) {
   const key = getApiKey(manualKey);
-  const angles = [
-    'Problem-framed — name the pain sharply, then offer a frame to think about it',
-    'Stat-led — open with a hard number, build the story around it',
-    'Story-led — short specific scenario or example, then the lesson',
-    'Contrarian — challenge a common assumption with evidence',
-    'CTA-led — sharp question or direct ask up front, support with reasoning',
-  ];
+  const pillarName = opts.pillarName || '';
+  const cfg = getPillarConfig(pillarName);
+  const allHookKeys = ['bold_stat', 'contrarian', 'direct_question', 'pov_scenario', 'story_opener', 'reframe'];
+  const preferred = cfg ? cfg.bestHooks : [];
+  const ordered = [...preferred, ...allHookKeys.filter((h) => !preferred.includes(h))];
+  const chosenKeys = ordered.slice(0, count);
+  const hookBriefs = chosenKeys.map((k, i) => {
+    const hf = HOOK_FORMULAS[k];
+    return `${i + 1}. ${hf.name} \u2014 ${hf.brief}`;
+  }).join('\n');
+
   const wrapper = `
 
-GENERATE EXACTLY ${count} DISTINCT POST VARIATIONS on the same topic and audience.
+GENERATE EXACTLY ${count} DISTINCT POST VARIATIONS on the same topic, audience, and pillar.
 
-Each variation must take a DIFFERENT angle:
-${angles.slice(0, count).map((a, i) => `${i + 1}. ${a}`).join('\n')}
+Each variation MUST use a DIFFERENT hook formula from this list (no repeats):
+${hookBriefs}
 
-Rules:
-- Each post is FULLY WRITTEN (hook + body + CTA), 100-200 words
-- Each post uses a DIFFERENT opening hook — no repeated openers
-- Each post must read as standalone, publishable on its own
-- Vary the structure: some with bullets, some prose, some short punchy lines
+For each post:
+- The first line is the hook and MUST follow the assigned formula.
+- The first line MUST be 15 words or fewer.
+- Follow the pillar's 7-beat sequence (defined above) for the body.
+- ZERO em dashes. Use commas, periods, colons, or line breaks instead.
+- Reader is the main character. Frame from THEIR perspective.
+- 150-300 words per post.
+- End with a soft CTA (no engagement bait) and 3-5 hashtags.
 
-Return ONLY a JSON array of exactly ${count} strings — each string is one full post.
+Return ONLY a JSON array of exactly ${count} strings \u2014 each string is one full post in the order above (post 1 uses hook formula 1, post 2 uses hook formula 2, etc.).
 NO code fences. NO commentary. NO labels. Just the raw JSON array.
 
 Example shape:
-["Post one full text...", "Post two full text...", ...]`;
+[\"Post one full text...\", \"Post two full text...\", ...]`;
+
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: apiHeaders(key),
@@ -158,13 +166,27 @@ Example shape:
     throw new Error(e.error?.message || `API error: ${resp.status}`);
   }
   const raw = (await resp.json()).choices[0].message.content;
-  const posts = parseJsonStringArray(raw);
+  let posts = parseJsonStringArray(raw);
   if (!posts || posts.length === 0) {
     throw new Error('Could not parse post variations from AI response');
   }
-  // Pad if model returned fewer than requested
+  // Defense in depth: strip any em/en dashes the model emits despite the prompt
+  posts = posts.map((p) => stripEmDashes(p));
   while (posts.length < count) posts.push(posts[posts.length - 1]);
   return posts.slice(0, count);
+}
+
+// Strip em/en dashes the model may emit despite the prompt forbidding them.
+// Replaces with a period + space to preserve the rhythm break Steadfast wants.
+function stripEmDashes(text) {
+  if (!text) return text;
+  let out = String(text)
+    .replace(/\s*[\u2014\u2013]\s*/g, '. ')
+    .replace(/\s+--\s+/g, '. ');
+  // Collapse double periods, recapitalize sentence starts
+  out = out.replace(/\.\s*\./g, '.')
+           .replace(/\.\s+([a-z])/g, (_m, c) => '. ' + c.toUpperCase());
+  return out.trim();
 }
 
 function parseJsonStringArray(raw) {
@@ -427,7 +449,132 @@ export async function generateMultipleImages(manualKey, imageModel, prompts, onP
   return results;
 }
 
-// ─── PROMPT BUILDERS (with variety injection) ───
+// ─── STEADFAST STORYTELLING FRAMEWORK ───
+// Source: steadfast_storytelling_outline.docx
+// Six hook formulas (Part 1.4) — each must work in 15 words or fewer
+// because that is what shows above the LinkedIn see-more cutoff.
+export const HOOK_FORMULAS = {
+  bold_stat:        { name: 'Bold Stat',         brief: 'Lead with one credible specific number that creates urgency or shock.' },
+  contrarian:       { name: 'Contrarian Claim',  brief: 'State something that challenges what the audience already believes.' },
+  direct_question:  { name: 'Direct Question',   brief: 'Ask something the reader already thinks about but has never seen stated cleanly.' },
+  pov_scenario:     { name: 'POV Scenario',      brief: 'Put the reader directly inside a situation they have lived or fear. Open with "POV:".' },
+  story_opener:     { name: 'Story Opener',      brief: 'Start with a moment that pulls the reader in before any argument is made.' },
+  reframe:          { name: 'Reframe',           brief: 'Take a widely known headline or belief and flip it to reveal what people miss.' },
+};
+
+// Two storytelling frameworks (Part 1.5)
+export const FRAMEWORKS = {
+  PASS: 'PASS — Problem (name it directly in the hook), Agitate (make the reader feel the weight with specific examples), Solution (give them the path through, not the sales pitch — the framework), Soft CTA (question or invitation, never engagement bait).',
+  SLAY: 'SLAY — Story (two lines that open with a real moment, scenario, or stat), Lesson (the single insight at the heart of the post), Actionable advice (what the reader can do with the lesson), Your engagement (a genuine question that invites the reader in without being bait).',
+};
+
+// Pillar-specific outlines (Part 2). Keys match brand.pillars[].name (case-insensitive).
+export const STEADFAST_PILLAR_MAP = {
+  'workforce insights': {
+    framework: 'PASS',
+    bestHooks: ['bold_stat', 'reframe'],
+    arc: 'Bold number → what it really means → why it is more dangerous than people think → what to do about it.',
+    feeling: 'Alert. The problem is bigger than they thought. They need to act.',
+    beats: [
+      'Open with the stat alone on its own line. Forces a pause. Establishes credibility immediately.',
+      'Reframe how leaders should interpret it. Replace their default frame with a sharper one.',
+      'State the hard truth in one or two short lines. The line that gets quoted and shared.',
+      'Agitate by listing the cascade of consequences. Lost revenue, burnout, quality decline, retention. Make the cost concrete.',
+      'Layer in supporting data or a related stat. Shows depth of expertise without becoming a research paper.',
+      'State the reframed conclusion as a principle. Not a nice-to-have. A necessity. Make the principle quotable.',
+      'Soft question CTA. Invite reflection without pushing toward a sale.',
+    ],
+  },
+  'physician lifestyle': {
+    framework: 'SLAY',
+    bestHooks: ['direct_question', 'story_opener', 'bold_stat'],
+    arc: 'Current reality feels wrong → there is another way → here is what it actually looks like → soft invitation.',
+    feeling: 'Seen. Understood. Curious without feeling sold to.',
+    beats: [
+      'Open with a question or scenario the physician is already thinking about. Creates immediate recognition.',
+      'Use rhythm to deepen the emotional pull. Three or four short lines that build to a single word or thought.',
+      'Validate with a credible workforce stat or trend. Shows the physician they are not alone in feeling this way.',
+      'Reframe the burnout or dissatisfaction conversation. The system is the problem, not the work.',
+      'Give specific examples of what locum tenens looks like in practice. Different scenarios, career stages, specialties.',
+      'State the simple reframe as a principle. Locum tenens is a career strategy, not just a rescue plan.',
+      'Soft invitation CTA. No pressure language. If this resonates, reach out.',
+    ],
+  },
+  'staffing strategy': {
+    framework: 'PASS or SLAY',
+    bestHooks: ['contrarian', 'pov_scenario'],
+    arc: 'Conventional wisdom is wrong → here is the cost of believing it → here is the better model → invitation to reflect.',
+    feeling: 'Challenged. Slightly uncomfortable. Curious about the alternative model.',
+    beats: [
+      'Open with the contrarian claim or POV scenario. Creates mild discomfort or instant recognition. Stops the scroll.',
+      'Validate the discomfort with a real-world detail. "And it is not the first time this year." Make the scenario specific.',
+      'State the underlying truth most leaders avoid. The system was not built for what is happening right now.',
+      'List the costs of the conventional approach. Three to five short concrete lines, each a different dimension.',
+      'Introduce the better model. Specific. Practical. Not theoretical.',
+      'State the principle that makes the better model worth adopting. The line they take into a leadership meeting next week.',
+      'Soft question CTA inviting them to share their approach. Genuinely curious.',
+    ],
+  },
+  'industry commentary': {
+    framework: 'SLAY (adapted for current events)',
+    bestHooks: ['reframe'],
+    arc: 'Headline → what the headline says → what the headline misses → what this means for hospitals or physicians.',
+    feeling: 'Informed. Steadfast is plugged in and worth following for context on what is happening.',
+    beats: [
+      'Open with the news event or stat in one line. Establishes immediacy and credibility.',
+      'State the surface-level interpretation. Two short lines that mirror the conventional read.',
+      'Pivot with the contrarian or nuanced angle. Here is what they do not say. Here is what most people miss.',
+      'Provide the specific data or detail that supports the reframe. Numbers, percentages, timelines. Show the work.',
+      'State the both-things-are-true position. It matters. And it is not enough. Avoids partisan framing while being opinionated.',
+      'Apply the insight to the reader\'s life or hospital. What this means for the hospitals managing this well in 2026.',
+      'Genuine question CTA inviting expertise-based comments. What is your read?',
+    ],
+  },
+  'lead magnet': {
+    framework: 'Soft introduction to the offer (no PASS/SLAY)',
+    bestHooks: ['story_opener', 'direct_question'],
+    arc: 'Validate the reader\'s experience → introduce the resource → list what is inside → soft download CTA.',
+    feeling: 'Trusted. Ready to take a small action because the rest of the week has built credibility.',
+    beats: [
+      'Open with a phrase that validates a feeling the reader has had. They knew most of it. They just had not put it together as a system.',
+      'Introduce the guide by name and audience. Be specific about who it was written for so the reader self-selects.',
+      'List four to five things inside the guide. Each one a different angle. Together they cover the whole framework.',
+      'State who it was written for. Practical. Free. Written for the person who does not have time to figure this out mid-crisis.',
+      'Direct the reader to the link in the comments. Never put external links in the caption. LinkedIn deprioritises posts with external links.',
+      'Standard soft follow CTA. Consistent with the rest of the week.',
+    ],
+  },
+};
+
+// Look up the Steadfast pillar config by pillar name (case-insensitive).
+export function getPillarConfig(pillarName) {
+  if (!pillarName) return null;
+  const key = String(pillarName).toLowerCase().trim();
+  if (STEADFAST_PILLAR_MAP[key]) return STEADFAST_PILLAR_MAP[key];
+  // Fuzzy fall-throughs for common renames
+  if (key.includes('workforce')) return STEADFAST_PILLAR_MAP['workforce insights'];
+  if (key.includes('physician') && key.includes('lifestyle')) return STEADFAST_PILLAR_MAP['physician lifestyle'];
+  if (key.includes('staffing') || key.includes('leadership')) return STEADFAST_PILLAR_MAP['staffing strategy'];
+  if (key.includes('industry') || key.includes('commentary')) return STEADFAST_PILLAR_MAP['industry commentary'];
+  if (key.includes('lead') && key.includes('magnet')) return STEADFAST_PILLAR_MAP['lead magnet'];
+  return null;
+}
+
+// Build a brief from the pillar config that injects cleanly into the user prompt.
+function pillarBrief(cfg) {
+  if (!cfg) return '';
+  const beatList = cfg.beats.map((b, i) => `${i + 1}. ${b}`).join('\n');
+  return `\n\nPILLAR FRAMEWORK (Steadfast Storytelling Outline):
+- Default framework: ${cfg.framework}
+- Best hook formulas for this pillar: ${cfg.bestHooks.map((h) => HOOK_FORMULAS[h].name).join(', ')}
+- Narrative arc: ${cfg.arc}
+- Reader should feel: ${cfg.feeling}
+
+7-BEAT STORY SEQUENCE (follow in order):
+${beatList}`;
+}
+
+// ─── PROMPT BUILDERS (Steadfast framework) ───
 export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, formatting } = {}) {
   const toneMap = {
     authoritative: 'Direct, authoritative, data-driven voice. You are the expert.',
@@ -437,46 +584,95 @@ export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, fo
     educational: 'Clear, instructive voice. Teach something valuable. Be specific.',
   };
   const ctaMap = {
-    question: 'End with a thought-provoking question that invites comments.',
-    dm: 'End with a DM-based CTA (e.g., DM me "GUIDE" to get...).',
-    link: 'End with a CTA pointing to a link or resource.',
-    engage: 'End by asking readers to share their experience or opinion.',
+    question: 'Soft question CTA. Genuine, not engagement bait. Invite reflection without pushing toward a sale.',
+    dm: 'Soft DM-based CTA (e.g., DM me "GUIDE" to get the resource). Earned, not pushy.',
+    link: 'Direct the reader to the link in the comments. Never put external links in the caption.',
+    engage: 'Soft invitation. If this resonates, share your read. Genuinely curious.',
     none: 'No explicit CTA. Let the content speak for itself.',
   };
 
-  return `You are an expert social media content strategist for B2B lead generation on ${platform}.
+  return `You are an expert social media content strategist writing on ${platform} for ${brand.name || 'the client'}.
 
-BRAND: ${brand.name || 'the client'}
-Tagline: ${brand.tagline || 'N/A'}
-Category: ${brand.category || 'N/A'}
-Pillars: ${brand.pillars.map((p) => p.name).join(', ')}
+BRAND
+- Name: ${brand.name || 'the client'}
+- Tagline: ${brand.tagline || 'N/A'}
+- Category: ${brand.category || 'N/A'}
+- Pillars: ${brand.pillars.map((p) => p.name).join(', ')}
 
-VOICE & TONE:
+VOICE & TONE
 ${toneMap[tone] || toneMap.authoritative}
 
-FORMATTING RULES:
-- Hook in first 2 lines \u2014 this determines if anyone reads the rest
-- Short paragraphs (1-3 sentences max), generous line breaks
-- ${formatting === 'heavy' ? 'Use bullet points with \u2192 arrows, numbered lists, and bold structural markers (**bold** for key phrases)' : formatting === 'minimal' ? 'Minimal formatting. Flowing prose. No lists unless absolutely necessary.' : 'Mix of short paragraphs and \u2192 arrow lists where they add clarity. Use **bold** for 1-2 key phrases.'}
-- ${platform === 'LinkedIn' ? 'Professional but human. Use \u2192 arrow symbols for lists.' : 'Warmer tone, more shareable. Occasional emojis OK.'}
-- ${useEmoji ? 'Use 2-3 relevant emojis to break up text and add visual interest.' : 'No emojis. Let the words do the work.'}
-- 3-5 relevant hashtags at end
-- 200-350 words
+═══════════════════════════════════════════════════════════════════
+STEADFAST STORYTELLING PRINCIPLES (Part 1 — apply to EVERY post)
+═══════════════════════════════════════════════════════════════════
+
+1.1 THE READER IS THE MAIN CHARACTER
+Every post must make the reader feel the story is about THEIR life, THEIR hospital, THEIR career, THEIR decisions. Not about Steadfast. Not about the team. Not about the company.
+- Bad opening: "Steadfast helps hospitals close coverage gaps."
+- Good opening: "POV: You just lost a hospitalist with two weeks notice."
+When the reader sees the hook, their brain should immediately register: "That is me. That is my hospital. That is my problem."
+
+1.2 NO EM DASHES. EVER.
+Em dashes (—, –, --) are BANNED across all content. This is non-negotiable.
+- Do NOT use em dashes anywhere in the post.
+- Do NOT use en dashes in place of em dashes.
+- Do NOT use double hyphens (--) as a substitute.
+When tempted to use one, use instead: a comma, a period and a new sentence, a colon, a line break, or rewrite the sentence.
+- Wrong: "Most physicians still love patient care \u2014 it is the system around it that wore them down."
+- Right: "Most physicians still love patient care."
+- Right: "It is the system around it that wore them down."
+Em dashes signal AI-generated content and feel performative. Steadfast's voice is direct.
+
+1.3 RHYTHM IS THE ENTERTAINMENT PILLAR
+Posts flow like a song, not a report. Use:
+- Short lines.
+- Frequent line breaks.
+- Vary sentence length deliberately.
+- One sentence on its own line carries more weight than the same sentence buried in a paragraph.
+- The first word of every line matters because that is what scanners read in the F-shaped pattern. Make the first word count.
+
+1.4 HOOK MUST WORK IN \u226415 WORDS
+The hook is the FIRST line of the post. It must work in 15 words or fewer because that is what shows above LinkedIn's see-more cutoff. If your hook needs the second line to make sense, rewrite it.
+
+1.6 RECIPROCITY PRINCIPLE
+Every post gives inspiration, validation, or one practical insight. The only thing the reader is asked to do is finish reading and engage if they want to. Soft CTAs always. Genuine questions over manufactured ones. The conversion happens later, in the email funnel and in real conversations. The post itself just builds trust.
+
+═══════════════════════════════════════════════════════════════════
+FORMATTING (LinkedIn specifics)
+═══════════════════════════════════════════════════════════════════
+- Hook in first 2 lines. The first line determines if anyone reads the rest.
+- Short paragraphs (1-3 sentences max), generous line breaks.
+- ${formatting === 'heavy' ? 'Use \u2192 arrows for bullet lists. Use **bold** for 1-2 key phrases. Numbered lists when the order matters.' : formatting === 'minimal' ? 'Minimal formatting. Flowing prose. No lists unless absolutely necessary.' : 'Mix of short paragraphs and \u2192 arrow lists where they add clarity. Use **bold** for 1-2 key phrases.'}
+- ${platform === 'LinkedIn' ? 'Professional but human. Use \u2192 arrow symbols for lists, not bullets or hyphens.' : 'Warmer tone, more shareable.'}
+- ${useEmoji ? 'Use 2-3 relevant emojis to break up text.' : 'No emojis. Let the words do the work.'}
+- 3-5 relevant hashtags at end (LinkedIn). No hashtags inline in the body.
+- 150-300 words total.
 - Every sentence earns its place. No filler.
 
-VARIETY RULES:
-- NEVER write a generic post. Every post must have a specific, fresh angle.
-- ${pick(HOOK_STYLES)}
-- ${pick(ANGLE_MODIFIERS)}
-- Do NOT repeat common phrases like "here's the thing" or "let that sink in" or "read that again"
-- Use a FRESH hook every time. Surprise the reader.
+CTA STYLE
+${ctaMap[ctaType] || ctaMap.question}
 
-CTA STYLE:
-${ctaMap[ctaType] || ctaMap.question}`;
+VARIETY RULES
+- Do NOT repeat common AI phrases like "here's the thing", "let that sink in", "read that again", "the harsh truth", "let me explain".
+- Use a FRESH hook every time. Surprise the reader.
+- The pillar framework and 7-beat sequence (in the user message) is the structure. Follow it.`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic } = {}) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula } = {}) {
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
+
+  // Inject Steadfast pillar framework (Part 2 of the storytelling outline)
+  const cfg = getPillarConfig(pillar.name);
+  if (cfg) p += pillarBrief(cfg);
+
+  // Hook formula directive (when caller specifies one — used by multi-post variations)
+  if (hookFormula && HOOK_FORMULAS[hookFormula]) {
+    const hf = HOOK_FORMULAS[hookFormula];
+    p += `\n\nHOOK FORMULA FOR THIS POST: ${hf.name}\n${hf.brief}\nThe first line of the post MUST follow this formula and be \u226415 words.`;
+  } else if (cfg && cfg.bestHooks.length) {
+    const allowed = cfg.bestHooks.map((h) => HOOK_FORMULAS[h].name).join(' or ');
+    p += `\n\nHOOK FORMULA FOR THIS POST: choose ONE of: ${allowed}. The first line MUST be \u226415 words.`;
+  }
 
   // Trending topic takes priority as the main angle
   if (trendingTopic) {
@@ -490,18 +686,20 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
   if (avoidTopics?.length) p += `\n\nAvoid these topics/angles: ${avoidTopics.join(', ')}`;
   if (dataPoints?.length) {
-    // Randomly select 2-3 data points instead of passing all
     const selected = shuffle(dataPoints).slice(0, Math.min(3, dataPoints.length));
     p += `\n\nData points (use 1-2 max, weave naturally):\n${selected.map((d) => `- ${d}`).join('\n')}`;
   }
 
   if (imageStyle === 'stat') p += '\n\nThis post is paired with a bold stat-card image. Reference a striking number early.';
-  if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem\u2192context\u2192solution). Structure the post to match.';
+  if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem\u2192context\u2192solution). Structure the post to mirror that arc.';
   if (imageStyle === 'quote') p += '\n\nThis post is paired with a quote card. Lead with a strong, quotable opinion.';
 
-  // Random uniqueness seed to prevent identical outputs
-  p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)} \u2014 Use this to ensure this post is completely different from any previous generation. Write something FRESH and ORIGINAL.`;
-  p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for key phrases.';
+  // Hard guardrails (repeated here because LLMs sometimes ignore the system prompt)
+  p += '\n\nHARD CONSTRAINTS:\n- ZERO em dashes (\u2014, \u2013, --). Use commas, periods, colons, or line breaks instead.\n- Reader is the main character. Frame everything from THEIR perspective, never Steadfast\u2019s.\n- Hook \u226415 words. Must work above the see-more cutoff.\n- Soft CTA only. No engagement bait.';
+
+  // Random uniqueness seed
+  p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)}. Write something FRESH and ORIGINAL — different from any previous generation.`;
+  p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for 1-2 key phrases. End with 3-5 hashtags.';
   return p;
 }
 

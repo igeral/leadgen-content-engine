@@ -11,10 +11,11 @@ export const STEADFAST_PRESET = {
     text: '#ffffff',
   },
   pillars: [
-    { name: 'Workforce Insights', audience: 'Hospital Leaders', description: 'Data-driven content about physician shortages and capacity gaps' },
-    { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Content for physicians considering locum work and career flexibility' },
-    { name: 'Staffing Strategy', audience: 'Hospital Leaders', description: 'Proactive staffing frameworks, cost analysis, and locum strategy' },
-    { name: 'Industry Commentary', audience: 'Both', description: 'Hot takes on healthcare policy, Match results, market shifts' },
+    { name: 'Workforce Insights', audience: 'Hospital Leaders', description: 'Data-driven content about physician shortages and capacity gaps. Default framework PASS, hooks Bold Stat or Reframe.' },
+    { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Content for physicians considering locum work and career flexibility. Default framework SLAY, hooks Direct Question, Story Opener, Bold Stat.' },
+    { name: 'Staffing Strategy', audience: 'Hospital Leaders', description: 'Proactive staffing frameworks, cost analysis, and locum strategy. Default framework PASS or SLAY, hooks Contrarian Claim or POV Scenario.' },
+    { name: 'Industry Commentary', audience: 'Both', description: 'Hot takes on healthcare policy, Match results, market shifts. Default framework SLAY adapted, hook Reframe.' },
+    { name: 'Lead Magnet', audience: 'Hospital Leaders', description: 'Soft introduction to the offer. Thursday 5:15 PM slot. Hooks Story Opener or Direct Question. Link in comments, never in caption.' },
   ],
   schedule: [
     { day: 'Monday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'stat' },
