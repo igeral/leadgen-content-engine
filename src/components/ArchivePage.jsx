@@ -10,6 +10,36 @@ const DAY_ACCENTS = {
   Friday:    { bar: '#ef4444', chip: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
 };
 
+// Build a human-readable filename from the post text. Strips markdown,
+// hashtags, and bullet markers; uses the first 6-8 words; falls back to
+// the trending topic, the pillar, or the weekday if the post is empty.
+function slugifyForFilename(post) {
+  const stripMd = (s) => String(s || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/[*_]+/g, '')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/^[#>]+\s*/gm, '');
+  const stripBullet = (s) => String(s || '').replace(/^[\s→•►●\-\*]+\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
+  const text = stripMd(post.text || '').replace(/#\w+/g, '').trim();
+  const firstLine = text.split('\n').map((l) => stripBullet(l)).find((l) => l && l.length > 4) || '';
+  const candidate = firstLine || post.trendingTopic || post.pillar || post.weekday || 'post';
+  // Take first 8 words, lowercase, alphanumerics + dashes only
+  const words = candidate.split(/\s+/).slice(0, 8).join(' ');
+  let slug = words.toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  if (!slug) slug = 'post';
+  if (slug.length > 60) slug = slug.substring(0, 60).replace(/-[^-]*$/, '');
+  return slug;
+}
+
 function deriveWeekday(post) {
   if (post.weekday && WEEKDAYS.includes(post.weekday)) return post.weekday;
   try {
@@ -77,6 +107,21 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
   const copyPost = (text) => {
     navigator.clipboard.writeText(text);
     showToast('Copied to clipboard!');
+  };
+
+  const downloadImage = (post) => {
+    if (!post.imageData) {
+      showToast('No image attached to this post');
+      return;
+    }
+    const slug = slugifyForFilename(post);
+    const a = document.createElement('a');
+    a.href = post.imageData;
+    a.download = `${slug}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast(`Downloaded ${slug}.png`);
   };
 
   const movePost = (id, newDay) => {
@@ -273,9 +318,19 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
                           </div>
                         )}
 
-                        {/* image thumb */}
+                        {/* image thumb with download overlay */}
                         {!isEditing && p.imageData && (
-                          <img src={p.imageData} alt="" className="w-full rounded-lg mb-3 border border-gray-700" />
+                          <div className="relative group mb-3">
+                            <img src={p.imageData} alt="" className="w-full rounded-lg border border-gray-700" />
+                            <button
+                              type="button"
+                              className="absolute top-2 right-2 bg-black/70 hover:bg-black/90 text-white text-xs px-3 py-1.5 rounded-md border border-white/20 backdrop-blur-sm transition-all opacity-90 hover:opacity-100"
+                              onClick={() => downloadImage(p)}
+                              title={`Download as ${slugifyForFilename(p)}.png`}
+                            >
+                              {'⬇️'} Download
+                            </button>
+                          </div>
                         )}
 
                         {/* body */}
@@ -311,6 +366,9 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
                           ) : (
                             <>
                               <button className="btn-secondary text-xs" onClick={() => copyPost(p.text)}>{'\uD83D\uDCCB'} Copy</button>
+                              {p.imageData && (
+                                <button className="btn-secondary text-xs" onClick={() => downloadImage(p)} title={`Download as ${slugifyForFilename(p)}.png`}>{'\u2B07\uFE0F'} Download</button>
+                              )}
                               <button className="btn-ghost text-xs" onClick={() => startEdit(p)}>{'\u270F\uFE0F'} Tweak</button>
                               <select
                                 className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1"
