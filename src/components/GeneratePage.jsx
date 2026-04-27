@@ -172,77 +172,121 @@ function extractPostFacets(postText, trending, topicHint) {
 
 function buildQuoteSlides(facets) {
   const { hook, bullets, sentences, closing, topicLabel } = facets;
-  // Prefer punchy lines (≤ 18 words) for the headline; longer lines become context.
-  const punchy = [hook, ...sentences, ...bullets, closing]
+  // Pool of distinct, punchy candidates (≤22 words each)
+  const pool = [hook, ...sentences, ...bullets, closing]
     .map((s) => String(s || '').trim())
     .filter((s) => s.length >= 8 && s.split(/\s+/).length <= 22)
     .filter((s, i, a) => a.indexOf(s) === i);
-  const picks = punchy.slice(0, 5);
-  while (picks.length < 5) picks.push(hook || topicLabel || 'Insight');
-  return picks.map((q) => {
-    // Single supporting line (≤ 18 words), distinct from the quote
-    const supporting = [...bullets, ...sentences]
-      .find((x) => x && x !== q && x.split(/\s+/).length <= 22) || '';
+
+  // Build 5 picks with no consecutive duplicates. If pool < 5, cycle through it.
+  const picks = [];
+  for (let i = 0; i < 5; i++) {
+    if (pool.length > 0) picks.push(pool[i % pool.length]);
+    else picks.push(hook || topicLabel || 'Insight');
+  }
+
+  // Each slide gets a DIFFERENT supporting line so cards don't repeat.
+  const support = [...bullets, ...sentences]
+    .map((s) => String(s || '').trim())
+    .filter((s) => s.length >= 8 && s.split(/\s+/).length <= 22)
+    .filter((s, i, a) => a.indexOf(s) === i);
+
+  return picks.map((q, i) => {
+    // Find a supporting line that isn't the same as the quote
+    let supporting = '';
+    for (let k = 0; k < support.length; k++) {
+      const cand = support[(i + k) % support.length];
+      if (cand && cand !== q) { supporting = cand; break; }
+    }
     return {
-      // Headline: 12-word cap so it wraps cleanly to 2-3 lines on the canvas.
       quote: shortenWords(q, 12),
-      // Context: ONE short supporting line, no newlines, hard 16-word cap.
       context: shortenWords(supporting, 16),
-      // Closing panel line: 8 words.
       closing: shortenWords(closing || hook || '', 8),
     };
   });
 }
 
 function buildMultiSlides(facets, count) {
-  const { topicLabel, hook, paragraphs, bullets, numericFacts, closing } = facets;
-  const slides = [];
+  const { topicLabel, hook, paragraphs, bullets, sentences, numericFacts, closing } = facets;
+  // Pool of unique short content lines we can pull from across slides.
+  // Bullets first (they're already punchy), then sentences, then paragraphs.
+  const pool = [...bullets, ...sentences, ...paragraphs]
+    .map((s) => stripPlainText(s))
+    .filter((s) => s && s.length >= 8)
+    .filter((s, i, a) => a.indexOf(s) === i);
+  const pickFrom = (i) => pool.length ? pool[i % pool.length] : (hook || closing || 'Insight');
 
-  slides.push({
+  // Slide 1 \u2014 Hook / topic header
+  const s1 = {
     topic: topicLabel || 'INSIGHT',
-    title: shortenWords(hook, 8) || 'Insight',
-    sub: paragraphs[1] || '',
+    title: shortenWords(hook || pickFrom(0), 8),
+    sub: shortenWords(pickFrom(1), 14),
     subSub: '',
-  });
+  };
 
+  // Slide 2 \u2014 A stat (if any) OR a different framing
+  let s2;
   if (numericFacts.length > 0) {
     const nf = numericFacts[0];
-    slides.push({
+    s2 = {
       topic: 'BY THE NUMBERS',
       title: nf.stat,
-      sub: nf.label,
-      subSub: numericFacts[1] ? (numericFacts[1].stat + ' \u2014 ' + numericFacts[1].label) : '',
-    });
+      sub: shortenWords(nf.label, 14),
+      subSub: numericFacts[1] ? shortenWords(numericFacts[1].stat + ' \u2014 ' + numericFacts[1].label, 12) : '',
+    };
   } else {
-    slides.push({
-      topic: 'CONTEXT',
-      title: shortenWords(paragraphs[1] || hook, 8),
-      sub: paragraphs[2] || '',
+    s2 = {
+      topic: 'WHY IT MATTERS',
+      title: shortenWords(pickFrom(2), 8),
+      sub: shortenWords(pickFrom(3), 14),
       subSub: '',
-    });
+    };
   }
 
+  // Slide 3 & 4 \u2014 bullets if available, otherwise different content cuts
+  let s3, s4;
   if (bullets.length >= 2) {
     const half = Math.ceil(bullets.length / 2);
-    slides.push({ topic: 'KEY POINTS', title: 'What matters:', points: bullets.slice(0, half).map((b) => shortenWords(b, 12)) });
-    slides.push({ topic: 'AND THEN', title: 'And then:', points: bullets.slice(half).map((b) => shortenWords(b, 12)) });
+    s3 = { topic: 'KEY POINTS', title: 'What matters:', points: bullets.slice(0, half).map((b) => shortenWords(b, 12)) };
+    s4 = { topic: 'AND THEN', title: 'And then:', points: bullets.slice(half).map((b) => shortenWords(b, 12)) };
   } else if (bullets.length === 1) {
-    slides.push({ topic: 'KEY POINT', title: shortenWords(bullets[0], 10), sub: '', subSub: '' });
-    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[2] || paragraphs[1] || closing, 10), sub: '', subSub: '' });
+    s3 = { topic: 'KEY POINT', title: shortenWords(bullets[0], 10), sub: shortenWords(pickFrom(4), 14), subSub: '' };
+    s4 = { topic: 'CONTEXT', title: shortenWords(pickFrom(5), 10), sub: shortenWords(pickFrom(6), 14), subSub: '' };
   } else {
-    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[2] || paragraphs[1] || hook, 10), sub: paragraphs[3] || '', subSub: '' });
-    slides.push({ topic: 'INSIGHT', title: shortenWords(paragraphs[3] || paragraphs[2] || closing, 10), sub: '', subSub: '' });
+    s3 = { topic: 'CONTEXT', title: shortenWords(pickFrom(2), 10), sub: shortenWords(pickFrom(3), 14), subSub: '' };
+    s4 = { topic: 'INSIGHT', title: shortenWords(pickFrom(4), 10), sub: shortenWords(pickFrom(5), 14), subSub: '' };
   }
 
-  slides.push({
+  // Slide 5 \u2014 Closing CTA
+  const s5 = {
     topic: 'THE TAKEAWAY',
-    title: shortenWords(closing || hook, 10),
+    title: shortenWords(closing || hook || pickFrom(7), 10),
     sub: '',
     subSub: '',
-  });
+  };
+
+  const slides = [s1, s2, s3, s4, s5];
+
+  // Final pass: if any slide ended up identical to a previous one, vary it.
+  const seenTitles = new Set();
+  for (let i = 0; i < slides.length; i++) {
+    const sl = slides[i];
+    const key = (sl.title || '') + '|' + (sl.points || []).join('|');
+    if (seenTitles.has(key)) {
+      // Replace title with a different pool entry
+      sl.title = shortenWords(pickFrom(7 + i), 10);
+    }
+    seenTitles.add(key);
+  }
 
   while (slides.length < count) slides.push(slides[slides.length - 1]);
   return slides.slice(0, count);
+}
+
+// Helper used only inside buildMultiSlides \u2014 strip leading bullet markers if any.
+function stripPlainText(s) {
+  if (!s) return '';
+  return String(s).replace(/^[\s\u2192\u2022\u25ba\u25cf\-\*]+\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
 }
 
 export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {

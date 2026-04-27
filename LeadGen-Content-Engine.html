@@ -410,6 +410,26 @@ function sfExtractStat(raw) {
   return { stat: s.split(/\s+/)[0] || s, label: s };
 }
 function sfPad(W) { return Math.max(56, Math.round(W * 0.066)); }
+function sfCountWrappedLines(ctx, text, maxW) {
+  if (!text) return 0;
+  const words = String(text).split(/\s+/);
+  let line = ''; let count = 1;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { count++; line = w; }
+    else line = test;
+  }
+  return count;
+}
+function sfFitFontToLines(ctx, text, fontFn, maxW, maxLines, startSize, minSize) {
+  let size = startSize; ctx.font = fontFn(size);
+  while (size > minSize) {
+    const lines = sfCountWrappedLines(ctx, text, maxW);
+    if (lines <= maxLines) return size;
+    size -= 4; ctx.font = fontFn(size);
+  }
+  return minSize;
+}
 
 function generateStatCard(cv, opts) {
   const orient = opts.orientation === 'portrait' ? 'portrait' : 'landscape';
@@ -435,10 +455,11 @@ function generateStatCard(cv, opts) {
   const accentY = heroY + Math.round(fs * 0.12) + 8;
   sfAccent(ctx, pad, accentY, Math.min(180, Math.round(W * 0.18)), s.accent, 5);
   ctx.fillStyle = s.headline;
-  const descSize = orient === 'portrait' ? 44 : 38;
+  const descMaxLines = orient === 'portrait' ? 4 : 3;
+  const descSize = sfFitFontToLines(ctx, descriptor, (n) => '700 ' + n + 'px Inter, Helvetica, Arial, sans-serif', W - pad * 2, descMaxLines, orient === 'portrait' ? 44 : 38, orient === 'portrait' ? 28 : 24);
   ctx.font = '700 ' + descSize + 'px Inter, Helvetica, Arial, sans-serif';
   const descStartY = accentY + descSize + 16;
-  const descEndY = sfWrap(ctx, descriptor, pad, descStartY, W - pad * 2, descSize + 8, 4);
+  const descEndY = sfWrap(ctx, descriptor, pad, descStartY, W - pad * 2, descSize + 8, descMaxLines);
   if (opts.subtitle) {
     const bodySize = orient === 'portrait' ? 26 : 22;
     ctx.fillStyle = s.body;
@@ -469,12 +490,13 @@ function generateQuoteCard(cv, opts) {
     cursorY += llSize + 12;
   }
   const headline = opts.quote || opts.headline || 'Your perspective here.';
-  const hSize = orient === 'portrait' ? 64 : 54;
+  const headMaxLines = orient === 'portrait' ? 3 : 2;
+  const hSize = sfFitFontToLines(ctx, headline, (n) => '800 ' + n + 'px Inter, Helvetica, Arial, sans-serif', W - pad * 2, headMaxLines, orient === 'portrait' ? 64 : 54, orient === 'portrait' ? 36 : 30);
   ctx.fillStyle = s.headline;
   ctx.font = '800 ' + hSize + 'px Inter, Helvetica, Arial, sans-serif';
   ctx.textAlign = 'left';
   const headStartY = cursorY + hSize + 12;
-  const headEndY = sfWrap(ctx, headline, pad, headStartY, W - pad * 2, hSize + 12, 4);
+  const headEndY = sfWrap(ctx, headline, pad, headStartY, W - pad * 2, hSize + 12, headMaxLines);
   const accentY = headEndY + 24;
   sfAccent(ctx, pad, accentY, Math.min(140, Math.round(W * 0.14)), s.accent, 5);
   let bodyY = accentY + 42;
@@ -518,12 +540,13 @@ function generateMultiCard(cv, opts) {
   const counter = opts.slideCounter || (pad2(n) + ' / ' + pad2(total));
   sfCounter(ctx, counter, pad, pad + 16, s.counter);
   const title = opts.title || opts.topicLabel || 'Insight';
-  const tSize = orient === 'portrait' ? 68 : 54;
+  const titleMaxLines = orient === 'portrait' ? 3 : 2;
+  const tSize = sfFitFontToLines(ctx, title, (n) => '800 ' + n + 'px Inter, Helvetica, Arial, sans-serif', W - pad * 2, titleMaxLines, orient === 'portrait' ? 68 : 54, orient === 'portrait' ? 38 : 30);
   ctx.fillStyle = s.headline;
   ctx.font = '800 ' + tSize + 'px Inter, Helvetica, Arial, sans-serif';
   ctx.textAlign = 'left';
   const titleY = pad + 72 + tSize;
-  const titleEndY = sfWrap(ctx, title, pad, titleY, W - pad * 2, tSize + 10, 3);
+  const titleEndY = sfWrap(ctx, title, pad, titleY, W - pad * 2, tSize + 10, titleMaxLines);
   const accentY = titleEndY + 22;
   sfAccent(ctx, pad, accentY, Math.min(160, Math.round(W * 0.14)), s.accent, 5);
   let bodyY = accentY + 40; const bodyX = pad; const bodyW = W - pad * 2;
@@ -1727,15 +1750,25 @@ function extractPostFacets(postText, trending, topicHint) {
   return { topic, topicLabel: String(topic).toUpperCase(), hook, paragraphs, bullets, sentences, numericFacts, closing };
 }
 function buildQuoteSlides(facets) {
-  const punchy = [facets.hook, ...facets.sentences, ...facets.bullets, facets.closing]
+  const pool = [facets.hook, ...facets.sentences, ...facets.bullets, facets.closing]
     .map((s) => String(s || '').trim())
     .filter((s) => s.length >= 8 && s.split(/\s+/).length <= 22)
     .filter((s, i, a) => a.indexOf(s) === i);
-  const picks = punchy.slice(0, 5);
-  while (picks.length < 5) picks.push(facets.hook || facets.topicLabel || 'Insight');
-  return picks.map((q) => {
-    const supporting = [...facets.bullets, ...facets.sentences]
-      .find((x) => x && x !== q && x.split(/\s+/).length <= 22) || '';
+  const picks = [];
+  for (let i = 0; i < 5; i++) {
+    if (pool.length > 0) picks.push(pool[i % pool.length]);
+    else picks.push(facets.hook || facets.topicLabel || 'Insight');
+  }
+  const support = [...facets.bullets, ...facets.sentences]
+    .map((s) => String(s || '').trim())
+    .filter((s) => s.length >= 8 && s.split(/\s+/).length <= 22)
+    .filter((s, i, a) => a.indexOf(s) === i);
+  return picks.map((q, i) => {
+    let supporting = '';
+    for (let k = 0; k < support.length; k++) {
+      const cand = support[(i + k) % support.length];
+      if (cand && cand !== q) { supporting = cand; break; }
+    }
     return {
       quote: shortenWords(q, 12),
       context: shortenWords(supporting, 16),
@@ -1743,28 +1776,46 @@ function buildQuoteSlides(facets) {
     };
   });
 }
+function stripPlainText(s) {
+  if (!s) return '';
+  return String(s).replace(/^[\s\u2192\u2022\u25BA\u25CF\-\*]+\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
+}
 function buildMultiSlides(facets, count) {
-  const { topicLabel, hook, paragraphs, bullets, numericFacts, closing } = facets;
-  const slides = [];
-  slides.push({ topic: topicLabel || 'INSIGHT', title: shortenWords(hook, 8) || 'Insight', sub: paragraphs[1] || '', subSub: '' });
+  const { topicLabel, hook, paragraphs, bullets, sentences, numericFacts, closing } = facets;
+  const pool = [...bullets, ...sentences, ...paragraphs]
+    .map((s) => stripPlainText(s))
+    .filter((s) => s && s.length >= 8)
+    .filter((s, i, a) => a.indexOf(s) === i);
+  const pickFrom = (i) => pool.length ? pool[i % pool.length] : (hook || closing || 'Insight');
+  const s1 = { topic: topicLabel || 'INSIGHT', title: shortenWords(hook || pickFrom(0), 8), sub: shortenWords(pickFrom(1), 14), subSub: '' };
+  let s2;
   if (numericFacts.length > 0) {
     const nf = numericFacts[0];
-    slides.push({ topic: 'BY THE NUMBERS', title: nf.stat, sub: nf.label, subSub: numericFacts[1] ? (numericFacts[1].stat + ' \u2014 ' + numericFacts[1].label) : '' });
+    s2 = { topic: 'BY THE NUMBERS', title: nf.stat, sub: shortenWords(nf.label, 14), subSub: numericFacts[1] ? shortenWords(numericFacts[1].stat + ' \u2014 ' + numericFacts[1].label, 12) : '' };
   } else {
-    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[1] || hook, 8), sub: paragraphs[2] || '', subSub: '' });
+    s2 = { topic: 'WHY IT MATTERS', title: shortenWords(pickFrom(2), 8), sub: shortenWords(pickFrom(3), 14), subSub: '' };
   }
+  let s3, s4;
   if (bullets.length >= 2) {
     const half = Math.ceil(bullets.length / 2);
-    slides.push({ topic: 'KEY POINTS', title: 'What matters:', points: bullets.slice(0, half).map((b) => shortenWords(b, 12)) });
-    slides.push({ topic: 'AND THEN', title: 'And then:', points: bullets.slice(half).map((b) => shortenWords(b, 12)) });
+    s3 = { topic: 'KEY POINTS', title: 'What matters:', points: bullets.slice(0, half).map((b) => shortenWords(b, 12)) };
+    s4 = { topic: 'AND THEN', title: 'And then:', points: bullets.slice(half).map((b) => shortenWords(b, 12)) };
   } else if (bullets.length === 1) {
-    slides.push({ topic: 'KEY POINT', title: shortenWords(bullets[0], 10), sub: '', subSub: '' });
-    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[2] || paragraphs[1] || closing, 10), sub: '', subSub: '' });
+    s3 = { topic: 'KEY POINT', title: shortenWords(bullets[0], 10), sub: shortenWords(pickFrom(4), 14), subSub: '' };
+    s4 = { topic: 'CONTEXT', title: shortenWords(pickFrom(5), 10), sub: shortenWords(pickFrom(6), 14), subSub: '' };
   } else {
-    slides.push({ topic: 'CONTEXT', title: shortenWords(paragraphs[2] || paragraphs[1] || hook, 10), sub: paragraphs[3] || '', subSub: '' });
-    slides.push({ topic: 'INSIGHT', title: shortenWords(paragraphs[3] || paragraphs[2] || closing, 10), sub: '', subSub: '' });
+    s3 = { topic: 'CONTEXT', title: shortenWords(pickFrom(2), 10), sub: shortenWords(pickFrom(3), 14), subSub: '' };
+    s4 = { topic: 'INSIGHT', title: shortenWords(pickFrom(4), 10), sub: shortenWords(pickFrom(5), 14), subSub: '' };
   }
-  slides.push({ topic: 'THE TAKEAWAY', title: shortenWords(closing || hook, 10), sub: '', subSub: '' });
+  const s5 = { topic: 'THE TAKEAWAY', title: shortenWords(closing || hook || pickFrom(7), 10), sub: '', subSub: '' };
+  const slides = [s1, s2, s3, s4, s5];
+  const seen = new Set();
+  for (let i = 0; i < slides.length; i++) {
+    const sl = slides[i];
+    const key = (sl.title || '') + '|' + ((sl.points || []).join('|'));
+    if (seen.has(key)) sl.title = shortenWords(pickFrom(7 + i), 10);
+    seen.add(key);
+  }
   while (slides.length < count) slides.push(slides[slides.length - 1]);
   return slides.slice(0, count);
 }

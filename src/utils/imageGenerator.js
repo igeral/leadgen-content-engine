@@ -86,6 +86,38 @@ function drawParagraphs(ctx, text, x, y, maxW, lh, color) {
   return cy - lh;
 }
 
+// Count how many lines `text` would wrap into at the current ctx.font.
+function countWrappedLines(ctx, text, maxW) {
+  if (!text) return 0;
+  const words = String(text).split(/\s+/);
+  let line = '';
+  let count = 1;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      count++;
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  return count;
+}
+
+// Find the largest font size at which `text` wraps within `maxLines`.
+// fontFn(size) returns the CSS font string for that size.
+function fitFontToLines(ctx, text, fontFn, maxW, maxLines, startSize, minSize) {
+  let size = startSize;
+  ctx.font = fontFn(size);
+  while (size > minSize) {
+    const lines = countWrappedLines(ctx, text, maxW);
+    if (lines <= maxLines) return size;
+    size -= 4;
+    ctx.font = fontFn(size);
+  }
+  return minSize;
+}
+
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -178,12 +210,19 @@ export function generateStatCard(canvas, opts) {
   const accentY = heroY + Math.round(fs * 0.12) + 8;
   drawAccent(ctx, pad, accentY, Math.min(180, Math.round(W * 0.18)), s.accent, 5);
 
-  // Descriptor (bold, navy/white)
+  // Descriptor (bold, navy/white) — auto-fit so long descriptors don't overflow
   ctx.fillStyle = s.headline;
-  const descSize = orient === 'portrait' ? 44 : 38;
+  const descMaxLines = orient === 'portrait' ? 4 : 3;
+  const descSize = fitFontToLines(
+    ctx, descriptor,
+    (n) => `700 ${n}px Inter, Helvetica, Arial, sans-serif`,
+    W - pad * 2, descMaxLines,
+    orient === 'portrait' ? 44 : 38,
+    orient === 'portrait' ? 28 : 24
+  );
   ctx.font = `700 ${descSize}px Inter, Helvetica, Arial, sans-serif`;
   const descStartY = accentY + descSize + 16;
-  const descEndY = wrapLine(ctx, descriptor, pad, descStartY, W - pad * 2, descSize + 8, 4);
+  const descEndY = wrapLine(ctx, descriptor, pad, descStartY, W - pad * 2, descSize + 8, descMaxLines);
 
   // Supporting body text
   if (opts.subtitle) {
@@ -228,14 +267,21 @@ export function generateQuoteCard(canvas, opts) {
     cursorY += llSize + 12;
   }
 
-  // Headline (big, left-aligned, multi-line)
+  // Headline (big, left-aligned, multi-line) — auto-fit to a 3-line budget
   const headline = opts.quote || opts.headline || 'Your perspective here.';
-  const hSize = orient === 'portrait' ? 64 : 54;
+  const headMaxLines = orient === 'portrait' ? 3 : 2;
+  const hSize = fitFontToLines(
+    ctx, headline,
+    (n) => `800 ${n}px Inter, Helvetica, Arial, sans-serif`,
+    W - pad * 2, headMaxLines,
+    orient === 'portrait' ? 64 : 54,
+    orient === 'portrait' ? 36 : 30
+  );
   ctx.fillStyle = s.headline;
   ctx.font = `800 ${hSize}px Inter, Helvetica, Arial, sans-serif`;
   ctx.textAlign = 'left';
   const headStartY = cursorY + hSize + 12;
-  const headEndY = wrapLine(ctx, headline, pad, headStartY, W - pad * 2, hSize + 12, 4);
+  const headEndY = wrapLine(ctx, headline, pad, headStartY, W - pad * 2, hSize + 12, headMaxLines);
 
   // Accent line
   const accentY = headEndY + 24;
@@ -302,14 +348,21 @@ export function generateMultiCard(canvas, opts) {
   const counter = opts.slideCounter || `${pad2(n)} / ${pad2(total)}`;
   drawSlideCounter(ctx, counter, pad, pad + 16, s.counter);
 
-  // Headline (topic heading, bold at top)
+  // Headline (topic heading, bold at top) — auto-fit so long titles don't overflow
   const title = opts.title || opts.topicLabel || 'Insight';
-  const tSize = orient === 'portrait' ? 68 : 54;
+  const titleMaxLines = orient === 'portrait' ? 3 : 2;
+  const tSize = fitFontToLines(
+    ctx, title,
+    (n) => `800 ${n}px Inter, Helvetica, Arial, sans-serif`,
+    W - pad * 2, titleMaxLines,
+    orient === 'portrait' ? 68 : 54,
+    orient === 'portrait' ? 38 : 30
+  );
   ctx.fillStyle = s.headline;
   ctx.font = `800 ${tSize}px Inter, Helvetica, Arial, sans-serif`;
   ctx.textAlign = 'left';
   const titleY = pad + 72 + tSize;
-  const titleEndY = wrapLine(ctx, title, pad, titleY, W - pad * 2, tSize + 10, 3);
+  const titleEndY = wrapLine(ctx, title, pad, titleY, W - pad * 2, tSize + 10, titleMaxLines);
 
   // Accent line under title
   const accentY = titleEndY + 22;
