@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { callOpenRouter, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
+import { useState, useRef, useEffect } from 'react';
+import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
@@ -316,6 +316,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [imageStyle, setImageStyle] = useState('stat');
 
   // ─── OUTPUT STATE ───
+  // posts[] holds 5 distinct post variations; post is the currently-displayed one
+  // (synced with selectedImg so clicking a thumbnail swaps both text and card).
+  const [posts, setPosts] = useState([]);
   const [post, setPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
@@ -324,6 +327,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [images, setImages] = useState([]);
   const [selectedImg, setSelectedImg] = useState(0);
   const [genPhase, setGenPhase] = useState('');
+
+  // Sync displayed post with the selected card index so clicking a thumbnail
+  // swaps both the post body shown above AND the card.
+  useEffect(() => {
+    if (posts.length > 0 && posts[selectedImg] !== undefined) {
+      setPost(posts[selectedImg]);
+    }
+  }, [selectedImg, posts]);
   const cvRef = useRef(null);
 
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
@@ -346,78 +357,67 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setTrendingLoading(false);
   };
 
-  // ─── BRANDED CARD GENERATORS ───
-  // Always alternate variants so a 5-card set is roughly half dark, half cream.
-  // Card content is derived from the actual generated post text so each card
-  // reflects what the post says, not a hardcoded placeholder set.
-  const makeBrandedImages = (postText, ctx) => {
+  // ─── BRANDED CARD GENERATOR (one card per post) ───
+  // Each post gets its own card derived from THAT post's content.
+  // Variants alternate by index so a 5-card batch is half dark / half cream.
+  const makeBrandedCard = (postText, cardIndex, totalCards, ctx) => {
     const cv = cvRef.current;
-    if (!cv) return [];
-    const results = [];
-    const variantFor = (i) => (i % 2 === 0 ? 'dark' : 'light');
+    if (!cv) return null;
+    const variant = cardIndex % 2 === 0 ? 'dark' : 'light';
     const facets = extractPostFacets(postText, ctx && ctx.trending, ctx && ctx.topicHint);
     const dp = brand.dataPoints || [];
 
     if (imageStyle === 'stat') {
-      // Prefer numeric facts pulled from the post; fall back to brand data points.
-      let statSlides = facets.numericFacts.length
-        ? facets.numericFacts
-        : (dp.length
-            ? dp.map((d) => parseStatLine(d))
-            : [{ stat: 'Insight', label: facets.hook || (pillar.name + ' insights') }]);
-      const slides = [];
-      for (let i = 0; i < IMAGE_COUNT; i++) slides.push(statSlides[i % statSlides.length]);
-      for (let i = 0; i < IMAGE_COUNT; i++) {
-        const sl = slides[i];
-        generateStatCard(cv, {
-          stat: sl.stat,
-          label: sl.label,
-          subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' · ' + (brand.tagline || '')).trim(),
-          brandName: brand.name,
-          orientation: 'portrait',
-          variant: variantFor(i),
-        });
-        results.push({ url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null });
-      }
-    } else if (imageStyle === 'quote') {
-      // Quote cards: each pulls a different short impactful line from the post.
-      const quotes = buildQuoteSlides(facets);
-      for (let i = 0; i < IMAGE_COUNT; i++) {
-        const q = quotes[i % quotes.length];
-        generateQuoteCard(cv, {
-          quote: q.quote,
-          context: q.context,
-          closingLine: q.closing,
-          brandName: brand.name,
-          orientation: 'portrait',
-          variant: variantFor(i),
-        });
-        results.push({ url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + q.quote.slice(0, 60), error: null });
-      }
-    } else {
-      // Multi-image carousel: 5 slides built from the post's actual content.
-      const slides = buildMultiSlides(facets, IMAGE_COUNT);
-      for (let i = 0; i < IMAGE_COUNT; i++) {
-        const c = slides[i];
-        generateMultiCard(cv, {
-          cardNumber: String(i + 1),
-          totalCards: String(IMAGE_COUNT),
-          topicLabel: c.topic,
-          title: c.title,
-          subtitle: c.sub,
-          subSubtitle: c.subSub,
-          points: c.points,
-          closingLine: c.closing,
-          brandName: brand.name,
-          orientation: 'portrait',
-          variant: variantFor(i),
-        });
-        results.push({ url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (i + 1) + ': ' + c.topic, error: null });
-      }
+      // Prefer a numeric fact from the post; fall back to brand data point.
+      const sl = facets.numericFacts[0]
+        || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (pillar.name + ' insights') });
+      generateStatCard(cv, {
+        stat: sl.stat,
+        label: sl.label,
+        subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' · ' + (brand.tagline || '')).trim(),
+        brandName: brand.name,
+        orientation: 'portrait',
+        variant,
+      });
+      return { url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
     }
-    setImages(results);
+    if (imageStyle === 'quote') {
+      const quote = shortenWords(facets.hook || facets.topicLabel, 12);
+      const context = shortenWords(facets.bullets[0] || facets.sentences[1] || facets.paragraphs[1] || '', 16);
+      const closing = shortenWords(facets.closing || facets.hook || '', 8);
+      generateQuoteCard(cv, {
+        quote, context, closingLine: closing,
+        brandName: brand.name,
+        orientation: 'portrait',
+        variant,
+      });
+      return { url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + quote.slice(0, 60), error: null };
+    }
+    // multi-card single slide for this post
+    generateMultiCard(cv, {
+      cardNumber: String(cardIndex + 1),
+      totalCards: String(totalCards),
+      topicLabel: facets.topicLabel,
+      title: shortenWords(facets.hook, 8) || 'Insight',
+      subtitle: shortenWords(facets.paragraphs[1] || facets.bullets[0] || facets.sentences[1] || '', 14),
+      subSubtitle: shortenWords(facets.closing, 14),
+      brandName: brand.name,
+      orientation: 'portrait',
+      variant,
+    });
+    return { url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (cardIndex + 1) + ': ' + facets.topicLabel, error: null };
+  };
+
+  // Produce N cards (one per post text), set state, return them.
+  const makeBrandedImagesForPosts = (postTexts, ctx) => {
+    const out = [];
+    for (let i = 0; i < postTexts.length; i++) {
+      const card = makeBrandedCard(postTexts[i], i, postTexts.length, ctx);
+      if (card) out.push(card);
+    }
+    setImages(out);
     setSelectedImg(0);
-    return results;
+    return out;
   };
 
   // ─── AUTO-SAVE TO ARCHIVE (weekday-balanced) ───
@@ -456,10 +456,15 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     showToast('Auto-saved to Archive');
   };
 
-  // ─── CORE SINGLE-POST GENERATION (shared by single + batch modes) ───
+  // ─── CORE GENERATION ───
+  // Produces N=IMAGE_COUNT distinct post variations, each with its OWN paired
+  // card. Auto-saves N separate Archive entries (weekday-spread).
   // forcedTrending: when provided, uses this trending topic instead of selectedTrending
   //                 and skips the auto-trending fetch step.
-  const runSingleGeneration = async ({ forcedTrending = null } = {}) => {
+  // singlePost:     when true, only generates ONE post + ONE card (used by the
+  //                 trending batch where each trending topic produces one post).
+  const runGeneration = async ({ forcedTrending = null, singlePost = false } = {}) => {
+    setPosts([]);
     setPost('');
     setImages([]);
     setSelectedImg(0);
@@ -472,8 +477,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       trendingTopic: null,
     };
 
-    let txt;
     let activeTrending = forcedTrending || selectedTrending;
+    let postTexts = [];
+    const wantedCount = singlePost ? 1 : IMAGE_COUNT;
 
     if (live) {
       if (!forcedTrending && autoTrending && !selectedTrending && !topic) {
@@ -488,43 +494,67 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         }
       }
       contentOpts.trendingTopic = activeTrending;
-      setGenPhase(activeTrending ? `Writing about: ${activeTrending.topic.substring(0, 50)}...` : 'Generating fresh content...');
-      txt = await callOpenRouter(
-        manualKey,
-        selModel,
-        buildSystemPrompt(brand, platform, advancedOpts),
-        buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)
-      );
+      const phaseLabel = activeTrending ? `Writing ${wantedCount} variations on: ${activeTrending.topic.substring(0, 40)}...` : `Generating ${wantedCount} fresh post${wantedCount > 1 ? ' variations' : ''}...`;
+      setGenPhase(phaseLabel);
+      if (singlePost) {
+        const t = await callOpenRouter(
+          manualKey,
+          selModel,
+          buildSystemPrompt(brand, platform, advancedOpts),
+          buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)
+        );
+        postTexts = [t];
+      } else {
+        postTexts = await callOpenRouterMultiPost(
+          manualKey,
+          selModel,
+          buildSystemPrompt(brand, platform, advancedOpts),
+          buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts),
+          IMAGE_COUNT
+        );
+      }
     } else {
+      // Demo mode: pick N distinct mock posts
       await new Promise((r) => setTimeout(r, 1500));
       const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
       const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
-      txt = pl[Math.floor(Math.random() * pl.length)];
+      const shuffled = [...pl].sort(() => Math.random() - 0.5);
+      postTexts = [];
+      for (let i = 0; i < wantedCount; i++) postTexts.push(shuffled[i % shuffled.length]);
     }
 
-    setPost(txt);
-    setGenPhase('');
+    setPosts(postTexts);
+    setPost(postTexts[0] || '');
+    setGenPhase(`Rendering ${postTexts.length} card${postTexts.length > 1 ? 's' : ''}...`);
 
-    const imgResults = makeBrandedImages(txt, { trending: activeTrending, topicHint: topic }) || [];
+    const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }) || [];
 
-    autoSaveToArchive(txt, imgResults, {
-      platform,
-      pillar,
-      tone,
-      ctaType,
-      trendingTopic: activeTrending?.topic || null,
-      imageStyle,
-    });
+    // Auto-save: one Archive entry per post, weekday-spread by the functional
+    // setState updater inside autoSaveToArchive.
+    for (let i = 0; i < postTexts.length; i++) {
+      const card = imgResults[i] ? [imgResults[i]] : [];
+      autoSaveToArchive(postTexts[i], card, {
+        platform,
+        pillar,
+        tone,
+        ctaType,
+        trendingTopic: activeTrending?.topic || null,
+        imageStyle,
+      });
+    }
 
-    return { txt, imgResults };
+    return { postTexts, imgResults };
   };
 
-  // ─── MAIN GENERATE (single post) ───
+  // Backwards-compat alias used by the trending batch loop (one post per topic).
+  const runSingleGeneration = ({ forcedTrending = null } = {}) => runGeneration({ forcedTrending, singlePost: true });
+
+  // ─── MAIN GENERATE (5 posts × 5 paired cards) ───
   const generate = async () => {
     setLoading(true);
     setError('');
     try {
-      await runSingleGeneration();
+      await runGeneration({ singlePost: false });
     } catch (e) {
       setError(e.message);
     }
@@ -561,7 +591,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   };
 
   const savePost = () => {
-    if (!post) return;
+    // Save the currently-selected post (paired with its card)
+    const currentText = posts[selectedImg] || post;
+    if (!currentText) return;
     const currentImg = images[selectedImg]?.url || null;
     const now = new Date();
     const weekdayName = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -571,7 +603,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       ...p,
       {
         id: Date.now(),
-        text: post,
+        text: currentText,
         platform,
         pillar: pillar.name,
         audience: pillar.audience,
@@ -581,7 +613,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         imageStyle,
         imageMode: 'branded',
         imageData: currentImg,
-        allImages: images.filter((i) => i.url).map((i) => i.url),
+        allImages: currentImg ? [currentImg] : [],
         createdAt: now.toLocaleString(),
         weekday,
       },
@@ -837,7 +869,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ))}
           </div>
 
-          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} branded cards per post)</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({IMAGE_COUNT} posts × 1 branded card each)</label>
           <div className="mb-4 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-gray-300 text-sm">
             <span className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</span>
             <span className="text-xs opacity-70 ml-2">Canvas-based, instant, on-brand</span>
@@ -850,7 +882,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ) : imgLoading ? (
               <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
             ) : (
-              <>{'\u26A1'} {autoTrending && live ? 'Find Trend + Generate' : `Generate Post + ${IMAGE_COUNT} Images`}</>
+              <>{'\u26A1'} {autoTrending && live ? `Find Trend + Generate ${IMAGE_COUNT} Posts` : `Generate ${IMAGE_COUNT} Posts + ${IMAGE_COUNT} Cards`}</>
             )}
           </button>
           {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}
@@ -876,7 +908,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         {/* Post preview */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-white">{platform} Post Preview</h2>
+            <h2 className="text-lg font-bold text-white">
+              {platform} Post Preview
+              {posts.length > 1 && <span className="text-sm font-normal text-gray-400 ml-2">(Post {selectedImg + 1} of {posts.length})</span>}
+            </h2>
             {post && (
               <div className="flex gap-2">
                 <button className="btn-secondary text-sm" onClick={() => { navigator.clipboard.writeText(post); showToast('Post copied!'); }}>{'\uD83D\uDCCB'} Copy</button>
@@ -919,7 +954,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="text-center py-16 text-gray-500">
               <div className="text-4xl mb-3">{'\u270D\uFE0F'}</div>
               <p>Your generated post will appear here</p>
-              <p className="text-sm mt-1">{live ? (autoTrending ? 'AI will find trending topics + generate content' : 'Live AI mode active') : 'Demo mode \u2014 add API key for live AI'}</p>
+              <p className="text-sm mt-1">{live ? (autoTrending ? `AI will find a trend + write ${IMAGE_COUNT} posts` : `Live AI mode \u2014 ${IMAGE_COUNT} posts per click`) : 'Demo mode \u2014 add API key for live AI'}</p>
             </div>
           )}
         </div>
@@ -944,7 +979,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="text-center py-14 text-gray-500">
               <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
               <p className="font-medium text-gray-300">{imgProgress || 'Generating images...'}</p>
-              <p className="text-sm mt-1">Creating {IMAGE_COUNT} branded cards</p>
+              <p className="text-sm mt-1">Generating {IMAGE_COUNT} posts and rendering paired cards</p>
               <div className="flex justify-center gap-2 mt-4">
                 {Array.from({ length: IMAGE_COUNT }).map((_, i) => (
                   <div key={i} className={`w-3 h-3 rounded-full transition-all ${

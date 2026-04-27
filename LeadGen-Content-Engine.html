@@ -212,6 +212,48 @@ async function callOpenRouter(mk, model, sysPrompt, userPrompt) {
   return (await resp.json()).choices[0].message.content;
 }
 
+// Generate N distinct post variations on the same topic. Each takes a
+// different angle so the user gets N separate posts (not N images of one post).
+async function callOpenRouterMultiPost(mk, model, sysPrompt, userPromptCore, count) {
+  const key = getApiKey(mk);
+  const angles = [
+    'Problem-framed — name the pain sharply, then offer a frame to think about it',
+    'Stat-led — open with a hard number, build the story around it',
+    'Story-led — short specific scenario or example, then the lesson',
+    'Contrarian — challenge a common assumption with evidence',
+    'CTA-led — sharp question or direct ask up front, support with reasoning',
+  ];
+  const wrapper = '\n\nGENERATE EXACTLY ' + count + ' DISTINCT POST VARIATIONS on the same topic and audience.\n\nEach variation must take a DIFFERENT angle:\n' +
+    angles.slice(0, count).map(function(a, i) { return (i + 1) + '. ' + a; }).join('\n') +
+    '\n\nRules:\n- Each post is FULLY WRITTEN (hook + body + CTA), 100-200 words\n- Each post uses a DIFFERENT opening hook — no repeated openers\n- Each post must read as standalone, publishable on its own\n- Vary the structure: some with bullets, some prose, some short punchy lines\n\nReturn ONLY a JSON array of exactly ' + count + ' strings — each string is one full post.\nNO code fences. NO commentary. NO labels. Just the raw JSON array.\n\nExample shape:\n["Post one full text...", "Post two full text...", ...]';
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST', headers: apiHeaders(key),
+    body: JSON.stringify({ model, messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: userPromptCore + wrapper }], temperature: 0.95, max_tokens: 4000 }),
+  });
+  if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.error?.message || 'API error: ' + resp.status); }
+  const raw = (await resp.json()).choices[0].message.content;
+  const posts = parseJsonStringArray(raw);
+  if (!posts || posts.length === 0) throw new Error('Could not parse post variations from AI response');
+  while (posts.length < count) posts.push(posts[posts.length - 1]);
+  return posts.slice(0, count);
+}
+
+function parseJsonStringArray(raw) {
+  if (!raw) return null;
+  let cleaned = String(raw).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const m = cleaned.match(/\[[\s\S]*\]/);
+  if (!m) return null;
+  try {
+    const arr = JSON.parse(m[0]);
+    if (!Array.isArray(arr)) return null;
+    return arr.map(function(x) { return String(x).trim(); }).filter(function(x) { return x.length > 0; });
+  } catch (e) {
+    const fallback = String(raw).split(/\n\s*\d+\.\s+/).map(function(x) { return x.trim(); }).filter(function(x) { return x.length > 40; });
+    if (fallback.length >= 2) return fallback;
+    return null;
+  }
+}
+
 // ─── TRENDING TOPIC DISCOVERY ───
 async function fetchTrendingTopics(mk, model, brand, pillar, platform, count) {
   count = count || 5;
@@ -718,6 +760,8 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
   const [keyPhrases, setKeyPhrases] = useState('');
   const [avoidTopics, setAvoidTopics] = useState('');
   const [imageStyle, setImageStyle] = useState('stat');
+  // posts[] holds N distinct post variations; post is currently-displayed (synced with selectedImg)
+  const [posts, setPosts] = useState([]);
   const [post, setPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
@@ -727,6 +771,11 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
   const [selectedImg, setSelectedImg] = useState(0);
   const [genPhase, setGenPhase] = useState('');
   const cvRef = useRef(null);
+
+  // Sync displayed post with selected card index
+  useEffect(() => {
+    if (posts.length > 0 && posts[selectedImg] !== undefined) setPost(posts[selectedImg]);
+  }, [selectedImg, posts]);
 
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
   const parseList = (str) => str.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean);
@@ -741,39 +790,41 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     setTrendingLoading(false);
   };
 
-  // Post-driven branded cards: alternates dark/cream and pulls content from the actual post.
-  const makeBrandedImages = (postText, ctx) => {
-    const cv = cvRef.current; if (!cv) return [];
-    const results = [];
-    const variantFor = (i) => (i % 2 === 0 ? 'dark' : 'light');
+  // One card per post (paired by index). Variants alternate dark/cream.
+  const makeBrandedCard = (postText, cardIndex, totalCards, ctx) => {
+    const cv = cvRef.current; if (!cv) return null;
+    const variant = cardIndex % 2 === 0 ? 'dark' : 'light';
     const facets = extractPostFacets(postText, ctx && ctx.trending, ctx && ctx.topicHint);
     const dp = brand.dataPoints || [];
     if (imageStyle === 'stat') {
-      let statSlides = facets.numericFacts.length ? facets.numericFacts
-        : (dp.length ? dp.map((d) => parseStatLine(d)) : [{ stat: 'Insight', label: facets.hook || (pillar.name + ' insights') }]);
-      const slides = [];
-      for (let i = 0; i < IMAGE_COUNT; i++) slides.push(statSlides[i % statSlides.length]);
-      for (let i = 0; i < IMAGE_COUNT; i++) {
-        const sl = slides[i];
-        generateStatCard(cv, { stat: sl.stat, label: sl.label, subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' \u00B7 ' + (brand.tagline || '')).trim(), brandName: brand.name, orientation: 'portrait', variant: variantFor(i) });
-        results.push({ url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null });
-      }
-    } else if (imageStyle === 'quote') {
-      const quotes = buildQuoteSlides(facets);
-      for (let i = 0; i < IMAGE_COUNT; i++) {
-        const q = quotes[i % quotes.length];
-        generateQuoteCard(cv, { quote: q.quote, context: q.context, closingLine: q.closing, brandName: brand.name, orientation: 'portrait', variant: variantFor(i) });
-        results.push({ url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + q.quote.slice(0, 60), error: null });
-      }
-    } else {
-      const slides = buildMultiSlides(facets, IMAGE_COUNT);
-      for (let i = 0; i < IMAGE_COUNT; i++) {
-        const c = slides[i];
-        generateMultiCard(cv, { cardNumber: String(i + 1), totalCards: String(IMAGE_COUNT), topicLabel: c.topic, title: c.title, subtitle: c.sub, subSubtitle: c.subSub, points: c.points, closingLine: c.closing, brandName: brand.name, orientation: 'portrait', variant: variantFor(i) });
-        results.push({ url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (i + 1) + ': ' + c.topic, error: null });
-      }
+      const sl = facets.numericFacts[0] || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (pillar.name + ' insights') });
+      generateStatCard(cv, { stat: sl.stat, label: sl.label, subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' \u00B7 ' + (brand.tagline || '')).trim(), brandName: brand.name, orientation: 'portrait', variant: variant });
+      return { url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
     }
-    setImages(results); setSelectedImg(0); return results;
+    if (imageStyle === 'quote') {
+      const quote = shortenWords(facets.hook || facets.topicLabel, 12);
+      const context = shortenWords(facets.bullets[0] || facets.sentences[1] || facets.paragraphs[1] || '', 16);
+      const closing = shortenWords(facets.closing || facets.hook || '', 8);
+      generateQuoteCard(cv, { quote: quote, context: context, closingLine: closing, brandName: brand.name, orientation: 'portrait', variant: variant });
+      return { url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + quote.slice(0, 60), error: null };
+    }
+    generateMultiCard(cv, {
+      cardNumber: String(cardIndex + 1), totalCards: String(totalCards),
+      topicLabel: facets.topicLabel,
+      title: shortenWords(facets.hook, 8) || 'Insight',
+      subtitle: shortenWords(facets.paragraphs[1] || facets.bullets[0] || facets.sentences[1] || '', 14),
+      subSubtitle: shortenWords(facets.closing, 14),
+      brandName: brand.name, orientation: 'portrait', variant: variant
+    });
+    return { url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (cardIndex + 1) + ': ' + facets.topicLabel, error: null };
+  };
+  const makeBrandedImagesForPosts = (postTexts, ctx) => {
+    const out = [];
+    for (let i = 0; i < postTexts.length; i++) {
+      const card = makeBrandedCard(postTexts[i], i, postTexts.length, ctx);
+      if (card) out.push(card);
+    }
+    setImages(out); setSelectedImg(0); return out;
   };
 
   // Weekday-balanced auto-save: picks the day with the fewest posts (ties -> Monday first)
@@ -808,15 +859,18 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     showToast('Auto-saved to Archive');
   };
 
-  // Core single-post generation — shared by single + batch paths
-  const runSingleGeneration = async (opts) => {
+  // Core generation — N distinct posts each with its own paired card.
+  // singlePost: when true, only ONE post + ONE card (used by trending batch).
+  const runGeneration = async (opts) => {
     opts = opts || {};
     const forcedTrending = opts.forcedTrending || null;
-    setPost(''); setImages([]); setSelectedImg(0);
+    const singlePost = !!opts.singlePost;
+    setPosts([]); setPost(''); setImages([]); setSelectedImg(0);
     const advancedOpts = { tone, ctaType, useEmoji, formatting };
     const contentOpts = { keywords: parseList(keywords), keyPhrases: parseList(keyPhrases), avoidTopics: parseList(avoidTopics), trendingTopic: null };
-    let txt;
     let activeTrending = forcedTrending || selectedTrending;
+    let postTexts = [];
+    const wantedCount = singlePost ? 1 : IMAGE_COUNT;
     if (live) {
       if (!forcedTrending && autoTrending && !selectedTrending && !topic) {
         setGenPhase('Discovering trending topics...');
@@ -828,23 +882,38 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         } catch (e) { console.warn('[LeadGen] Auto-trending failed:', e.message); }
       }
       contentOpts.trendingTopic = activeTrending;
-      setGenPhase(activeTrending ? 'Writing about: ' + activeTrending.topic.substring(0, 50) + '...' : 'Generating fresh content...');
-      txt = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform, advancedOpts), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts));
+      const phaseLabel = activeTrending ? ('Writing ' + wantedCount + ' variations on: ' + activeTrending.topic.substring(0, 40) + '...') : ('Generating ' + wantedCount + ' fresh post' + (wantedCount > 1 ? ' variations' : '') + '...');
+      setGenPhase(phaseLabel);
+      if (singlePost) {
+        const t = await callOpenRouter(manualKey, selModel, buildSystemPrompt(brand, platform, advancedOpts), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts));
+        postTexts = [t];
+      } else {
+        postTexts = await callOpenRouterMultiPost(manualKey, selModel, buildSystemPrompt(brand, platform, advancedOpts), buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts), IMAGE_COUNT);
+      }
     } else {
       await new Promise((r) => setTimeout(r, 1500));
       const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
       const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
-      txt = pl[Math.floor(Math.random() * pl.length)];
+      const shuffled = [...pl].sort(() => Math.random() - 0.5);
+      postTexts = [];
+      for (let i = 0; i < wantedCount; i++) postTexts.push(shuffled[i % shuffled.length]);
     }
-    setPost(txt); setGenPhase('');
-    const imgResults = makeBrandedImages(txt, { trending: activeTrending, topicHint: topic }) || [];
-    autoSaveToArchive(txt, imgResults, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle });
-    return { txt: txt, imgResults: imgResults };
+    setPosts(postTexts); setPost(postTexts[0] || '');
+    setGenPhase('Rendering ' + postTexts.length + ' card' + (postTexts.length > 1 ? 's' : '') + '...');
+    const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }) || [];
+    for (let i = 0; i < postTexts.length; i++) {
+      const card = imgResults[i] ? [imgResults[i]] : [];
+      autoSaveToArchive(postTexts[i], card, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle });
+    }
+    return { postTexts: postTexts, imgResults: imgResults };
   };
+
+  // Backwards-compat alias used by trending batch (one post per topic).
+  const runSingleGeneration = (opts) => runGeneration({ forcedTrending: (opts && opts.forcedTrending) || null, singlePost: true });
 
   const generate = async () => {
     setLoading(true); setError('');
-    try { await runSingleGeneration(); } catch (e) { setError(e.message); }
+    try { await runGeneration({ singlePost: false }); } catch (e) { setError(e.message); }
     setLoading(false); setGenPhase('');
   };
 
@@ -865,12 +934,14 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
   };
 
   const savePost = () => {
-    if (!post) return;
+    const currentText = posts[selectedImg] || post;
+    if (!currentText) return;
+    const currentImg = images[selectedImg] && images[selectedImg].url || null;
     const now = new Date();
     const wdName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     const weekday = WD.indexOf(wdName) >= 0 ? wdName : 'Monday';
-    setSavedPosts((p) => [...p, { id: Date.now(), text: post, platform, pillar: pillar.name, audience: pillar.audience, tone, ctaType, trendingTopic: selectedTrending && selectedTrending.topic || null, imageStyle, imageMode: 'branded', imageData: images[selectedImg] && images[selectedImg].url || null, allImages: images.filter((i) => i.url).map((i) => i.url), createdAt: now.toLocaleString(), weekday: weekday }]);
+    setSavedPosts((p) => [...p, { id: Date.now(), text: currentText, platform, pillar: pillar.name, audience: pillar.audience, tone, ctaType, trendingTopic: selectedTrending && selectedTrending.topic || null, imageStyle, imageMode: 'branded', imageData: currentImg, allImages: currentImg ? [currentImg] : [], createdAt: now.toLocaleString(), weekday: weekday }]);
     showToast('Post saved to Archive!');
   };
 
@@ -1013,7 +1084,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
             React.createElement('div', { className: 'text-sm font-semibold' }, s.l), React.createElement('div', { className: 'text-xs text-gray-400 mt-0.5' }, s.d)
           ))
         ),
-        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Generation (' + IMAGE_COUNT + ' branded cards per post)'),
+        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Generation (' + IMAGE_COUNT + ' posts × 1 branded card each)'),
         React.createElement('div', { className: 'mb-4 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-gray-300 text-sm' },
           React.createElement('span', { className: 'font-semibold' }, '\uD83C\uDFA8 Branded Cards'),
           React.createElement('span', { className: 'text-xs opacity-70 ml-2' }, 'Canvas-based, instant, on-brand')
@@ -1023,7 +1094,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         React.createElement('button', { className: 'btn-primary w-full py-3 text-lg', onClick: generate, disabled: loading || imgLoading },
           loading ? React.createElement(React.Fragment, null, React.createElement('span', { className: 'spinner' }), ' ', genPhase || 'Generating...') :
           imgLoading ? React.createElement(React.Fragment, null, React.createElement('span', { className: 'spinner' }), ' ', imgProgress || 'Generating images...') :
-          (autoTrending && live ? '\u26A1 Find Trend + Generate' : '\u26A1 Generate Post + ' + IMAGE_COUNT + ' Images')
+          (autoTrending && live ? ('\u26A1 Find Trend + Generate ' + IMAGE_COUNT + ' Posts') : ('\u26A1 Generate ' + IMAGE_COUNT + ' Posts + ' + IMAGE_COUNT + ' Cards'))
         ),
         error && React.createElement('p', { className: 'text-red-400 text-sm mt-2' }, 'Error: ' + error)
       ),
@@ -1041,7 +1112,10 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
       // Post preview
       React.createElement('div', { className: 'card p-5' },
         React.createElement('div', { className: 'flex items-center justify-between mb-4' },
-          React.createElement('h2', { className: 'text-lg font-bold text-white' }, platform + ' Post Preview'),
+          React.createElement('h2', { className: 'text-lg font-bold text-white' },
+            platform + ' Post Preview',
+            posts.length > 1 && React.createElement('span', { className: 'text-sm font-normal text-gray-400 ml-2' }, '(Post ' + (selectedImg + 1) + ' of ' + posts.length + ')')
+          ),
           post && React.createElement('div', { className: 'flex gap-2' },
             React.createElement('button', { className: 'btn-secondary text-sm', onClick: () => { navigator.clipboard.writeText(post); showToast('Post copied!'); } }, '\uD83D\uDCCB Copy'),
             React.createElement('button', { className: 'btn-secondary text-sm', onClick: savePost }, '\uD83D\uDCBE Save'),
@@ -1092,7 +1166,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         imgLoading ? React.createElement('div', { className: 'text-center py-14 text-gray-500' },
           React.createElement('div', { className: 'spinner mx-auto mb-4', style: { width: 40, height: 40 } }),
           React.createElement('p', { className: 'font-medium text-gray-300' }, imgProgress || 'Generating images...'),
-          React.createElement('p', { className: 'text-sm mt-1' }, 'Creating ' + IMAGE_COUNT + ' branded cards')
+          React.createElement('p', { className: 'text-sm mt-1' }, 'Generating ' + IMAGE_COUNT + ' posts and rendering paired cards')
         ) : successfulImages.length > 0 ? React.createElement('div', null,
           React.createElement('div', { className: 'relative mb-3' },
             images[selectedImg] && images[selectedImg].url && React.createElement('img', { src: images[selectedImg].url, className: 'w-full rounded-lg shadow-lg', alt: 'Generated image ' + (selectedImg+1) }),

@@ -110,6 +110,86 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
   return (await resp.json()).choices[0].message.content;
 }
 
+// ─── MULTI-POST VARIATIONS ───
+// Generate N distinct post variations on the same topic. Each takes a different
+// angle so the user gets N separate posts (not N images of one post).
+export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userPromptCore, count) {
+  const key = getApiKey(manualKey);
+  const angles = [
+    'Problem-framed — name the pain sharply, then offer a frame to think about it',
+    'Stat-led — open with a hard number, build the story around it',
+    'Story-led — short specific scenario or example, then the lesson',
+    'Contrarian — challenge a common assumption with evidence',
+    'CTA-led — sharp question or direct ask up front, support with reasoning',
+  ];
+  const wrapper = `
+
+GENERATE EXACTLY ${count} DISTINCT POST VARIATIONS on the same topic and audience.
+
+Each variation must take a DIFFERENT angle:
+${angles.slice(0, count).map((a, i) => `${i + 1}. ${a}`).join('\n')}
+
+Rules:
+- Each post is FULLY WRITTEN (hook + body + CTA), 100-200 words
+- Each post uses a DIFFERENT opening hook — no repeated openers
+- Each post must read as standalone, publishable on its own
+- Vary the structure: some with bullets, some prose, some short punchy lines
+
+Return ONLY a JSON array of exactly ${count} strings — each string is one full post.
+NO code fences. NO commentary. NO labels. Just the raw JSON array.
+
+Example shape:
+["Post one full text...", "Post two full text...", ...]`;
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: apiHeaders(key),
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: sysPrompt },
+        { role: 'user', content: userPromptCore + wrapper },
+      ],
+      temperature: 0.95,
+      max_tokens: 4000,
+    }),
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || `API error: ${resp.status}`);
+  }
+  const raw = (await resp.json()).choices[0].message.content;
+  const posts = parseJsonStringArray(raw);
+  if (!posts || posts.length === 0) {
+    throw new Error('Could not parse post variations from AI response');
+  }
+  // Pad if model returned fewer than requested
+  while (posts.length < count) posts.push(posts[posts.length - 1]);
+  return posts.slice(0, count);
+}
+
+function parseJsonStringArray(raw) {
+  if (!raw) return null;
+  let cleaned = String(raw).trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  // Find first [ ... ] (greedy across newlines)
+  const m = cleaned.match(/\[[\s\S]*\]/);
+  if (!m) return null;
+  try {
+    const arr = JSON.parse(m[0]);
+    if (!Array.isArray(arr)) return null;
+    return arr
+      .map((x) => String(x).trim())
+      .filter((x) => x.length > 0);
+  } catch (e) {
+    // Fallback: try splitting on numbered list markers if model returned non-JSON
+    const fallback = String(raw).split(/\n\s*\d+\.\s+/).map((x) => x.trim()).filter((x) => x.length > 40);
+    if (fallback.length >= 2) return fallback;
+    return null;
+  }
+}
+
 // ═══════════ TRENDING TOPIC DISCOVERY ═══════════
 export async function fetchTrendingTopics(manualKey, model, brand, pillar, platform, count = 5) {
   const key = getApiKey(manualKey);
