@@ -3,7 +3,7 @@ import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSyst
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
-const IMAGE_COUNT = 4;
+const IMAGE_COUNT = 3;
 
 // ─── RENDER FORMATTED POST TEXT ───
 function FormattedPost({ text }) {
@@ -425,35 +425,51 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // earliest weekday (Monday wins if all are empty). This produces a natural
   // Mon\u2192Fri spread: 1st post lands on Monday, 2nd on Tuesday, etc., looping
   // back to the lightest day after Friday.
-  const autoSaveToArchive = (txt, imgs, ctx) => {
-    if (!txt) return;
-    const successImgs = (imgs || []).filter((i) => i && i.url);
+  // ─── AUTO-SAVE A WHOLE BATCH TO ONE DAY ───
+  // All posts in a batch land on the SAME weekday so one Generate click fills
+  // a single day's content slot (3 different posts in one day). The target day
+  // is the weekday with the fewest existing posts so successive clicks fill
+  // Monday, Tuesday, Wednesday, etc. in order.
+  const autoSaveBatchToArchive = (postTexts, imgsList, ctx, batchToastSuffix) => {
+    if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     setSavedPosts((current) => {
       const counts = WD.map((d) => current.filter((p) => p.weekday === d).length);
       const minCount = Math.min(...counts);
       const weekday = WD[counts.indexOf(minCount)];
-      const entry = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        text: txt,
-        platform: ctx.platform,
-        pillar: ctx.pillar.name,
-        audience: ctx.pillar.audience,
-        tone: ctx.tone,
-        ctaType: ctx.ctaType,
-        trendingTopic: ctx.trendingTopic || null,
-        imageStyle: ctx.imageStyle,
-        imageMode: 'branded',
-        imageData: successImgs[0]?.url || null,
-        allImages: successImgs.map((i) => i.url),
-        createdAt: now.toLocaleString(),
-        weekday,
-        autoSaved: true,
-      };
-      return [...current, entry];
+      const newEntries = postTexts.map((txt, i) => {
+        const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
+        return {
+          id: Date.now() + Math.floor(Math.random() * 1000) + i,
+          text: txt,
+          platform: ctx.platform,
+          pillar: ctx.pillar.name,
+          audience: ctx.pillar.audience,
+          tone: ctx.tone,
+          ctaType: ctx.ctaType,
+          trendingTopic: ctx.trendingTopic || null,
+          imageStyle: ctx.imageStyle,
+          imageMode: 'branded',
+          imageData: successImgs[0]?.url || null,
+          allImages: successImgs.map((img) => img.url),
+          createdAt: now.toLocaleString(),
+          weekday,
+          autoSaved: true,
+        };
+      });
+      // Save the chosen weekday so the toast can reference it (closure capture)
+      autoSaveBatchToArchive._lastWeekday = weekday;
+      return [...current, ...newEntries];
     });
-    showToast('Auto-saved to Archive');
+    const wd = autoSaveBatchToArchive._lastWeekday || 'Archive';
+    showToast(`Auto-saved ${postTexts.length} posts to ${wd}${batchToastSuffix ? ' ' + batchToastSuffix : ''}`);
+  };
+
+  // Backwards-compat wrapper for trending batch (single-post path).
+  const autoSaveToArchive = (txt, imgs, ctx) => {
+    if (!txt) return;
+    autoSaveBatchToArchive([txt], [imgs || []], ctx);
   };
 
   // ─── CORE GENERATION ───
@@ -530,19 +546,17 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
     const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }) || [];
 
-    // Auto-save: one Archive entry per post, weekday-spread by the functional
-    // setState updater inside autoSaveToArchive.
-    for (let i = 0; i < postTexts.length; i++) {
-      const card = imgResults[i] ? [imgResults[i]] : [];
-      autoSaveToArchive(postTexts[i], card, {
-        platform,
-        pillar,
-        tone,
-        ctaType,
-        trendingTopic: activeTrending?.topic || null,
-        imageStyle,
-      });
-    }
+    // Auto-save: ALL posts in this batch land on the SAME weekday (one
+    // Generate click = one day's worth of content).
+    const imgsList = postTexts.map((_, i) => imgResults[i] ? [imgResults[i]] : []);
+    autoSaveBatchToArchive(postTexts, imgsList, {
+      platform,
+      pillar,
+      tone,
+      ctaType,
+      trendingTopic: activeTrending?.topic || null,
+      imageStyle,
+    });
 
     return { postTexts, imgResults };
   };

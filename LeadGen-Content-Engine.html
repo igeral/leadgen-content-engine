@@ -894,7 +894,7 @@ function NavBar({ page, setPage }) {
 }
 
 // ═══════════ GENERATE PAGE ═══════════
-const IMAGE_COUNT = 4;
+const IMAGE_COUNT = 3;
 
 function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
   const [platform, setPlatform] = useState('LinkedIn');
@@ -981,36 +981,45 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     setImages(out); setSelectedImg(0); return out;
   };
 
-  // Weekday-balanced auto-save: picks the day with the fewest posts (ties -> Monday first)
-  const autoSaveToArchive = (txt, imgs, ctx) => {
-    if (!txt) return;
-    const successImgs = (imgs || []).filter((i) => i && i.url);
+  // Batch auto-save: all posts in a click land on the SAME weekday so one
+  // Generate fills one day's content slot. Target = weekday with fewest posts.
+  const autoSaveBatchToArchive = (postTexts, imgsList, ctx) => {
+    if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    let chosenDay = '';
     setSavedPosts((current) => {
       const counts = WD.map((d) => current.filter((p) => p.weekday === d).length);
       const minCount = Math.min.apply(null, counts);
       const weekday = WD[counts.indexOf(minCount)];
-      const entry = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        text: txt,
-        platform: ctx.platform,
-        pillar: ctx.pillar.name,
-        audience: ctx.pillar.audience,
-        tone: ctx.tone,
-        ctaType: ctx.ctaType,
-        trendingTopic: ctx.trendingTopic || null,
-        imageStyle: ctx.imageStyle,
-        imageMode: 'branded',
-        imageData: successImgs[0] && successImgs[0].url || null,
-        allImages: successImgs.map((i) => i.url),
-        createdAt: now.toLocaleString(),
-        weekday: weekday,
-        autoSaved: true,
-      };
-      return [...current, entry];
+      chosenDay = weekday;
+      const newEntries = postTexts.map((txt, i) => {
+        const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
+        return {
+          id: Date.now() + Math.floor(Math.random() * 1000) + i,
+          text: txt,
+          platform: ctx.platform,
+          pillar: ctx.pillar.name,
+          audience: ctx.pillar.audience,
+          tone: ctx.tone,
+          ctaType: ctx.ctaType,
+          trendingTopic: ctx.trendingTopic || null,
+          imageStyle: ctx.imageStyle,
+          imageMode: 'branded',
+          imageData: successImgs[0] && successImgs[0].url || null,
+          allImages: successImgs.map((img) => img.url),
+          createdAt: now.toLocaleString(),
+          weekday: weekday,
+          autoSaved: true,
+        };
+      });
+      return [...current, ...newEntries];
     });
-    showToast('Auto-saved to Archive');
+    setTimeout(() => showToast('Auto-saved ' + postTexts.length + ' posts to ' + (chosenDay || 'Archive')), 0);
+  };
+  const autoSaveToArchive = (txt, imgs, ctx) => {
+    if (!txt) return;
+    autoSaveBatchToArchive([txt], [imgs || []], ctx);
   };
 
   // Core generation — N distinct posts each with its own paired card.
@@ -1055,10 +1064,8 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     setPosts(postTexts); setPost(postTexts[0] || '');
     setGenPhase('Rendering ' + postTexts.length + ' card' + (postTexts.length > 1 ? 's' : '') + '...');
     const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }) || [];
-    for (let i = 0; i < postTexts.length; i++) {
-      const card = imgResults[i] ? [imgResults[i]] : [];
-      autoSaveToArchive(postTexts[i], card, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle });
-    }
+    const imgsList = postTexts.map((_, i) => imgResults[i] ? [imgResults[i]] : []);
+    autoSaveBatchToArchive(postTexts, imgsList, { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle });
     return { postTexts: postTexts, imgResults: imgResults };
   };
 
