@@ -527,7 +527,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           buildSystemPrompt(brand, platform, advancedOpts),
           buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts),
           IMAGE_COUNT,
-          { pillarName: pillar.name }
+          { pillarName: pillar.name, hasTrendingTopic: !!activeTrending }
         );
       }
     } else {

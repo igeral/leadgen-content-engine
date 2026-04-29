@@ -111,8 +111,9 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
 }
 
 // ─── MULTI-POST VARIATIONS ───
-// Generate N distinct post variations on the same topic. Each takes a different
-// angle so the user gets N separate posts (not N images of one post).
+// Generate N posts within the same pillar but on DIFFERENT TOPICS.
+// Each post covers its own news event / stat / angle (NOT three angles on
+// one topic) and uses its own hook formula from Steadfast's six.
 export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userPromptCore, count, opts = {}) {
   const key = getApiKey(manualKey);
   const pillarName = opts.pillarName || '';
@@ -126,27 +127,39 @@ export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userP
     return `${i + 1}. ${hf.name} \u2014 ${hf.brief}`;
   }).join('\n');
 
+  const trendingClause = opts.hasTrendingTopic
+    ? `\n\nTRENDING TOPIC HANDLING:\n- Post 1 covers the trending topic specified above.\n- Posts 2-${count} MUST cover OTHER topics within the ${pillarName || 'pillar'}. Do NOT discuss the trending topic in posts 2-${count}. Pick recent issues, stats, or angles that are completely different.`
+    : '';
+
   const wrapper = `
 
-GENERATE EXACTLY ${count} DISTINCT POST VARIATIONS on the same topic, audience, and pillar.
+GENERATE EXACTLY ${count} POSTS, EACH ON A COMPLETELY DIFFERENT TOPIC within the ${pillarName || 'selected'} pillar.
 
-Each variation MUST use a DIFFERENT hook formula from this list (no repeats):
-${hookBriefs}
+CRITICAL TOPIC DIVERSITY RULE:
+Each of the ${count} posts must address a DIFFERENT news event, statistic, regulation, trend, or scenario. NO TWO POSTS may cover the same underlying subject. Three angles on the same Medicare reimbursement cut is NOT acceptable. Three different topics from within healthcare workforce is what is required.
+
+Examples of distinct topics within a single pillar:
+- Workforce Insights: physician shortage projections; rural-vs-urban coverage gaps; residency expansion legislation; hospital closure rates; locum tenens adoption.
+- Each item above is its OWN topic, not the same topic from a different angle.
+
+Each post uses a DIFFERENT hook formula from this list (no repeats):
+${hookBriefs}${trendingClause}
 
 For each post:
 - The first line is the hook and MUST follow the assigned formula.
 - The first line MUST be 15 words or fewer.
+- The post MUST be on a topic that is DISTINCT from all the other posts in this batch.
 - Follow the pillar's 7-beat sequence (defined above) for the body.
 - ZERO em dashes. Use commas, periods, colons, or line breaks instead.
 - Reader is the main character. Frame from THEIR perspective.
 - 150-300 words per post.
 - End with a soft CTA (no engagement bait) and 3-5 hashtags.
 
-Return ONLY a JSON array of exactly ${count} strings \u2014 each string is one full post in the order above (post 1 uses hook formula 1, post 2 uses hook formula 2, etc.).
+Return ONLY a JSON array of exactly ${count} strings \u2014 each string is one full post in the order above (post 1 uses hook formula 1 + topic 1, post 2 uses hook formula 2 + a DIFFERENT topic, etc.).
 NO code fences. NO commentary. NO labels. Just the raw JSON array.
 
 Example shape:
-[\"Post one full text...\", \"Post two full text...\", ...]`;
+[\"Post one full text on topic A...\", \"Post two full text on completely different topic B...\", ...]`;
 
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
