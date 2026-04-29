@@ -3,7 +3,7 @@ import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSyst
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
-const IMAGE_COUNT = 5;
+const IMAGE_COUNT = 4;
 
 // ─── RENDER FORMATTED POST TEXT ───
 function FormattedPost({ text }) {
@@ -550,7 +550,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // Backwards-compat alias used by the trending batch loop (one post per topic).
   const runSingleGeneration = ({ forcedTrending = null } = {}) => runGeneration({ forcedTrending, singlePost: true });
 
-  // ─── MAIN GENERATE (5 posts × 5 paired cards) ───
+  // ─── MAIN GENERATE (N posts × N paired cards, N = IMAGE_COUNT) ───
   const generate = async () => {
     setLoading(true);
     setError('');
