@@ -593,7 +593,18 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           ? SCHEDULE.findIndex((s) => s.day === 'Tuesday' && s.time === '12:00 PM')
           : 0;
         const collected = [];
+        const failedSlots = [];
         const seenTopicHints = [...userAvoid];
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        // Try one slot; retry once after a longer delay if the first attempt fails.
+        const tryOnce = async (slot, slotPillar, slotContentOpts) => {
+          return await callOpenRouter(
+            manualKey,
+            selModel,
+            buildSystemPrompt(brand, platform, advancedOpts),
+            buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
+          );
+        };
         for (let i = 0; i < SCHEDULE.length; i++) {
           const slot = SCHEDULE[i];
           const slotPillar = brand.pillars.find((p) => p.name === slot.pillar) || pillar;
@@ -605,23 +616,36 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             avoidTopics: seenTopicHints,
             hookFormula: slot.hookFormula,
           };
-          try {
-            const text = await callOpenRouter(
-              manualKey,
-              selModel,
-              buildSystemPrompt(brand, platform, advancedOpts),
-              buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
-            );
+          let text = null;
+          let lastError = null;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              text = await tryOnce(slot, slotPillar, slotContentOpts);
+              break;
+            } catch (e) {
+              lastError = e;
+              console.warn('[LeadGen] Slot attempt ' + (attempt + 1) + ' failed:', slot.day, slot.time, e.message);
+              if (attempt === 0) {
+                setGenPhase(`${slot.day} ${slot.time} \u00B7 retrying after rate-limit/error...`);
+                await sleep(2500);
+              }
+            }
+          }
+          if (text) {
             const cleanText = stripEmDashesClient(text);
             collected.push({ text: cleanText, slot });
             const hint = String(cleanText || '').split('\n').find((l) => l.trim()) || '';
             if (hint) seenTopicHints.push(hint.replace(/[\*_]/g, '').slice(0, 80));
-          } catch (e) {
-            console.error('[LeadGen] Slot failed:', slot.day, slot.time, e);
+          } else {
+            failedSlots.push({ slot, error: lastError && lastError.message });
+            console.error('[LeadGen] Slot FAILED twice, skipping:', slot.day, slot.time, lastError);
           }
+          // Small inter-slot delay to dodge OpenRouter per-minute rate limits.
+          if (i < SCHEDULE.length - 1) await sleep(800);
         }
         postTexts = collected.map((c) => c.text);
         postWeekdays = collected.map((c) => c.slot.day);
+        runGeneration._lastFailedSlots = failedSlots;
         // Keep slot metadata around for card rendering + archive metadata.
         runGeneration._lastSlots = collected.map((c) => c.slot);
       }
@@ -682,6 +706,19 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       autoSaveWeekToArchive(postTexts, imgsList, postWeekdays, ctx, slots);
     } else {
       autoSaveBatchToArchive(postTexts, imgsList, ctx);
+    }
+
+    // If any slots failed, surface them visibly (not just to console).
+    const failed = runGeneration._lastFailedSlots || [];
+    if (failed.length > 0) {
+      const expected = (brand.schedule && brand.schedule.length) || postTexts.length;
+      const list = failed.map((f) => `${f.slot.day} ${f.slot.time} ${f.slot.pillar}`).join(' | ');
+      const reasons = failed.filter((f) => f.error).map((f) => f.error).filter((m, i, a) => a.indexOf(m) === i).join('; ');
+      const msg = `Generated ${postTexts.length} of ${expected}. ${failed.length} slot${failed.length > 1 ? 's' : ''} failed after retry: ${list}.${reasons ? ' Errors: ' + reasons + '.' : ''} Click Generate again to refill the missing slots.`;
+      setError(msg);
+      showToast(`Got ${postTexts.length} of ${expected} posts. ${failed.length} slot${failed.length > 1 ? 's' : ''} failed.`);
+    } else if (postTexts.length > 0) {
+      setError('');
     }
 
     return { postTexts, imgResults };

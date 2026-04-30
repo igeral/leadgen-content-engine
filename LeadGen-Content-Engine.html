@@ -1129,7 +1129,16 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         const trendingSlotIdx = SCHEDULE.findIndex(function(slot2) { return slot2.day === 'Tuesday' && slot2.time === '12:00 PM'; });
         const tIdx = trendingSlotIdx >= 0 ? trendingSlotIdx : 0;
         const collected = [];
+        const failedSlots = [];
         const seenTopicHints = userAvoid.slice();
+        const sleep = (ms) => new Promise(function(r) { setTimeout(r, ms); });
+        const tryOnce = async function(slot, slotPillar, slotContentOpts) {
+          return await callOpenRouter(
+            manualKey, selModel,
+            buildSystemPrompt(brand, platform, advancedOpts),
+            buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
+          );
+        };
         for (let i = 0; i < SCHEDULE.length; i++) {
           const slot = SCHEDULE[i];
           const slotPillar = brand.pillars.find(function(p2) { return p2.name === slot.pillar; }) || pillar;
@@ -1140,21 +1149,36 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
             avoidTopics: seenTopicHints,
             hookFormula: slot.hookFormula,
           });
-          try {
-            const text = await callOpenRouter(
-              manualKey, selModel,
-              buildSystemPrompt(brand, platform, advancedOpts),
-              buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
-            );
+          let text = null;
+          let lastError = null;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              text = await tryOnce(slot, slotPillar, slotContentOpts);
+              break;
+            } catch (e) {
+              lastError = e;
+              console.warn('[LeadGen] Slot attempt ' + (attempt + 1) + ' failed:', slot.day, slot.time, e.message);
+              if (attempt === 0) {
+                setGenPhase(slot.day + ' ' + slot.time + ' \u00B7 retrying after rate-limit/error...');
+                await sleep(2500);
+              }
+            }
+          }
+          if (text) {
             const cleanText = stripEmDashes(text);
             collected.push({ text: cleanText, slot: slot });
             const hint = (String(cleanText || '').split('\n').find(function(l) { return l.trim(); }) || '').replace(/[\*_]/g, '').slice(0, 80);
             if (hint) seenTopicHints.push(hint);
-          } catch (e) { console.error('[LeadGen] Slot failed:', slot.day, slot.time, e); }
+          } else {
+            failedSlots.push({ slot: slot, error: lastError && lastError.message });
+            console.error('[LeadGen] Slot FAILED twice, skipping:', slot.day, slot.time, lastError);
+          }
+          if (i < SCHEDULE.length - 1) await sleep(800);
         }
         postTexts = collected.map(function(c) { return c.text; });
         postWeekdays = collected.map(function(c) { return c.slot.day; });
         runGeneration._lastSlots = collected.map(function(c) { return c.slot; });
+        runGeneration._lastFailedSlots = failedSlots;
       }
     } else {
       await new Promise((r) => setTimeout(r, 1500));
@@ -1194,6 +1218,17 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
       autoSaveWeekToArchive(postTexts, imgsList, postWeekdays, ctx, slots);
     } else {
       autoSaveBatchToArchive(postTexts, imgsList, ctx);
+    }
+    const failed = runGeneration._lastFailedSlots || [];
+    if (failed.length > 0) {
+      const expected = (brand.schedule && brand.schedule.length) || postTexts.length;
+      const list = failed.map(function(f) { return f.slot.day + ' ' + f.slot.time + ' ' + f.slot.pillar; }).join(' | ');
+      const reasons = failed.filter(function(f) { return f.error; }).map(function(f) { return f.error; }).filter(function(m, i, a) { return a.indexOf(m) === i; }).join('; ');
+      const msg = 'Generated ' + postTexts.length + ' of ' + expected + '. ' + failed.length + ' slot' + (failed.length > 1 ? 's' : '') + ' failed after retry: ' + list + '.' + (reasons ? ' Errors: ' + reasons + '.' : '') + ' Click Generate again to refill the missing slots.';
+      setError(msg);
+      showToast('Got ' + postTexts.length + ' of ' + expected + ' posts. ' + failed.length + ' slot' + (failed.length > 1 ? 's' : '') + ' failed.');
+    } else if (postTexts.length > 0) {
+      setError('');
     }
     return { postTexts: postTexts, imgResults: imgResults };
   };
