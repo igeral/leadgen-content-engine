@@ -164,6 +164,17 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
     showToast('Exported!');
   };
 
+  const clearAll = () => {
+    const count = normalized.length;
+    if (!count) return;
+    const ok = window.confirm(`Clear all ${count} posts from the Archive?\n\nThis cannot be undone. Consider exporting first.`);
+    if (!ok) return;
+    setSavedPosts([]);
+    setEditingId(null);
+    setExpandedId(null);
+    showToast(`Cleared ${count} posts`);
+  };
+
   const exportDay = (day) => {
     const posts = byDay[day];
     if (!posts.length) return;
@@ -202,7 +213,16 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
             {filteredCount} of {totalCount} posts {dayFilter !== 'all' ? `\u2014 ${dayFilter}` : 'across the week'}
           </p>
         </div>
-        <button className="btn-ghost text-sm" onClick={exportAll}>{'\uD83D\uDCE4'} Export Archive</button>
+        <div className="flex items-center gap-2">
+          <button className="btn-ghost text-sm" onClick={exportAll}>{'\uD83D\uDCE4'} Export Archive</button>
+          <button
+            className="btn-ghost text-sm text-red-400 hover:text-red-300"
+            onClick={clearAll}
+            title="Delete every post in the Archive"
+          >
+            {'\uD83D\uDDD1'} Clear All
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}

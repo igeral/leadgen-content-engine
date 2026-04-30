@@ -1061,6 +1061,8 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
     setSavedPosts((current) => {
+      // Drop any prior week-fill batch so this Generate replaces it.
+      const kept = current.filter(function(p) { return !p.weekFillBatch; });
       const newEntries = postTexts.map(function(txt, i) {
         const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
         const slot = (slots && slots[i]) || null;
@@ -1083,12 +1085,13 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
           hookFormula: slot ? slot.hookFormula : null,
           imageVariant: slot ? slot.variant : null,
           autoSaved: true,
+          weekFillBatch: true,
         };
       });
-      return [...current, ...newEntries];
+      return [...kept, ...newEntries];
     });
     const dayCount = new Set(weekdays).size;
-    setTimeout(function() { showToast('Auto-saved ' + postTexts.length + ' posts across ' + dayCount + ' days'); }, 0);
+    setTimeout(function() { showToast('Auto-saved ' + postTexts.length + ' posts across ' + dayCount + ' days (replaced previous week)'); }, 0);
   };
 
   // Core generation. DEFAULT: one click fills Mon-Fri (15 posts, 3/day).
@@ -1710,6 +1713,16 @@ function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
   const saveEdit = () => { setSavedPosts((prev) => prev.map((p) => p.id === editingId ? Object.assign({}, p, { text: editingText, editedAt: new Date().toLocaleString() }) : p)); setEditingId(null); setEditingText(''); showToast('Updated'); };
   const cancelEdit = () => { setEditingId(null); setEditingText(''); };
   const exportAll = () => { const blob = new Blob([JSON.stringify(normalized, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'archive-' + new Date().toISOString().slice(0,10) + '.json'; a.click(); showToast('Exported!'); };
+  const clearAll = () => {
+    const count = normalized.length;
+    if (!count) return;
+    const ok = window.confirm('Clear all ' + count + ' posts from the Archive?\n\nThis cannot be undone. Consider exporting first.');
+    if (!ok) return;
+    setSavedPosts([]);
+    setEditingId(null);
+    setExpandedId(null);
+    showToast('Cleared ' + count + ' posts');
+  };
   const exportDay = (day) => {
     const posts = byDay[day]; if (!posts.length) return;
     const sep = '='.repeat(72);
@@ -1737,7 +1750,10 @@ function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
         React.createElement('h2', { className: 'text-2xl font-bold text-white' }, '\uD83D\uDDC2 Content Archive'),
         React.createElement('p', { className: 'text-sm text-gray-400 mt-1' }, filteredCount + ' of ' + totalCount + ' posts ' + (dayFilter !== 'all' ? '\u2014 ' + dayFilter : 'across the week'))
       ),
-      React.createElement('button', { className: 'btn-ghost text-sm', onClick: exportAll }, '\uD83D\uDCE4 Export Archive')
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement('button', { className: 'btn-ghost text-sm', onClick: exportAll }, '\uD83D\uDCE4 Export Archive'),
+        React.createElement('button', { className: 'btn-ghost text-sm text-red-400 hover:text-red-300', onClick: clearAll, title: 'Delete every post in the Archive' }, '\uD83D\uDDD1 Clear All')
+      )
     ),
     // Filter bar
     React.createElement('div', { className: 'card p-4 mb-6' },

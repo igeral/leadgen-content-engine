@@ -496,11 +496,15 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   // ─── SAVE A FULL WEEK TO ARCHIVE (explicit weekday per post) ───
   // Used when a Generate click follows the schedule. Each entry knows its own
-  // weekday + slot metadata (time, audience, hook, image system).
+  // weekday + slot metadata. Entries are tagged weekFillBatch:true so the
+  // NEXT Generate click can replace them (wipes previous week, keeps manual
+  // saves and trending-batch saves).
   const autoSaveWeekToArchive = (postTexts, imgsList, weekdays, ctx, slots) => {
     if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
     setSavedPosts((current) => {
+      // Drop any prior week-fill batch so this Generate replaces it.
+      const kept = current.filter((p) => !p.weekFillBatch);
       const newEntries = postTexts.map((txt, i) => {
         const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
         const slot = (slots && slots[i]) || null;
@@ -523,12 +527,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           hookFormula: slot ? slot.hookFormula : null,
           imageVariant: slot ? slot.variant : null,
           autoSaved: true,
+          weekFillBatch: true,
         };
       });
-      return [...current, ...newEntries];
+      return [...kept, ...newEntries];
     });
     const dayCount = new Set(weekdays).size;
-    showToast(`Auto-saved ${postTexts.length} posts across ${dayCount} days`);
+    showToast(`Auto-saved ${postTexts.length} posts across ${dayCount} days (replaced previous week)`);
   };
 
   // ─── CORE GENERATION ───
