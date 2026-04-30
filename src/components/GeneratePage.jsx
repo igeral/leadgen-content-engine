@@ -344,6 +344,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const cvRef = useRef(null);
 
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
+
+  // Em-dash stripper for single-post calls (multi-post calls already strip).
+  const stripEmDashesClient = (txt) => {
+    if (!txt) return txt;
+    let out = String(txt).replace(/\s*[\u2014\u2013]\s*/g, '. ').replace(/\s+--\s+/g, '. ');
+    out = out.replace(/\.\s*\./g, '.').replace(/\.\s+([a-z])/g, (_m, c) => '. ' + c.toUpperCase());
+    return out.trim();
+  };
   const parseList = (str) => str.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean);
 
   // ─── FETCH TRENDING TOPICS ───
@@ -365,29 +373,34 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   // ─── BRANDED CARD GENERATOR (one card per post) ───
   // Each post gets its own card derived from THAT post's content.
-  // Variants alternate by index so a 5-card batch is half dark / half cream.
+  // ctx.slotImageStyle / ctx.slotVariant override the user's UI selection
+  // when a fixed schedule is dictating the image system per slot.
   const makeBrandedCard = (postText, cardIndex, totalCards, ctx) => {
     const cv = cvRef.current;
     if (!cv) return null;
-    const variant = cardIndex % 2 === 0 ? 'dark' : 'light';
+    const slotStyle = (ctx && ctx.slotImageStyle) || imageStyle;
+    const slotPillarName = (ctx && ctx.slotPillarName) || pillar.name;
+    const variant = (ctx && (ctx.slotVariant === 'light' || ctx.slotVariant === 'dark'))
+      ? ctx.slotVariant
+      : (cardIndex % 2 === 0 ? 'dark' : 'light');
     const facets = extractPostFacets(postText, ctx && ctx.trending, ctx && ctx.topicHint);
     const dp = brand.dataPoints || [];
 
-    if (imageStyle === 'stat') {
+    if (slotStyle === 'stat') {
       // Prefer a numeric fact from the post; fall back to brand data point.
       const sl = facets.numericFacts[0]
-        || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (pillar.name + ' insights') });
+        || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (slotPillarName + ' insights') });
       generateStatCard(cv, {
         stat: sl.stat,
         label: sl.label,
-        subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' · ' + (brand.tagline || '')).trim(),
+        subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (slotPillarName + ' · ' + (brand.tagline || '')).trim(),
         brandName: brand.name,
         orientation: 'portrait',
         variant,
       });
       return { url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
     }
-    if (imageStyle === 'quote') {
+    if (slotStyle === 'quote') {
       const quote = shortenWords(facets.hook || facets.topicLabel, 12);
       const context = shortenWords(facets.bullets[0] || facets.sentences[1] || facets.paragraphs[1] || '', 16);
       const closing = shortenWords(facets.closing || facets.hook || '', 8);
@@ -414,11 +427,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     return { url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (cardIndex + 1) + ': ' + facets.topicLabel, error: null };
   };
 
-  // Produce N cards (one per post text), set state, return them.
-  const makeBrandedImagesForPosts = (postTexts, ctx) => {
+  // Produce N cards (one per post text). Accepts either a single ctx (applied
+  // to every card) or perPostCtx[] (per-post overrides for slotImageStyle,
+  // slotVariant, slotPillarName when the schedule dictates them).
+  const makeBrandedImagesForPosts = (postTexts, ctx, perPostCtx) => {
     const out = [];
     for (let i = 0; i < postTexts.length; i++) {
-      const card = makeBrandedCard(postTexts[i], i, postTexts.length, ctx);
+      const localCtx = perPostCtx && perPostCtx[i] ? { ...ctx, ...perPostCtx[i] } : ctx;
+      const card = makeBrandedCard(postTexts[i], i, postTexts.length, localCtx);
       if (card) out.push(card);
     }
     setImages(out);
@@ -479,28 +495,33 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   };
 
   // ─── SAVE A FULL WEEK TO ARCHIVE (explicit weekday per post) ───
-  // Used when a Generate click fills Mon-Fri. Each entry knows its own weekday.
-  const autoSaveWeekToArchive = (postTexts, imgsList, weekdays, ctx) => {
+  // Used when a Generate click follows the schedule. Each entry knows its own
+  // weekday + slot metadata (time, audience, hook, image system).
+  const autoSaveWeekToArchive = (postTexts, imgsList, weekdays, ctx, slots) => {
     if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
     setSavedPosts((current) => {
       const newEntries = postTexts.map((txt, i) => {
         const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
+        const slot = (slots && slots[i]) || null;
         return {
           id: Date.now() + Math.floor(Math.random() * 100000) + i,
           text: txt,
           platform: ctx.platform,
-          pillar: ctx.pillar.name,
-          audience: ctx.pillar.audience,
+          pillar: slot ? slot.pillar : ctx.pillar.name,
+          audience: slot ? slot.audience : ctx.pillar.audience,
           tone: ctx.tone,
           ctaType: ctx.ctaType,
           trendingTopic: ctx.trendingTopic || null,
-          imageStyle: ctx.imageStyle,
+          imageStyle: slot ? slot.imageStyle : ctx.imageStyle,
           imageMode: 'branded',
           imageData: successImgs[0]?.url || null,
           allImages: successImgs.map((img) => img.url),
           createdAt: now.toLocaleString(),
           weekday: weekdays[i],
+          time: slot ? slot.time : null,
+          hookFormula: slot ? slot.hookFormula : null,
+          imageVariant: slot ? slot.variant : null,
           autoSaved: true,
         };
       });
@@ -559,53 +580,78 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         // Single-post path uses the existing fewest-weekday logic via batch save below.
         postWeekdays = [];
       } else {
-        // Multi-day path: one API call per weekday, each avoiding prior topics.
+        // SCHEDULE path: each of the 11 fixed slots is its own API call,
+        // with that slot's specific pillar/audience/hook formula. The avoid
+        // list grows after every slot so all 11 posts cover distinct topics.
+        const SCHEDULE = brand.schedule || [];
+        if (SCHEDULE.length === 0) {
+          throw new Error('No schedule defined for this brand. Add a schedule[] to the preset.');
+        }
+        // Identify the strongest data slot (Tue 12:00 Workforce Insights) so the
+        // trending topic, when present, seeds it instead of the first slot.
+        const trendingSlotIdx = SCHEDULE.findIndex((s) => s.day === 'Tuesday' && s.time === '12:00 PM') >= 0
+          ? SCHEDULE.findIndex((s) => s.day === 'Tuesday' && s.time === '12:00 PM')
+          : 0;
         const collected = [];
         const seenTopicHints = [...userAvoid];
-        for (let d = 0; d < WEEKDAYS.length; d++) {
-          const wd = WEEKDAYS[d];
-          setGenPhase(`${wd} (${d + 1}/${WEEKDAYS.length}): writing ${POSTS_PER_DAY} posts on different topics...`);
-          // Only the first weekday gets the trending topic; other days must pick fresh subjects.
-          const trendingForThisDay = d === 0 ? activeTrending : null;
-          const contentOpts = {
+        for (let i = 0; i < SCHEDULE.length; i++) {
+          const slot = SCHEDULE[i];
+          const slotPillar = brand.pillars.find((p) => p.name === slot.pillar) || pillar;
+          setGenPhase(`${slot.day} ${slot.time} \u00B7 ${slot.pillar} (${i + 1}/${SCHEDULE.length})...`);
+          const trendingForThisSlot = i === trendingSlotIdx ? activeTrending : null;
+          const slotContentOpts = {
             ...baseContentOpts,
-            trendingTopic: trendingForThisDay,
+            trendingTopic: trendingForThisSlot,
             avoidTopics: seenTopicHints,
+            hookFormula: slot.hookFormula,
           };
           try {
-            const dayPosts = await callOpenRouterMultiPost(
+            const text = await callOpenRouter(
               manualKey,
               selModel,
               buildSystemPrompt(brand, platform, advancedOpts),
-              buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts),
-              POSTS_PER_DAY,
-              { pillarName: pillar.name, hasTrendingTopic: !!trendingForThisDay }
+              buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
             );
-            for (const text of dayPosts) {
-              collected.push({ text, weekday: wd });
-              // Capture the first line as a topic hint so later days avoid repeating.
-              const hint = String(text || '').split('\n').find((l) => l.trim()) || '';
-              if (hint) seenTopicHints.push(hint.replace(/[\*_]/g, '').slice(0, 80));
-            }
+            const cleanText = stripEmDashesClient(text);
+            collected.push({ text: cleanText, slot });
+            const hint = String(cleanText || '').split('\n').find((l) => l.trim()) || '';
+            if (hint) seenTopicHints.push(hint.replace(/[\*_]/g, '').slice(0, 80));
           } catch (e) {
-            console.error('[LeadGen] Day batch failed:', wd, e);
+            console.error('[LeadGen] Slot failed:', slot.day, slot.time, e);
           }
         }
         postTexts = collected.map((c) => c.text);
-        postWeekdays = collected.map((c) => c.weekday);
+        postWeekdays = collected.map((c) => c.slot.day);
+        // Keep slot metadata around for card rendering + archive metadata.
+        runGeneration._lastSlots = collected.map((c) => c.slot);
       }
     } else {
-      // Demo mode: 15 mock posts spread across weekdays
+      // Demo mode: pull mock posts onto the schedule's slots so the layout matches live mode.
       await new Promise((r) => setTimeout(r, 1500));
       const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
-      const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
-      const shuffled = [...pl].sort(() => Math.random() - 0.5);
-      const wantedCount = singlePost ? 1 : IMAGE_COUNT;
       postTexts = [];
       postWeekdays = [];
-      for (let i = 0; i < wantedCount; i++) {
-        postTexts.push(shuffled[i % shuffled.length]);
-        if (!singlePost) postWeekdays.push(WEEKDAYS[Math.floor(i / POSTS_PER_DAY) % WEEKDAYS.length]);
+      const SCHEDULE = brand.schedule || [];
+      if (singlePost || SCHEDULE.length === 0) {
+        const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
+        const shuffled = [...pl].sort(() => Math.random() - 0.5);
+        const wantedCount = singlePost ? 1 : SCHEDULE.length || IMAGE_COUNT;
+        for (let i = 0; i < wantedCount; i++) {
+          postTexts.push(shuffled[i % shuffled.length]);
+          if (!singlePost) postWeekdays.push((SCHEDULE[i] && SCHEDULE[i].day) || WEEKDAYS[Math.floor(i / POSTS_PER_DAY) % WEEKDAYS.length]);
+        }
+        if (!singlePost) runGeneration._lastSlots = SCHEDULE.slice(0, postTexts.length);
+      } else {
+        const usedSlots = [];
+        for (let i = 0; i < SCHEDULE.length; i++) {
+          const slot = SCHEDULE[i];
+          const pl = pp[slot.pillar] || pp['Educational'] || Object.values(pp)[0];
+          const candidate = pl[i % pl.length];
+          postTexts.push(candidate);
+          postWeekdays.push(slot.day);
+          usedSlots.push(slot);
+        }
+        runGeneration._lastSlots = usedSlots;
       }
     }
 
@@ -613,7 +659,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     setPost(postTexts[0] || '');
     setGenPhase(`Rendering ${postTexts.length} card${postTexts.length > 1 ? 's' : ''}...`);
 
-    const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }) || [];
+    const slots = runGeneration._lastSlots || [];
+    const perPostCtx = slots.map((slot) => ({
+      slotImageStyle: slot.imageStyle,
+      slotVariant: slot.variant,
+      slotPillarName: slot.pillar,
+    }));
+    const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }, perPostCtx) || [];
 
     // Save: if we have explicit weekdays (multi-day path), save with each post's
     // own weekday. Otherwise (single-post path) use the fewest-weekday batch logic.
@@ -627,7 +679,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       imageStyle,
     };
     if (postWeekdays.length === postTexts.length && postWeekdays.length > 0) {
-      autoSaveWeekToArchive(postTexts, imgsList, postWeekdays, ctx);
+      autoSaveWeekToArchive(postTexts, imgsList, postWeekdays, ctx, slots);
     } else {
       autoSaveBatchToArchive(postTexts, imgsList, ctx);
     }
@@ -773,9 +825,21 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ))}
           </div>
 
-          {/* Pillar */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Content Pillar</label>
-          <select className="input-field mb-3" value={pillarIdx} onChange={(e) => setPillarIdx(Number(e.target.value))}>
+          {/* Pillar — when a fixed schedule exists, this becomes a reference
+              only because each slot's pillar is dictated by the schedule. */}
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Content Pillar
+            {brand.schedule && brand.schedule.length > 0 && (
+              <span className="text-xs text-amber-300 font-normal ml-2">(schedule overrides — each slot uses its own pillar)</span>
+            )}
+          </label>
+          <select
+            className="input-field mb-3"
+            value={pillarIdx}
+            onChange={(e) => setPillarIdx(Number(e.target.value))}
+            disabled={!!(brand.schedule && brand.schedule.length > 0)}
+            title={brand.schedule && brand.schedule.length > 0 ? 'Pillar is set per slot by the schedule' : ''}
+          >
             {brand.pillars.map((p, i) => (
               <option key={i} value={i}>{`${p.name} — ${p.audience}`}</option>
             ))}
@@ -947,18 +1011,35 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             </div>
           )}
 
-          {/* Image options */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">Image Style</label>
+          {/* Image options — schedule overrides per-slot */}
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Image Style
+            {brand.schedule && brand.schedule.length > 0 && (
+              <span className="text-xs text-amber-300 font-normal ml-2">(schedule overrides — each slot uses its own image system A/B/C)</span>
+            )}
+          </label>
           <div className="grid grid-cols-3 gap-2 mb-3">
-            {IMAGE_STYLES.map((s) => (
-              <button key={s.id} className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'}`} onClick={() => setImageStyle(s.id)}>
-                <div className="text-sm font-semibold">{s.l}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{s.d}</div>
-              </button>
-            ))}
+            {IMAGE_STYLES.map((s) => {
+              const isLocked = !!(brand.schedule && brand.schedule.length > 0);
+              return (
+                <button
+                  key={s.id}
+                  className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => { if (!isLocked) setImageStyle(s.id); }}
+                  disabled={isLocked}
+                  title={isLocked ? 'Image system is set per slot by the schedule' : ''}
+                >
+                  <div className="text-sm font-semibold">{s.l}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{s.d}</div>
+                </button>
+              );
+            })}
           </div>
 
-          <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation ({POSTS_PER_DAY} posts × {WEEKDAYS.length} weekdays = {IMAGE_COUNT} branded cards)</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {brand.schedule && brand.schedule.length > 0
+              ? `Image Generation (${brand.schedule.length} cards across ${new Set(brand.schedule.map((s2) => s2.day)).size} days, schedule-driven)`
+              : `Image Generation (${POSTS_PER_DAY} posts × ${WEEKDAYS.length} weekdays = ${IMAGE_COUNT} branded cards)`}</label>
           <div className="mb-4 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-gray-300 text-sm">
             <span className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</span>
             <span className="text-xs opacity-70 ml-2">Canvas-based, instant, on-brand</span>
@@ -971,7 +1052,13 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ) : imgLoading ? (
               <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
             ) : (
-              <>{'\u26A1'} {autoTrending && live ? `Find Trend + Fill Mon-Fri (${IMAGE_COUNT} Posts)` : `Generate Full Week (${IMAGE_COUNT} Posts, Mon-Fri)`}</>
+              <>{'\u26A1'} {(() => {
+                const total = brand.schedule && brand.schedule.length > 0 ? brand.schedule.length : IMAGE_COUNT;
+                const dayRange = brand.schedule && brand.schedule.length > 0 ? 'Mon-Thu' : 'Mon-Fri';
+                return autoTrending && live
+                  ? `Find Trend + Fill ${dayRange} (${total} Posts)`
+                  : `Generate Full Week (${total} Posts, ${dayRange})`;
+              })()}</>
             )}
           </button>
           {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}

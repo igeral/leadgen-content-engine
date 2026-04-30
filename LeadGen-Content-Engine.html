@@ -58,15 +58,24 @@ const STEADFAST_PRESET = {
     { name: 'Lead Magnet', audience: 'Hospital Leaders', description: 'Soft introduction to the offer. Thursday 5:15 PM slot. Hooks Story Opener or Direct Question. Link in comments, never in caption.' },
   ],
   schedule: [
-    { day: 'Monday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'stat' },
-    { day: 'Monday', time: '12:00 PM', pillar: 'Workforce Insights', audience: 'Hospital Leaders', imageStyle: 'quote' },
-    { day: 'Tuesday', time: '7:30 AM', pillar: 'Industry Commentary', audience: 'Both', imageStyle: 'stat' },
-    { day: 'Tuesday', time: '12:00 PM', pillar: 'Workforce Insights', audience: 'Hospital Leaders', imageStyle: 'multi' },
-    { day: 'Wednesday', time: '7:30 AM', pillar: 'Physician Lifestyle', audience: 'Physicians', imageStyle: 'quote' },
-    { day: 'Wednesday', time: '12:00 PM', pillar: 'Staffing Strategy', audience: 'Hospital Leaders', imageStyle: 'stat' },
-    { day: 'Thursday', time: '12:00 PM', pillar: 'Staffing Strategy', audience: 'Hospital Leaders', imageStyle: 'multi' },
-    { day: 'Thursday', time: '5:15 PM', pillar: 'Lead Magnet', audience: 'Hospital Leaders', imageStyle: 'stat' },
+    { day: 'Monday',    time: '7:30 AM',  pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'direct_question', imageStyle: 'quote', variant: 'light' },
+    { day: 'Monday',    time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'bold_stat',       imageStyle: 'stat',  variant: 'dark'  },
+    { day: 'Tuesday',   time: '7:30 AM',  pillar: 'Industry Commentary', audience: 'Both',             hookFormula: 'reframe',         imageStyle: 'quote', variant: 'light' },
+    { day: 'Tuesday',   time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'bold_stat',       imageStyle: 'multi', variant: 'light' },
+    { day: 'Tuesday',   time: '2:30 PM',  pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'story_opener',    imageStyle: 'stat',  variant: 'dark'  },
+    { day: 'Tuesday',   time: '5:15 PM',  pillar: 'Staffing Strategy',   audience: 'Hospital Leaders', hookFormula: 'pov_scenario',    imageStyle: 'quote', variant: 'light' },
+    { day: 'Wednesday', time: '7:30 AM',  pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'bold_stat',       imageStyle: 'quote', variant: 'light' },
+    { day: 'Wednesday', time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'contrarian',      imageStyle: 'multi', variant: 'light' },
+    { day: 'Wednesday', time: '5:15 PM',  pillar: 'Industry Commentary', audience: 'Both',             hookFormula: 'bold_stat',       imageStyle: 'stat',  variant: 'dark'  },
+    { day: 'Thursday',  time: '12:00 PM', pillar: 'Staffing Strategy',   audience: 'Hospital Leaders', hookFormula: 'contrarian',      imageStyle: 'multi', variant: 'dark'  },
+    { day: 'Thursday',  time: '5:15 PM',  pillar: 'Lead Magnet',         audience: 'Hospital Leaders', hookFormula: 'story_opener',    imageStyle: 'quote', variant: 'light' },
   ],
+  leadMagnet: {
+    name: 'Proactive Coverage Playbook',
+    audience: 'Hospital CMOs and operations leaders',
+    description: 'A practical framework for eliminating physician coverage gaps before they become crises. Five-step proactive staffing model, specialty risk matrix, credentialing timeline templates.',
+    cta: 'The link to download is in the first comment.',
+  },
   dataPoints: [
     '86,000 projected physician shortage by 2036',
     '65% of hospitals have run below capacity due to staffing shortages',
@@ -552,7 +561,11 @@ function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, opts) 
   if (topic && !opts.trendingTopic) p += '\n\nTopic/Angle: ' + topic;
   if (opts.keywords && opts.keywords.length) p += '\n\nKeywords to weave in naturally: ' + opts.keywords.join(', ');
   if (opts.keyPhrases && opts.keyPhrases.length) p += '\n\nKey phrases to include or riff on:\n' + opts.keyPhrases.map(function(k) { return '- "' + k + '"'; }).join('\n');
-  if (opts.avoidTopics && opts.avoidTopics.length) p += '\n\nAvoid these topics/angles: ' + opts.avoidTopics.join(', ');
+  if (opts.avoidTopics && opts.avoidTopics.length) {
+    const list = opts.avoidTopics.map(function(t, i) { return (i + 1) + '. ' + t; }).join('\n');
+    p += '\n\nTOPICS ALREADY COVERED \u2014 DO NOT REPEAT OR REPHRASE ANY OF THESE:\n' + list +
+      '\n\nThe topic of THIS post MUST be a DIFFERENT news event, statistic, regulation, trend, or scenario from every item above. Pick a brand-new subject within the pillar.';
+  }
   if (dataPoints && dataPoints.length) {
     var selected = shuffle(dataPoints).slice(0, Math.min(3, dataPoints.length));
     p += '\n\nData points (use 1-2 max, weave naturally):\n' + selected.map(function(d) { return '- ' + d; }).join('\n');
@@ -561,6 +574,9 @@ function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, opts) 
   if (imageStyle === 'multi') p += '\n\nThis post is paired with a multi-image carousel (problem to context to solution).';
   if (imageStyle === 'quote') p += '\n\nThis post is paired with a quote card. Lead with a strong, quotable opinion.';
   p += '\n\nHARD CONSTRAINTS:\n- ZERO em dashes (\u2014, \u2013, --). Use commas, periods, colons, or line breaks instead.\n- Reader is the main character. Frame everything from THEIR perspective, never Steadfast\u2019s.\n- Hook \u226415 words. Must work above the see-more cutoff.\n- Soft CTA only. No engagement bait.';
+  if (opts.avoidTopics && opts.avoidTopics.length) {
+    p += '\n- Topic distinctness: this post must NOT reuse any subject from the topics already covered list above. Different topic, not a different angle on the same topic.';
+  }
   p += '\n\nUNIQUENESS SEED: ' + Math.random().toString(36).substring(2, 8) + '. Write something FRESH and ORIGINAL, different from any previous generation.';
   p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for 1-2 key phrases. End with 3-5 hashtags.';
   return p;
@@ -956,18 +972,23 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     setTrendingLoading(false);
   };
 
-  // One card per post (paired by index). Variants alternate dark/cream.
+  // One card per post. ctx.slotImageStyle / ctx.slotVariant / ctx.slotPillarName
+  // override the user's UI selection when the schedule dictates per-slot config.
   const makeBrandedCard = (postText, cardIndex, totalCards, ctx) => {
     const cv = cvRef.current; if (!cv) return null;
-    const variant = cardIndex % 2 === 0 ? 'dark' : 'light';
+    const slotStyle = (ctx && ctx.slotImageStyle) || imageStyle;
+    const slotPillarName = (ctx && ctx.slotPillarName) || pillar.name;
+    const variant = (ctx && (ctx.slotVariant === 'light' || ctx.slotVariant === 'dark'))
+      ? ctx.slotVariant
+      : (cardIndex % 2 === 0 ? 'dark' : 'light');
     const facets = extractPostFacets(postText, ctx && ctx.trending, ctx && ctx.topicHint);
     const dp = brand.dataPoints || [];
-    if (imageStyle === 'stat') {
-      const sl = facets.numericFacts[0] || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (pillar.name + ' insights') });
-      generateStatCard(cv, { stat: sl.stat, label: sl.label, subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (pillar.name + ' \u00B7 ' + (brand.tagline || '')).trim(), brandName: brand.name, orientation: 'portrait', variant: variant });
+    if (slotStyle === 'stat') {
+      const sl = facets.numericFacts[0] || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (slotPillarName + ' insights') });
+      generateStatCard(cv, { stat: sl.stat, label: sl.label, subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (slotPillarName + ' \u00B7 ' + (brand.tagline || '')).trim(), brandName: brand.name, orientation: 'portrait', variant: variant });
       return { url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
     }
-    if (imageStyle === 'quote') {
+    if (slotStyle === 'quote') {
       const quote = shortenWords(facets.hook || facets.topicLabel, 12);
       const context = shortenWords(facets.bullets[0] || facets.sentences[1] || facets.paragraphs[1] || '', 16);
       const closing = shortenWords(facets.closing || facets.hook || '', 8);
@@ -984,10 +1005,11 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     });
     return { url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (cardIndex + 1) + ': ' + facets.topicLabel, error: null };
   };
-  const makeBrandedImagesForPosts = (postTexts, ctx) => {
+  const makeBrandedImagesForPosts = (postTexts, ctx, perPostCtx) => {
     const out = [];
     for (let i = 0; i < postTexts.length; i++) {
-      const card = makeBrandedCard(postTexts[i], i, postTexts.length, ctx);
+      const localCtx = perPostCtx && perPostCtx[i] ? Object.assign({}, ctx, perPostCtx[i]) : ctx;
+      const card = makeBrandedCard(postTexts[i], i, postTexts.length, localCtx);
       if (card) out.push(card);
     }
     setImages(out); setSelectedImg(0); return out;
@@ -1035,27 +1057,31 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
   };
 
   // Save with explicit weekday per post (used by full-week generation).
-  const autoSaveWeekToArchive = (postTexts, imgsList, weekdays, ctx) => {
+  const autoSaveWeekToArchive = (postTexts, imgsList, weekdays, ctx, slots) => {
     if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
     setSavedPosts((current) => {
       const newEntries = postTexts.map(function(txt, i) {
         const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
+        const slot = (slots && slots[i]) || null;
         return {
           id: Date.now() + Math.floor(Math.random() * 100000) + i,
           text: txt,
           platform: ctx.platform,
-          pillar: ctx.pillar.name,
-          audience: ctx.pillar.audience,
+          pillar: slot ? slot.pillar : ctx.pillar.name,
+          audience: slot ? slot.audience : ctx.pillar.audience,
           tone: ctx.tone,
           ctaType: ctx.ctaType,
           trendingTopic: ctx.trendingTopic || null,
-          imageStyle: ctx.imageStyle,
+          imageStyle: slot ? slot.imageStyle : ctx.imageStyle,
           imageMode: 'branded',
           imageData: successImgs[0] && successImgs[0].url || null,
           allImages: successImgs.map(function(img) { return img.url; }),
           createdAt: now.toLocaleString(),
           weekday: weekdays[i],
+          time: slot ? slot.time : null,
+          hookFormula: slot ? slot.hookFormula : null,
+          imageVariant: slot ? slot.variant : null,
           autoSaved: true,
         };
       });
@@ -1097,53 +1123,75 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         postTexts = [t];
         postWeekdays = [];
       } else {
+        // SCHEDULE path: each of the 11 fixed slots is its own API call.
+        const SCHEDULE = brand.schedule || [];
+        if (SCHEDULE.length === 0) { throw new Error('No schedule defined for this brand. Add a schedule[] to the preset.'); }
+        const trendingSlotIdx = SCHEDULE.findIndex(function(slot2) { return slot2.day === 'Tuesday' && slot2.time === '12:00 PM'; });
+        const tIdx = trendingSlotIdx >= 0 ? trendingSlotIdx : 0;
         const collected = [];
         const seenTopicHints = userAvoid.slice();
-        for (let d = 0; d < WEEKDAYS.length; d++) {
-          const wd = WEEKDAYS[d];
-          setGenPhase(wd + ' (' + (d + 1) + '/' + WEEKDAYS.length + '): writing ' + POSTS_PER_DAY + ' posts on different topics...');
-          const trendingForThisDay = d === 0 ? activeTrending : null;
-          const contentOpts = Object.assign({}, baseContentOpts, { trendingTopic: trendingForThisDay, avoidTopics: seenTopicHints });
+        for (let i = 0; i < SCHEDULE.length; i++) {
+          const slot = SCHEDULE[i];
+          const slotPillar = brand.pillars.find(function(p2) { return p2.name === slot.pillar; }) || pillar;
+          setGenPhase(slot.day + ' ' + slot.time + ' \u00B7 ' + slot.pillar + ' (' + (i + 1) + '/' + SCHEDULE.length + ')...');
+          const trendingForThisSlot = i === tIdx ? activeTrending : null;
+          const slotContentOpts = Object.assign({}, baseContentOpts, {
+            trendingTopic: trendingForThisSlot,
+            avoidTopics: seenTopicHints,
+            hookFormula: slot.hookFormula,
+          });
           try {
-            const dayPosts = await callOpenRouterMultiPost(
+            const text = await callOpenRouter(
               manualKey, selModel,
               buildSystemPrompt(brand, platform, advancedOpts),
-              buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts),
-              POSTS_PER_DAY,
-              { pillarName: pillar.name, hasTrendingTopic: !!trendingForThisDay }
+              buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
             );
-            for (let p = 0; p < dayPosts.length; p++) {
-              const text = dayPosts[p];
-              collected.push({ text: text, weekday: wd });
-              const hint = (String(text || '').split('\n').find(function(l) { return l.trim(); }) || '').replace(/[\*_]/g, '').slice(0, 80);
-              if (hint) seenTopicHints.push(hint);
-            }
-          } catch (e) { console.error('[LeadGen] Day batch failed:', wd, e); }
+            const cleanText = stripEmDashes(text);
+            collected.push({ text: cleanText, slot: slot });
+            const hint = (String(cleanText || '').split('\n').find(function(l) { return l.trim(); }) || '').replace(/[\*_]/g, '').slice(0, 80);
+            if (hint) seenTopicHints.push(hint);
+          } catch (e) { console.error('[LeadGen] Slot failed:', slot.day, slot.time, e); }
         }
         postTexts = collected.map(function(c) { return c.text; });
-        postWeekdays = collected.map(function(c) { return c.weekday; });
+        postWeekdays = collected.map(function(c) { return c.slot.day; });
+        runGeneration._lastSlots = collected.map(function(c) { return c.slot; });
       }
     } else {
       await new Promise((r) => setTimeout(r, 1500));
       const pp = MOCK_POSTS[platform.toLowerCase()] || MOCK_POSTS.linkedin;
-      const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
-      const shuffled = [...pl].sort(() => Math.random() - 0.5);
-      const wantedCount = singlePost ? 1 : IMAGE_COUNT;
-      postTexts = [];
-      postWeekdays = [];
-      for (let i = 0; i < wantedCount; i++) {
-        postTexts.push(shuffled[i % shuffled.length]);
-        if (!singlePost) postWeekdays.push(WEEKDAYS[Math.floor(i / POSTS_PER_DAY) % WEEKDAYS.length]);
+      const SCHEDULE = brand.schedule || [];
+      postTexts = []; postWeekdays = [];
+      if (singlePost || SCHEDULE.length === 0) {
+        const pl = pp[pillar.name] || pp['Educational'] || Object.values(pp)[0];
+        const shuffled = [...pl].sort(() => Math.random() - 0.5);
+        const wantedCount = singlePost ? 1 : (SCHEDULE.length || IMAGE_COUNT);
+        for (let i = 0; i < wantedCount; i++) {
+          postTexts.push(shuffled[i % shuffled.length]);
+          if (!singlePost) postWeekdays.push((SCHEDULE[i] && SCHEDULE[i].day) || WEEKDAYS[Math.floor(i / POSTS_PER_DAY) % WEEKDAYS.length]);
+        }
+        if (!singlePost) runGeneration._lastSlots = SCHEDULE.slice(0, postTexts.length);
+      } else {
+        const usedSlots = [];
+        for (let i = 0; i < SCHEDULE.length; i++) {
+          const slot = SCHEDULE[i];
+          const pl = pp[slot.pillar] || pp['Educational'] || Object.values(pp)[0];
+          postTexts.push(pl[i % pl.length]);
+          postWeekdays.push(slot.day);
+          usedSlots.push(slot);
+        }
+        runGeneration._lastSlots = usedSlots;
       }
     }
 
     setPosts(postTexts); setPost(postTexts[0] || '');
     setGenPhase('Rendering ' + postTexts.length + ' card' + (postTexts.length > 1 ? 's' : '') + '...');
-    const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }) || [];
+    const slots = runGeneration._lastSlots || [];
+    const perPostCtx = slots.map(function(slot) { return { slotImageStyle: slot.imageStyle, slotVariant: slot.variant, slotPillarName: slot.pillar }; });
+    const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }, perPostCtx) || [];
     const imgsList = postTexts.map((_, i) => imgResults[i] ? [imgResults[i]] : []);
     const ctx = { platform, pillar, tone, ctaType, trendingTopic: activeTrending && activeTrending.topic || null, imageStyle };
     if (postWeekdays.length === postTexts.length && postWeekdays.length > 0) {
-      autoSaveWeekToArchive(postTexts, imgsList, postWeekdays, ctx);
+      autoSaveWeekToArchive(postTexts, imgsList, postWeekdays, ctx, slots);
     } else {
       autoSaveBatchToArchive(postTexts, imgsList, ctx);
     }
@@ -1205,10 +1253,18 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         React.createElement('div', { className: 'flex gap-2 mb-4' },
           ...['LinkedIn', 'Facebook'].map((p) => React.createElement('button', { key: p, className: 'flex-1 py-2 rounded-lg text-sm font-semibold transition-all ' + (platform === p ? 'tab-active' : 'tab-inactive'), onClick: () => setPlatform(p) }, (p === 'LinkedIn' ? '\uD83D\uDCBC' : '\uD83D\uDC65') + ' ' + p))
         ),
-        // Pillar
-        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Content Pillar'),
-        React.createElement('select', { className: 'input-field mb-3', value: pillarIdx, onChange: (e) => setPillarIdx(Number(e.target.value)) },
-          ...brand.pillars.map((p, i) => React.createElement('option', { key: i, value: i }, p.name + ' \u2014 ' + p.audience))
+        // Pillar (locked when a fixed schedule exists — schedule dictates pillar per slot)
+        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' },
+          'Content Pillar',
+          (brand.schedule && brand.schedule.length > 0) && React.createElement('span', { className: 'text-xs text-amber-300 font-normal ml-2' }, '(schedule overrides \u2014 each slot uses its own pillar)')
+        ),
+        React.createElement('select', {
+          className: 'input-field mb-3',
+          value: pillarIdx,
+          onChange: (e) => setPillarIdx(Number(e.target.value)),
+          disabled: !!(brand.schedule && brand.schedule.length > 0),
+          title: (brand.schedule && brand.schedule.length > 0) ? 'Pillar is set per slot by the schedule' : ''
+        }, ...brand.pillars.map((p, i) => React.createElement('option', { key: i, value: i }, p.name + ' \u2014 ' + p.audience))
         ),
         // Audience
         React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Target Audience ', React.createElement('span', { className: 'text-gray-500' }, '(optional)')),
@@ -1320,13 +1376,30 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         ),
 
         // Image options
-        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Style'),
-        React.createElement('div', { className: 'grid grid-cols-3 gap-2 mb-3' },
-          ...IMAGE_STYLES.map((s) => React.createElement('button', { key: s.id, className: 'p-2.5 rounded-lg text-center transition-all ' + (imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500'), onClick: () => setImageStyle(s.id) },
-            React.createElement('div', { className: 'text-sm font-semibold' }, s.l), React.createElement('div', { className: 'text-xs text-gray-400 mt-0.5' }, s.d)
-          ))
+        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' },
+          'Image Style',
+          (brand.schedule && brand.schedule.length > 0) && React.createElement('span', { className: 'text-xs text-amber-300 font-normal ml-2' }, '(schedule overrides \u2014 each slot uses its own image system)')
         ),
-        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' }, 'Image Generation (' + POSTS_PER_DAY + ' posts \u00D7 ' + WEEKDAYS.length + ' weekdays = ' + IMAGE_COUNT + ' branded cards)'),
+        React.createElement('div', { className: 'grid grid-cols-3 gap-2 mb-3' },
+          ...IMAGE_STYLES.map(function(s2) {
+            var isLocked2 = !!(brand.schedule && brand.schedule.length > 0);
+            return React.createElement('button', {
+              key: s2.id,
+              className: 'p-2.5 rounded-lg text-center transition-all ' + (imageStyle === s2.id ? 'bg-blue-600 border-blue-500 border' : 'bg-gray-800 border border-gray-600 hover:border-gray-500') + (isLocked2 ? ' opacity-50 cursor-not-allowed' : ''),
+              onClick: function() { if (!isLocked2) setImageStyle(s2.id); },
+              disabled: isLocked2,
+              title: isLocked2 ? 'Image system is set per slot by the schedule' : ''
+            },
+              React.createElement('div', { className: 'text-sm font-semibold' }, s2.l),
+              React.createElement('div', { className: 'text-xs text-gray-400 mt-0.5' }, s2.d)
+            );
+          })
+        ),
+        React.createElement('label', { className: 'block text-sm font-medium text-gray-300 mb-1' },
+          (brand.schedule && brand.schedule.length > 0)
+            ? ('Image Generation (' + brand.schedule.length + ' cards across ' + (new Set(brand.schedule.map(function(s3) { return s3.day; })).size) + ' days, schedule-driven)')
+            : ('Image Generation (' + POSTS_PER_DAY + ' posts \u00D7 ' + WEEKDAYS.length + ' weekdays = ' + IMAGE_COUNT + ' branded cards)')
+        ),
         React.createElement('div', { className: 'mb-4 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-gray-300 text-sm' },
           React.createElement('span', { className: 'font-semibold' }, '\uD83C\uDFA8 Branded Cards'),
           React.createElement('span', { className: 'text-xs opacity-70 ml-2' }, 'Canvas-based, instant, on-brand')
@@ -1336,7 +1409,13 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         React.createElement('button', { className: 'btn-primary w-full py-3 text-lg', onClick: generate, disabled: loading || imgLoading },
           loading ? React.createElement(React.Fragment, null, React.createElement('span', { className: 'spinner' }), ' ', genPhase || 'Generating...') :
           imgLoading ? React.createElement(React.Fragment, null, React.createElement('span', { className: 'spinner' }), ' ', imgProgress || 'Generating images...') :
-          (autoTrending && live ? ('\u26A1 Find Trend + Fill Mon-Fri (' + IMAGE_COUNT + ' Posts)') : ('\u26A1 Generate Full Week (' + IMAGE_COUNT + ' Posts, Mon-Fri)'))
+          (function() {
+            var total = (brand.schedule && brand.schedule.length > 0) ? brand.schedule.length : IMAGE_COUNT;
+            var dayRange = (brand.schedule && brand.schedule.length > 0) ? 'Mon-Thu' : 'Mon-Fri';
+            return autoTrending && live
+              ? ('\u26A1 Find Trend + Fill ' + dayRange + ' (' + total + ' Posts)')
+              : ('\u26A1 Generate Full Week (' + total + ' Posts, ' + dayRange + ')');
+          })()
         ),
         error && React.createElement('p', { className: 'text-red-400 text-sm mt-2' }, 'Error: ' + error)
       ),
@@ -1408,7 +1487,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
         imgLoading ? React.createElement('div', { className: 'text-center py-14 text-gray-500' },
           React.createElement('div', { className: 'spinner mx-auto mb-4', style: { width: 40, height: 40 } }),
           React.createElement('p', { className: 'font-medium text-gray-300' }, imgProgress || 'Generating images...'),
-          React.createElement('p', { className: 'text-sm mt-1' }, 'Generating ' + IMAGE_COUNT + ' posts across Mon-Fri and rendering paired cards')
+          React.createElement('p', { className: 'text-sm mt-1' }, (brand.schedule && brand.schedule.length > 0 ? ('Generating ' + brand.schedule.length + ' posts across the schedule and rendering paired cards') : ('Generating ' + IMAGE_COUNT + ' posts across Mon-Fri and rendering paired cards')))
         ) : successfulImages.length > 0 ? React.createElement('div', null,
           React.createElement('div', { className: 'relative mb-3' },
             images[selectedImg] && images[selectedImg].url && React.createElement('img', { src: images[selectedImg].url, className: 'w-full rounded-lg shadow-lg', alt: 'Generated image ' + (selectedImg+1) }),

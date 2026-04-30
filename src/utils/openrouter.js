@@ -697,7 +697,10 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   if (topic && !trendingTopic) p += `\n\nTopic/Angle: ${topic}`;
   if (keywords?.length) p += `\n\nKeywords to weave in naturally (don't force them): ${keywords.join(', ')}`;
   if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
-  if (avoidTopics?.length) p += `\n\nAvoid these topics/angles: ${avoidTopics.join(', ')}`;
+  if (avoidTopics?.length) {
+    const list = avoidTopics.map((t, i) => `${i + 1}. ${t}`).join('\n');
+    p += `\n\nTOPICS ALREADY COVERED — DO NOT REPEAT OR REPHRASE ANY OF THESE:\n${list}\n\nThe topic of THIS post MUST be a DIFFERENT news event, statistic, regulation, trend, or scenario from every item above. Do not write a different angle on any topic in the list. Pick a brand-new subject within the pillar.`;
+  }
   if (dataPoints?.length) {
     const selected = shuffle(dataPoints).slice(0, Math.min(3, dataPoints.length));
     p += `\n\nData points (use 1-2 max, weave naturally):\n${selected.map((d) => `- ${d}`).join('\n')}`;
@@ -709,6 +712,9 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
 
   // Hard guardrails (repeated here because LLMs sometimes ignore the system prompt)
   p += '\n\nHARD CONSTRAINTS:\n- ZERO em dashes (\u2014, \u2013, --). Use commas, periods, colons, or line breaks instead.\n- Reader is the main character. Frame everything from THEIR perspective, never Steadfast\u2019s.\n- Hook \u226415 words. Must work above the see-more cutoff.\n- Soft CTA only. No engagement bait.';
+  if (avoidTopics?.length) {
+    p += `\n- Topic distinctness: this post must NOT reuse any subject from the "topics already covered" list above. Different topic, not a different angle on the same topic.`;
+  }
 
   // Random uniqueness seed
   p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)}. Write something FRESH and ORIGINAL — different from any previous generation.`;
