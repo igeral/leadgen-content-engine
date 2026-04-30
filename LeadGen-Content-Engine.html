@@ -2286,7 +2286,24 @@ function buildMultiSlides(facets, count) {
 // ═══════════ APP ═══════════
 function App() {
   const [page, setPage] = useState('generate');
-  const [brand, setBrand] = useState(() => loadJSON(BRAND_STORAGE_KEY, STEADFAST_PRESET));
+  // Always overlay the current preset's schedule + leadMagnet so a stale cached
+  // brand can't override what we just shipped. Merge pillars so schedule-referenced
+  // pillars (Lead Magnet) are guaranteed to exist.
+  const [brand, setBrand] = useState(() => {
+    const stored = loadJSON(BRAND_STORAGE_KEY, null);
+    if (!stored) return STEADFAST_PRESET;
+    const userPillars = Array.isArray(stored.pillars) ? stored.pillars : [];
+    const haveByName = new Set(userPillars.map(function(p) { return p && p.name; }));
+    const mergedPillars = userPillars.slice();
+    for (const pp of STEADFAST_PRESET.pillars) {
+      if (!haveByName.has(pp.name)) mergedPillars.push(pp);
+    }
+    return Object.assign({}, STEADFAST_PRESET, stored, {
+      pillars: mergedPillars,
+      schedule: STEADFAST_PRESET.schedule,
+      leadMagnet: STEADFAST_PRESET.leadMagnet,
+    });
+  });
   const [manualKey, setManualKey] = useState(() => loadString(KEY_STORAGE_KEY, ''));
   const [selModel, setSelModel] = useState(() => loadString(TEXTMODEL_STORAGE_KEY, TEXT_MODELS[0].id));
   const [selImgModel, setSelImgModel] = useState(() => loadString(IMGMODEL_STORAGE_KEY, IMAGE_MODELS[0].id));

@@ -71,7 +71,28 @@ function loadJSON(key, fallback) {
 
 export default function App() {
   const [page, setPage] = useState('generate');
-  const [brand, setBrand] = useState(() => loadJSON(BRAND_STORAGE_KEY, STEADFAST_PRESET));
+  // Brand: persist user-editable fields (dataPoints, name, tagline) but
+  // ALWAYS overlay the current code's schedule + leadMagnet so a stale cached
+  // brand from an older session can't override the schedule we just shipped.
+  // Also merge pillars so any pillar the schedule references (e.g. "Lead Magnet")
+  // is guaranteed to exist on the brand even if the user's cached brand is older.
+  const [brand, setBrand] = useState(() => {
+    const stored = loadJSON(BRAND_STORAGE_KEY, null);
+    if (!stored) return STEADFAST_PRESET;
+    const userPillars = Array.isArray(stored.pillars) ? stored.pillars : [];
+    const haveByName = new Set(userPillars.map((p) => p && p.name));
+    const mergedPillars = [...userPillars];
+    for (const pp of STEADFAST_PRESET.pillars) {
+      if (!haveByName.has(pp.name)) mergedPillars.push(pp);
+    }
+    return {
+      ...STEADFAST_PRESET,
+      ...stored,
+      pillars: mergedPillars,
+      schedule: STEADFAST_PRESET.schedule,
+      leadMagnet: STEADFAST_PRESET.leadMagnet,
+    };
+  });
   const [manualKey, setManualKey] = useState(() => loadString(KEY_STORAGE_KEY));
   const [models, setModels] = useState(() => loadJSON(MODEL_STORAGE_KEY, { text: TEXT_MODELS[0].id, image: IMAGE_MODELS[0].id }));
   const [toast, setToast] = useState(null);
