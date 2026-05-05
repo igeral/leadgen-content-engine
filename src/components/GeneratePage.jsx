@@ -109,6 +109,24 @@ function shortenWords(s, max) {
   return w.slice(0, max).join(' ') + '\u2026';
 }
 
+// Detect lines that are made up only of hashtag-style or CamelCase tag words
+// (with or without a leading '#'). The model sometimes drops bare tag tokens
+// like "HospitalLeadership PhysicianShortage" or just "HospitalLeadership"
+// alone on a line — these are pillar/audience labels meant for our internal
+// tracking, not for display on the card. Drop them before they reach the
+// closing-line, hook, or subtitle of any card.
+function isOnlyTagsLine(line) {
+  const t = String(line || '').trim();
+  if (!t || t.length < 4) return false;
+  const tokens = t.split(/\s+/);
+  return tokens.every((tok) => {
+    const stripped = tok.replace(/^#+/, '').replace(/[.,;:!?]+$/, '');
+    if (stripped.length < 4) return false;
+    // CamelCase compound: starts with capital, no spaces, only letters/digits.
+    return /^[A-Z][a-zA-Z0-9]*$/.test(stripped);
+  });
+}
+
 function parseStatLine(line) {
   const s = String(line || '').trim();
   const m = s.match(/^([\$\d,\.%\+]+[KMB]?%?)\s*(.*)/);
@@ -133,7 +151,8 @@ function extractPostFacets(postText, trending, topicHint) {
   // Strip markdown FIRST so headlines/bullets don't render literal ** or _
   const raw = stripMarkdown(String(postText)).trim();
   const linesAll = raw.split('\n').map((l) => l.replace(HASHTAG_RX, '').trim());
-  const lines = linesAll.filter((l) => l.length > 0);
+  // Drop empty lines AND tag-only lines (bare CamelCase pillar/audience labels).
+  const lines = linesAll.filter((l) => l.length > 0 && !isOnlyTagsLine(l));
 
   const bullets = [];
   const paragraphs = [];

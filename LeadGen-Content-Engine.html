@@ -2186,6 +2186,16 @@ function shortenWords(s, max) {
   if (w.length <= max) return w.join(' ');
   return w.slice(0, max).join(' ') + '\u2026';
 }
+function isOnlyTagsLine(line) {
+  const t = String(line || '').trim();
+  if (!t || t.length < 4) return false;
+  const tokens = t.split(/\s+/);
+  return tokens.every(function(tok) {
+    const stripped = tok.replace(/^#+/, '').replace(/[.,;:!?]+$/, '');
+    if (stripped.length < 4) return false;
+    return /^[A-Z][a-zA-Z0-9]*$/.test(stripped);
+  });
+}
 function parseStatLine(line) {
   const s = String(line || '').trim();
   const m = s.match(/^([\$\d,\.%\+]+[KMB]?%?)\s*(.*)/);
@@ -2197,7 +2207,8 @@ function extractPostFacets(postText, trending, topicHint) {
   if (!postText) return { topic: fallbackTopic, topicLabel: String(fallbackTopic).toUpperCase(), hook: '', paragraphs: [], bullets: [], sentences: [], numericFacts: [], closing: '' };
   const raw = stripMarkdown(String(postText)).trim();
   const linesAll = raw.split('\n').map((l) => l.replace(HASHTAG_RX, '').trim());
-  const lines = linesAll.filter((l) => l.length > 0);
+  // Drop empty lines AND tag-only lines (bare CamelCase pillar/audience labels).
+  const lines = linesAll.filter((l) => l.length > 0 && !isOnlyTagsLine(l));
   const bullets = []; const paragraphs = [];
   for (const l of lines) {
     const bm = l.match(BULLET_RX); const nm = l.match(NUMBERED_RX);
