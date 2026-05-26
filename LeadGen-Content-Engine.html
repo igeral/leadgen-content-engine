@@ -986,24 +986,45 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     if (slotStyle === 'stat') {
       const sl = facets.numericFacts[0] || (dp.length ? parseStatLine(dp[cardIndex % dp.length]) : { stat: 'Insight', label: facets.hook || (slotPillarName + ' insights') });
       generateStatCard(cv, { stat: sl.stat, label: sl.label, subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (slotPillarName + ' \u00B7 ' + (brand.tagline || '')).trim(), brandName: brand.name, orientation: 'portrait', variant: variant });
-      return { url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
+      const u = cv.toDataURL('image/png'); return { url: u, pages: [u], prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
     }
     if (slotStyle === 'quote') {
       const quote = shortenWords(facets.hook || facets.topicLabel, 12);
       const context = shortenWords(facets.bullets[0] || facets.sentences[1] || facets.paragraphs[1] || '', 16);
       const closing = shortenWords(facets.closing || facets.hook || '', 8);
       generateQuoteCard(cv, { quote: quote, context: context, closingLine: closing, brandName: brand.name, orientation: 'portrait', variant: variant });
-      return { url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + quote.slice(0, 60), error: null };
+      const u = cv.toDataURL('image/png'); return { url: u, pages: [u], prompt: 'Quote card: ' + quote.slice(0, 60), error: null };
     }
-    generateMultiCard(cv, {
-      cardNumber: String(cardIndex + 1), totalCards: String(totalCards),
-      topicLabel: facets.topicLabel,
-      title: shortenWords(facets.hook, 8) || 'Insight',
-      subtitle: shortenWords(facets.paragraphs[1] || facets.bullets[0] || facets.sentences[1] || '', 14),
-      subSubtitle: shortenWords(facets.closing, 14),
-      brandName: brand.name, orientation: 'portrait', variant: variant
+    // MULTI-SET: render a full 3-page carousel (01/03, 02/03, 03/03).
+    const CAROUSEL_PAGES = 3;
+    const slides = buildMultiSlides(facets, CAROUSEL_PAGES);
+    const pages = [];
+    for (let pIdx = 0; pIdx < CAROUSEL_PAGES; pIdx++) {
+      const c = slides[pIdx] || slides[slides.length - 1];
+      const pageVariant = pIdx % 2 === 0 ? variant : (variant === 'dark' ? 'light' : 'dark');
+      generateMultiCard(cv, {
+        cardNumber: String(pIdx + 1), totalCards: String(CAROUSEL_PAGES),
+        topicLabel: c.topic,
+        title: c.title,
+        subtitle: c.sub,
+        subSubtitle: c.subSub,
+        points: c.points,
+        closingLine: c.closing,
+        brandName: brand.name, orientation: 'portrait', variant: pageVariant
+      });
+      pages.push(cv.toDataURL('image/png'));
+    }
+    return { url: pages[0], pages: pages, prompt: 'Carousel (' + CAROUSEL_PAGES + ' pages): ' + facets.topicLabel, error: null };
+  };
+  // Flatten card objects into a flat array of page image URLs (carousels = N pages).
+  const expandCardPages = (cards) => {
+    const all = [];
+    (cards || []).forEach(function(c) {
+      if (!c) return;
+      if (Array.isArray(c.pages) && c.pages.length) { c.pages.forEach(function(u) { all.push(u); }); }
+      else if (c.url) all.push(c.url);
     });
-    return { url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (cardIndex + 1) + ': ' + facets.topicLabel, error: null };
+    return all;
   };
   const makeBrandedImagesForPosts = (postTexts, ctx, perPostCtx) => {
     const out = [];
@@ -1041,7 +1062,8 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
           imageStyle: ctx.imageStyle,
           imageMode: 'branded',
           imageData: successImgs[0] && successImgs[0].url || null,
-          allImages: successImgs.map((img) => img.url),
+          allImages: expandCardPages(successImgs),
+          pageCount: expandCardPages(successImgs).length,
           createdAt: now.toLocaleString(),
           weekday: weekday,
           autoSaved: true,
@@ -1078,7 +1100,8 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
           imageStyle: slot ? slot.imageStyle : ctx.imageStyle,
           imageMode: 'branded',
           imageData: successImgs[0] && successImgs[0].url || null,
-          allImages: successImgs.map(function(img) { return img.url; }),
+          allImages: expandCardPages(successImgs),
+          pageCount: expandCardPages(successImgs).length,
           createdAt: now.toLocaleString(),
           weekday: weekdays[i],
           time: slot ? slot.time : null,
@@ -1273,8 +1296,42 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
     showToast('Post saved to Archive!');
   };
 
-  const downloadImage = (url, idx) => { const a = document.createElement('a'); a.download = (brand.name||'post') + '-' + imageStyle + '-' + (idx+1) + '-' + Date.now() + '.png'; a.href = url; a.click(); showToast('Downloaded!'); };
-  const downloadAll = () => { images.filter((i) => i.url).forEach((img, idx) => { setTimeout(() => { const a = document.createElement('a'); a.download = (brand.name||'post') + '-' + imageStyle + '-' + (idx+1) + '-' + Date.now() + '.png'; a.href = img.url; a.click(); }, idx * 300); }); showToast('Downloading ' + images.filter((i) => i.url).length + ' images...'); };
+  const downloadImage = (imgObj, idx) => {
+    if (!imgObj) return;
+    const pages = (imgObj.pages && imgObj.pages.length) ? imgObj.pages : (imgObj.url ? [imgObj.url] : []);
+    if (!pages.length) return;
+    const base = (brand.name||'post') + '-' + (idx+1) + '-' + Date.now();
+    const multi = pages.length > 1;
+    pages.forEach(function(url, p) {
+      if (!url) return;
+      setTimeout(function() {
+        const a = document.createElement('a');
+        a.download = multi ? (base + '-' + String(p+1).padStart(2,'0') + '.png') : (base + '.png');
+        a.href = url; a.click();
+      }, p * 350);
+    });
+    showToast(multi ? ('Downloading ' + pages.length + '-page carousel...') : 'Downloaded!');
+  };
+  const downloadAll = () => {
+    let delay = 0; let fileCount = 0;
+    images.filter((i) => i.url).forEach(function(img, idx) {
+      const pages = (img.pages && img.pages.length) ? img.pages : [img.url];
+      const multi = pages.length > 1;
+      pages.forEach(function(url, p) {
+        if (!url) return;
+        fileCount += 1;
+        setTimeout(function() {
+          const a = document.createElement('a');
+          a.download = multi
+            ? ((brand.name||'post') + '-' + (idx+1) + '-' + String(p+1).padStart(2,'0') + '-' + Date.now() + '.png')
+            : ((brand.name||'post') + '-' + (idx+1) + '-' + Date.now() + '.png');
+          a.href = url; a.click();
+        }, delay);
+        delay += 300;
+      });
+    });
+    showToast('Downloading ' + fileCount + ' images...');
+  };
 
   const TONES = [{ id:'authoritative',label:'Authoritative',desc:'Expert, data-driven' },{ id:'conversational',label:'Conversational',desc:'Warm, relatable' },{ id:'provocative',label:'Provocative',desc:'Bold, contrarian' },{ id:'storytelling',label:'Storytelling',desc:'Narrative-driven' },{ id:'educational',label:'Educational',desc:'Clear, instructive' }];
   const CTA_TYPES = [{ id:'question',label:'Question',desc:'Invite comments' },{ id:'dm',label:'DM CTA',desc:'DM me "GUIDE"' },{ id:'link',label:'Link CTA',desc:'Point to resource' },{ id:'engage',label:'Engage',desc:'Share experience' },{ id:'none',label:'None',desc:'No CTA' }];
@@ -1530,7 +1587,7 @@ function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast
           React.createElement('div', { className: 'relative mb-3' },
             images[selectedImg] && images[selectedImg].url && React.createElement('img', { src: images[selectedImg].url, className: 'w-full rounded-lg shadow-lg', alt: 'Generated image ' + (selectedImg+1) }),
             React.createElement('div', { className: 'absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1' }, (selectedImg+1) + ' / ' + successfulImages.length),
-            React.createElement('button', { className: 'absolute top-2 right-2 btn-secondary text-xs', onClick: () => downloadImage(images[selectedImg].url, selectedImg) }, '\u2B07\uFE0F')
+            React.createElement('button', { className: 'absolute top-2 right-2 btn-secondary text-xs', onClick: () => downloadImage(images[selectedImg], selectedImg) }, '\u2B07\uFE0F')
           ),
           React.createElement('div', { className: 'grid grid-cols-5 gap-2' },
             ...images.map((img, i) => React.createElement('button', { key: i, className: 'relative rounded-lg overflow-hidden border-2 transition-all ' + (selectedImg === i ? 'border-blue-500 shadow-lg' : 'border-gray-600 hover:border-gray-400') + (!img.url ? ' opacity-40' : ''), onClick: () => img.url && setSelectedImg(i), disabled: !img.url, style: { aspectRatio: '16/9' } },
@@ -1700,12 +1757,24 @@ function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
 
   const copyPost = (text) => { navigator.clipboard.writeText(text); showToast('Copied to clipboard!'); };
   const downloadImageEntry = (post) => {
-    if (!post.imageData) { showToast('No image attached to this post'); return; }
+    // Download every page of the post: carousels have N pages in allImages,
+    // single cards have 1. Pages named slug-01.png, slug-02.png, ...
+    const pages = (Array.isArray(post.allImages) && post.allImages.length)
+      ? post.allImages
+      : (post.imageData ? [post.imageData] : []);
+    if (!pages.length) { showToast('No image attached to this post'); return; }
     const slug = archiveSlugifyFilename(post);
-    const a = document.createElement('a');
-    a.href = post.imageData; a.download = slug + '.png';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    showToast('Downloaded ' + slug + '.png');
+    const multi = pages.length > 1;
+    pages.forEach(function(url, i) {
+      if (!url) return;
+      setTimeout(function() {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = multi ? (slug + '-' + String(i+1).padStart(2,'0') + '.png') : (slug + '.png');
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }, i * 350);
+    });
+    showToast(multi ? ('Downloading ' + pages.length + '-page carousel...') : ('Downloaded ' + slug + '.png'));
   };
   const movePost = (id, newDay) => { setSavedPosts((prev) => prev.map((p) => p.id === id ? Object.assign({}, p, { weekday: newDay }) : p)); showToast('Moved to ' + newDay); };
   const deletePost = (id) => { setSavedPosts((prev) => prev.filter((p) => p.id !== id)); showToast('Deleted'); if (editingId === id) setEditingId(null); if (expandedId === id) setExpandedId(null); };

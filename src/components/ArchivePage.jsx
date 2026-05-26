@@ -110,18 +110,29 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
   };
 
   const downloadImage = (post) => {
-    if (!post.imageData) {
+    // Download every page of the post's card set. Carousels have 3 pages;
+    // single cards have 1. Pages are named slug-01.png, slug-02.png, ...
+    const pages = (Array.isArray(post.allImages) && post.allImages.length)
+      ? post.allImages
+      : (post.imageData ? [post.imageData] : []);
+    if (!pages.length) {
       showToast('No image attached to this post');
       return;
     }
     const slug = slugifyForFilename(post);
-    const a = document.createElement('a');
-    a.href = post.imageData;
-    a.download = `${slug}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast(`Downloaded ${slug}.png`);
+    const multi = pages.length > 1;
+    pages.forEach((url, i) => {
+      if (!url) return;
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = multi ? `${slug}-${String(i + 1).padStart(2, '0')}.png` : `${slug}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, i * 350);
+    });
+    showToast(multi ? `Downloading ${pages.length}-page carousel...` : `Downloaded ${slug}.png`);
   };
 
   const movePost = (id, newDay) => {

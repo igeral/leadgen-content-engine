@@ -417,7 +417,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         orientation: 'portrait',
         variant,
       });
-      return { url: cv.toDataURL('image/png'), prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
+      const u = cv.toDataURL('image/png');
+      return { url: u, pages: [u], prompt: 'Stat card: ' + (sl.stat + ' ' + sl.label).slice(0, 60), error: null };
     }
     if (slotStyle === 'quote') {
       const quote = shortenWords(facets.hook || facets.topicLabel, 12);
@@ -429,21 +430,34 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         orientation: 'portrait',
         variant,
       });
-      return { url: cv.toDataURL('image/png'), prompt: 'Quote card: ' + quote.slice(0, 60), error: null };
+      const u = cv.toDataURL('image/png');
+      return { url: u, pages: [u], prompt: 'Quote card: ' + quote.slice(0, 60), error: null };
     }
-    // multi-card single slide for this post
-    generateMultiCard(cv, {
-      cardNumber: String(cardIndex + 1),
-      totalCards: String(totalCards),
-      topicLabel: facets.topicLabel,
-      title: shortenWords(facets.hook, 8) || 'Insight',
-      subtitle: shortenWords(facets.paragraphs[1] || facets.bullets[0] || facets.sentences[1] || '', 14),
-      subSubtitle: shortenWords(facets.closing, 14),
-      brandName: brand.name,
-      orientation: 'portrait',
-      variant,
-    });
-    return { url: cv.toDataURL('image/png'), prompt: 'Multi card ' + (cardIndex + 1) + ': ' + facets.topicLabel, error: null };
+    // MULTI-SET: render a full 3-page carousel (01/03, 02/03, 03/03) from the
+    // post's content. Pages follow a problem -> context -> takeaway arc via
+    // buildMultiSlides. Variant alternates per page for visual variety.
+    const CAROUSEL_PAGES = 3;
+    const slides = buildMultiSlides(facets, CAROUSEL_PAGES);
+    const pages = [];
+    for (let p = 0; p < CAROUSEL_PAGES; p++) {
+      const c = slides[p] || slides[slides.length - 1];
+      const pageVariant = p % 2 === 0 ? variant : (variant === 'dark' ? 'light' : 'dark');
+      generateMultiCard(cv, {
+        cardNumber: String(p + 1),
+        totalCards: String(CAROUSEL_PAGES),
+        topicLabel: c.topic,
+        title: c.title,
+        subtitle: c.sub,
+        subSubtitle: c.subSub,
+        points: c.points,
+        closingLine: c.closing,
+        brandName: brand.name,
+        orientation: 'portrait',
+        variant: pageVariant,
+      });
+      pages.push(cv.toDataURL('image/png'));
+    }
+    return { url: pages[0], pages, prompt: 'Carousel (' + CAROUSEL_PAGES + ' pages): ' + facets.topicLabel, error: null };
   };
 
   // Produce N cards (one per post text). Accepts either a single ctx (applied
@@ -471,6 +485,20 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // a single day's content slot (3 different posts in one day). The target day
   // is the weekday with the fewest existing posts so successive clicks fill
   // Monday, Tuesday, Wednesday, etc. in order.
+  // Flatten card objects into a flat array of page image URLs.
+  // A multi-set card carries .pages (the full 3-page carousel); stat/quote
+  // cards carry a single page. Stored as allImages so the whole carousel
+  // travels with the post and downloads together.
+  const expandCardPages = (cards) => {
+    const all = [];
+    (cards || []).forEach((c) => {
+      if (!c) return;
+      if (Array.isArray(c.pages) && c.pages.length) all.push(...c.pages);
+      else if (c.url) all.push(c.url);
+    });
+    return all;
+  };
+
   const autoSaveBatchToArchive = (postTexts, imgsList, ctx, batchToastSuffix) => {
     if (!postTexts || postTexts.length === 0) return;
     const now = new Date();
@@ -481,6 +509,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       const weekday = WD[counts.indexOf(minCount)];
       const newEntries = postTexts.map((txt, i) => {
         const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
+        const pages = expandCardPages(successImgs);
         return {
           id: Date.now() + Math.floor(Math.random() * 1000) + i,
           text: txt,
@@ -493,7 +522,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           imageStyle: ctx.imageStyle,
           imageMode: 'branded',
           imageData: successImgs[0]?.url || null,
-          allImages: successImgs.map((img) => img.url),
+          allImages: pages,
+          pageCount: pages.length,
           createdAt: now.toLocaleString(),
           weekday,
           autoSaved: true,
@@ -526,6 +556,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       const kept = current.filter((p) => !p.weekFillBatch);
       const newEntries = postTexts.map((txt, i) => {
         const successImgs = (imgsList[i] || []).filter((img) => img && img.url);
+        const pages = expandCardPages(successImgs);
         const slot = (slots && slots[i]) || null;
         return {
           id: Date.now() + Math.floor(Math.random() * 100000) + i,
@@ -539,7 +570,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           imageStyle: slot ? slot.imageStyle : ctx.imageStyle,
           imageMode: 'branded',
           imageData: successImgs[0]?.url || null,
-          allImages: successImgs.map((img) => img.url),
+          allImages: pages,
+          pageCount: pages.length,
           createdAt: now.toLocaleString(),
           weekday: weekdays[i],
           time: slot ? slot.time : null,
@@ -717,7 +749,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
     // Save: if we have explicit weekdays (multi-day path), save with each post's
     // own weekday. Otherwise (single-post path) use the fewest-weekday batch logic.
-    const imgsList = postTexts.map((_, i) => imgResults[i] ? [imgResults[i]] : []);
+    // imgsList[i] carries ALL pages of the card (3 for carousels, 1 otherwise)
+    // so the archive entry's allImages holds the full multi-page set.
+    const imgsList = postTexts.map((_, i) => {
+      const r = imgResults[i];
+      if (!r) return [];
+      const pages = (r.pages && r.pages.length) ? r.pages : (r.url ? [r.url] : []);
+      return pages.map((url) => ({ url }));
+    });
     const ctx = {
       platform,
       pillar,
@@ -796,7 +835,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     // Save the currently-selected post (paired with its card)
     const currentText = posts[selectedImg] || post;
     if (!currentText) return;
-    const currentImg = images[selectedImg]?.url || null;
+    const currentCard = images[selectedImg] || null;
+    const currentImg = currentCard?.url || null;
+    const pages = expandCardPages(currentCard ? [currentCard] : []);
     const now = new Date();
     const weekdayName = now.toLocaleDateString('en-US', { weekday: 'long' });
     const WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -815,7 +856,8 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         imageStyle,
         imageMode: 'branded',
         imageData: currentImg,
-        allImages: currentImg ? [currentImg] : [],
+        allImages: pages.length ? pages : (currentImg ? [currentImg] : []),
+        pageCount: pages.length || (currentImg ? 1 : 0),
         createdAt: now.toLocaleString(),
         weekday,
       },
@@ -823,24 +865,46 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     showToast('Post saved to Archive!');
   };
 
-  const downloadImage = (url, idx) => {
-    const a = document.createElement('a');
-    a.download = `${brand.name || 'post'}-${imageStyle}-${idx + 1}-${Date.now()}.png`;
-    a.href = url;
-    a.click();
-    showToast('Downloaded!');
+  // Download every page of one card object (carousels = 3 pages, else 1).
+  const downloadImage = (imgObj, idx) => {
+    if (!imgObj) return;
+    const pages = (imgObj.pages && imgObj.pages.length) ? imgObj.pages : (imgObj.url ? [imgObj.url] : []);
+    if (!pages.length) return;
+    const base = `${brand.name || 'post'}-${idx + 1}-${Date.now()}`;
+    const multi = pages.length > 1;
+    pages.forEach((url, p) => {
+      if (!url) return;
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.download = multi ? `${base}-${String(p + 1).padStart(2, '0')}.png` : `${base}.png`;
+        a.href = url;
+        a.click();
+      }, p * 350);
+    });
+    showToast(multi ? `Downloading ${pages.length}-page carousel...` : 'Downloaded!');
   };
 
   const downloadAll = () => {
+    let delay = 0;
+    let fileCount = 0;
     images.filter((i) => i.url).forEach((img, idx) => {
-      setTimeout(() => {
-        const a = document.createElement('a');
-        a.download = `${brand.name || 'post'}-${imageStyle}-${idx + 1}-${Date.now()}.png`;
-        a.href = img.url;
-        a.click();
-      }, idx * 300);
+      const pages = (img.pages && img.pages.length) ? img.pages : [img.url];
+      const multi = pages.length > 1;
+      pages.forEach((url, p) => {
+        if (!url) return;
+        fileCount += 1;
+        setTimeout(() => {
+          const a = document.createElement('a');
+          a.download = multi
+            ? `${brand.name || 'post'}-${idx + 1}-${String(p + 1).padStart(2, '0')}-${Date.now()}.png`
+            : `${brand.name || 'post'}-${idx + 1}-${Date.now()}.png`;
+          a.href = url;
+          a.click();
+        }, delay);
+        delay += 300;
+      });
     });
-    showToast(`Downloading ${images.filter((i) => i.url).length} images...`);
+    showToast(`Downloading ${fileCount} images (all pages)...`);
   };
 
   const TONES = [
