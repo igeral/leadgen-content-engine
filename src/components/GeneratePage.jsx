@@ -329,7 +329,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   // ─── ADVANCED CONTENT CONTROLS ───
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [tone, setTone] = useState('authoritative');
+  const [tone, setTone] = useState('storytelling');
   const [ctaType, setCtaType] = useState('question');
   const [formatting, setFormatting] = useState('balanced');
   const [useEmoji, setUseEmoji] = useState(false);
