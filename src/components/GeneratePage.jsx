@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
+import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt, FRIDAY_POST_TYPES } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
@@ -395,6 +395,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // ctx.slotImageStyle / ctx.slotVariant override the user's UI selection
   // when a fixed schedule is dictating the image system per slot.
   const makeBrandedCard = (postText, cardIndex, totalCards, ctx) => {
+    // Text-only posts (e.g. Friday attention posts) skip card generation.
+    if (ctx && ctx.noImage) {
+      return { url: null, pages: [], textOnly: true, prompt: 'Text-only post (no card)', error: null };
+    }
     const cv = cvRef.current;
     if (!cv) return null;
     const slotStyle = (ctx && ctx.slotImageStyle) || imageStyle;
@@ -652,6 +656,16 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         const failedSlots = [];
         const seenTopicHints = [...userAvoid];
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        // FRIDAY: pick 2 DIFFERENT post types from the 5 available types,
+        // one per Friday slot (Fri 10am and Fri 12pm). Shuffle so each Generate
+        // click rotates which two types land that week.
+        const fridaySlotIndices = SCHEDULE.map((s, i) => (s.friday ? i : -1)).filter((i) => i >= 0);
+        const FRIDAY_KEYS = Object.keys(FRIDAY_POST_TYPES);
+        const shuffledFridayTypes = [...FRIDAY_KEYS].sort(() => Math.random() - 0.5);
+        const fridayTypeBySlotIdx = {};
+        fridaySlotIndices.forEach((slotIdx, i) => {
+          fridayTypeBySlotIdx[slotIdx] = shuffledFridayTypes[i % shuffledFridayTypes.length];
+        });
         // Try one slot; retry once after a longer delay if the first attempt fails.
         const tryOnce = async (slot, slotPillar, slotContentOpts) => {
           return await callOpenRouter(
@@ -671,7 +685,14 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             trendingTopic: trendingForThisSlot,
             avoidTopics: seenTopicHints,
             hookFormula: slot.hookFormula,
+            fridayPostType: slot.friday ? fridayTypeBySlotIdx[i] : null,
           };
+          // Genphase: show Friday post type when applicable so the user sees
+          // 'Friday 10:00 AM · Hot Take' instead of generic 'Friday Newsjack'.
+          if (slot.friday) {
+            const ft = FRIDAY_POST_TYPES[fridayTypeBySlotIdx[i]];
+            setGenPhase(`${slot.day} ${slot.time} \u00B7 Friday ${ft ? ft.name : 'Newsjack'} (${i + 1}/${SCHEDULE.length})...`);
+          }
           let text = null;
           let lastError = null;
           for (let attempt = 0; attempt < 2; attempt++) {
@@ -744,6 +765,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       slotImageStyle: slot.imageStyle,
       slotVariant: slot.variant,
       slotPillarName: slot.pillar,
+      noImage: slot.friday === true || slot.imageStyle == null,
     }));
     const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }, perPostCtx) || [];
 
@@ -1179,7 +1201,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ) : (
               <>{'\u26A1'} {(() => {
                 const total = brand.schedule && brand.schedule.length > 0 ? brand.schedule.length : IMAGE_COUNT;
-                const dayRange = brand.schedule && brand.schedule.length > 0 ? 'Mon-Thu' : 'Mon-Fri';
+                // Day range derived from schedule slots (Mon-Fri if any Friday slot exists, else Mon-Thu).
+                const sched = brand.schedule || [];
+                const dayRange = sched.some((s) => s.day === 'Friday') ? 'Mon-Fri' : (sched.length > 0 ? 'Mon-Thu' : 'Mon-Fri');
                 return autoTrending && live
                   ? `Find Trend + Fill ${dayRange} (${total} Posts)`
                   : `Generate Full Week (${total} Posts, ${dayRange})`;
@@ -1290,24 +1314,50 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                 ))}
               </div>
             </div>
-          ) : successfulImages.length > 0 ? (
+          ) : (successfulImages.length > 0 || images.some((i) => i && i.textOnly)) ? (
             <div>
               <div className="relative mb-3">
-                <img src={images[selectedImg]?.url} className="w-full rounded-lg shadow-lg" alt={`Generated image ${selectedImg + 1}`} onError={() => { showToast('Image load error'); const updated = [...images]; updated[selectedImg] = { ...updated[selectedImg], url: null, error: 'Load failed' }; setImages(updated); }} />
-                <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">{selectedImg + 1} / {successfulImages.length}</div>
-                <button className="absolute top-2 right-2 btn-secondary text-xs" onClick={() => downloadImage(images[selectedImg].url, selectedImg)}>{'\u2B07\uFE0F'}</button>
+                {images[selectedImg]?.url ? (
+                  <>
+                    <img src={images[selectedImg].url} className="w-full rounded-lg shadow-lg" alt={`Generated image ${selectedImg + 1}`} onError={() => { showToast('Image load error'); const updated = [...images]; updated[selectedImg] = { ...updated[selectedImg], url: null, error: 'Load failed' }; setImages(updated); }} />
+                    <div className="absolute top-2 left-2 badge bg-black bg-opacity-60 text-white text-xs px-2 py-1">{selectedImg + 1} / {images.length}</div>
+                    <button className="absolute top-2 right-2 btn-secondary text-xs" onClick={() => downloadImage(images[selectedImg], selectedImg)}>{'\u2B07\uFE0F'}</button>
+                  </>
+                ) : images[selectedImg]?.textOnly ? (
+                  <div className="w-full rounded-lg bg-amber-900/30 border border-amber-700/40 p-8 text-center">
+                    <div className="text-amber-300 text-sm font-bold tracking-wider mb-1">TEXT-ONLY POST</div>
+                    <div className="text-amber-200/70 text-xs">Friday attention posts are text-only by design \u2014 no card image.</div>
+                    <div className="text-amber-200/50 text-xs mt-2">{selectedImg + 1} of {images.length}</div>
+                  </div>
+                ) : null}
               </div>
               <div className="grid grid-cols-5 gap-2">
-                {images.map((img, i) => (
-                  <button key={i} className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${selectedImg === i ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-gray-600 hover:border-gray-400'} ${!img.url ? 'opacity-40' : ''}`} onClick={() => img.url && setSelectedImg(i)} disabled={!img.url}>
-                    {img.url ? (
-                      <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i + 1}`} />
-                    ) : (
-                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">{'\u2717'}</div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-0.5">{i + 1}</div>
-                  </button>
-                ))}
+                {images.map((img, i) => {
+                  const isTextOnly = img && img.textOnly;
+                  const hasUrl = img && img.url;
+                  const clickable = hasUrl || isTextOnly;
+                  return (
+                    <button
+                      key={i}
+                      className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${selectedImg === i ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-gray-600 hover:border-gray-400'} ${!clickable ? 'opacity-40' : ''}`}
+                      onClick={() => clickable && setSelectedImg(i)}
+                      disabled={!clickable}
+                      title={isTextOnly ? 'Text-only post (no card)' : undefined}
+                    >
+                      {hasUrl ? (
+                        <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i + 1}`} />
+                      ) : isTextOnly ? (
+                        <div className="w-full h-full bg-amber-900/40 flex flex-col items-center justify-center text-amber-300">
+                          <div className="text-xs font-bold tracking-wider">TEXT</div>
+                          <div className="text-[10px] opacity-70">no card</div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">{'\u2717'}</div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-0.5">{i + 1}</div>
+                    </button>
+                  );
+                })}
               </div>
               {images[selectedImg]?.prompt && (
                 <div className="mt-3 p-2 bg-gray-800 rounded-lg">

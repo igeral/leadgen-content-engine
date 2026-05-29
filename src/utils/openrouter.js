@@ -481,6 +481,58 @@ export const FRAMEWORKS = {
   SLAY: 'SLAY — Story (two lines that open with a real moment, scenario, or stat), Lesson (the single insight at the heart of the post), Actionable advice (what the reader can do with the lesson), Your engagement (a genuine question that invites the reader in without being bait).',
 };
 
+// ─── FRIDAY NEWSJACKING FRAMEWORK ───
+// Source: steadfast_friday_framework.docx
+// 5 post types — each Friday picks two DIFFERENT types (no repeats per day).
+export const FRIDAY_POST_TYPES = {
+  newsjack: {
+    name: 'Newsjack',
+    brief: 'Take a currently viral news story, trend, or cultural moment and tie it to the physician workforce. Sharp, opinionated, slightly provocative. Like an industry insider reacting in real time.',
+    lengthCap: 150,
+    needsTag: false,
+    rules: 'Source: a viral news story, trending social media moment, public controversy, or cultural event. Bridge the topic to physician workforce / healthcare staffing / hospital operations. The bridge must feel natural — if forced, pick a different topic. Steadfast\'s unique perspective is insight, not just commentary.',
+  },
+  company_callout: {
+    name: 'Company Callout',
+    brief: 'Analyze a specific healthcare company\'s expansion / restructuring / acquisition and write their physician staffing strategy for them as helpful unsolicited advice.',
+    lengthCap: 250,
+    needsTag: true,
+    rules: 'Source: a hospital system, health network, or healthcare company expanding, opening new facilities, acquiring, or making workforce news. Frame the post as peer-level strategic advice, not criticism. Tag the relevant CMO/CEO/COO. Position Steadfast as the strategist who sees what most miss.',
+  },
+  viral_prediction: {
+    name: 'Viral Prediction',
+    brief: 'Call something the agent believes has viral potential even if it has not gone viral yet. Forward-looking, I-saw-this-first energy.',
+    lengthCap: 150,
+    needsTag: false,
+    rules: 'Source: an emerging trend, quiet policy change, underreported stat, or pattern not yet mainstream. Frame as a prediction or early signal. The prediction must be statable in ONE sentence. Confident but not arrogant.',
+  },
+  industry_reaction: {
+    name: 'Industry Reaction',
+    brief: 'Respond to another viral LinkedIn post in the healthcare space with a Steadfast-framed take. Quote the line you\'re reacting to, tag the original poster.',
+    lengthCap: 150,
+    needsTag: true,
+    rules: 'Source: a viral healthcare LinkedIn post from a CMO, physician influencer, or industry publication. Quote a key line (attributed), tag the original poster, then add Steadfast\'s perspective. Respectful disagreement, added nuance, or endorsement with additional insight. Never dismissive. Reaction is tighter than the original.',
+  },
+  hot_take: {
+    name: 'Hot Take',
+    brief: 'Sharp opinionated statement about the healthcare workforce designed to spark debate. State the take in 1-2 lines, support with 2-3 sentences, end with an invitation to push back.',
+    lengthCap: 100,
+    needsTag: false,
+    rules: 'No external source — Steadfast\'s own perspective. The take should be defensible if challenged. Provocative but not inflammatory for its own sake. Hot takes generate comments because people strongly agree or strongly disagree, both of which feed the algorithm.',
+  },
+};
+
+// 7 bridge categories (Part 5.1). Friday post must pass the one-sentence bridge test.
+export const FRIDAY_BRIDGES = [
+  'Direct connection — viral topic IS healthcare; comment with staffing/workforce angle.',
+  'Economic ripple — viral topic affects the economy; bridge to hospitals, physician demand, or patient volume.',
+  'Workforce parallel — another industry\'s workforce issue parallels physician workforce.',
+  'Leadership lesson — viral leadership decision; bridge to what hospital leaders can learn.',
+  'Policy impact — policy change; bridge to physician supply, hospital operations, or healthcare access.',
+  'Community impact — viral topic affects a community; bridge to that community\'s healthcare infrastructure.',
+  'Metaphor — viral topic unrelated, but the underlying principle applies perfectly to healthcare staffing.',
+];
+
 // Pillar-specific outlines (Part 2). Keys match brand.pillars[].name (case-insensitive).
 export const STEADFAST_PILLAR_MAP = {
   'workforce insights': {
@@ -671,7 +723,12 @@ VARIETY RULES
 - The pillar framework and 7-beat sequence (in the user message) is the structure. Follow it.`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula } = {}) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, fridayPostType } = {}) {
+  // FRIDAY BRANCH — completely different rules from Mon-Thu.
+  if (fridayPostType && FRIDAY_POST_TYPES[fridayPostType]) {
+    return buildFridayUserPrompt(audience, topic, { keywords, keyPhrases, avoidTopics, trendingTopic, fridayPostType });
+  }
+
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
 
   // Inject Steadfast pillar framework (Part 2 of the storytelling outline)
@@ -719,6 +776,86 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   // Random uniqueness seed
   p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)}. Write something FRESH and ORIGINAL — different from any previous generation.`;
   p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for 1-2 key phrases. End with 3-5 hashtags.';
+  return p;
+}
+
+
+// ─── FRIDAY USER PROMPT BUILDER ───
+// Builds the user-message prompt for one Friday attention post. Skips pillar
+// brief, SLAY/PASS, 7-beat sequences, hook formulas (none of those apply).
+// Instead injects the chosen post type + tie-back framework + brand safety.
+function buildFridayUserPrompt(audience, topic, { keywords, keyPhrases, avoidTopics, trendingTopic, fridayPostType }) {
+  const ft = FRIDAY_POST_TYPES[fridayPostType];
+  let p = `Write a FRIDAY ATTENTION POST — type: ${ft.name}. Audience: ${audience || 'Both (hospital leaders AND physicians)'}.`;
+
+  p += `\n\n═══ FRIDAY = THE ATTENTION ENGINE ═══
+Unlike Monday-Thursday authority content (which builds trust over time), Friday posts are designed for SHARES and COMMENTS.
+Sharp. Opinionated. Slightly provocative.
+Like an industry insider reacting in real time — NOT a strategist explaining a framework.`;
+
+  p += `\n\nPOST TYPE: ${ft.name}
+${ft.brief}
+
+How this type works:
+${ft.rules}
+
+Length cap: under ${ft.lengthCap} words. Shorter is better — the shorter the post, the more shareable.`;
+
+  if (ft.needsTag) {
+    p += `\n\nTAGGING:
+This post type relies on tagging a real executive or original poster to extend reach into THEIR audience.
+You do NOT know real names. Use clearly-marked placeholders the user will fill in before publishing:
+- "@[CMO Name, Health System Name]"
+- "@[CEO Name]"
+- "@[Original Poster Name]"
+Always tag at the start of a sentence, not buried mid-paragraph.`;
+  }
+
+  p += `\n\nTIE-BACK FRAMEWORK (mandatory — every Friday post must pass the one-sentence bridge test):
+The post MUST connect the topic to the physician workforce, healthcare staffing, or hospital operations. Pick ONE of these 7 bridge categories:
+${FRIDAY_BRIDGES.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+Bridge test: state the connection in ONE sentence. If you can't, you've picked a forced topic — pick a different one. Forced bridges sound like "this celebrity controversy reminds me that in healthcare, people also face difficult situations" — never write that. A natural bridge sounds like "When a major employer leaves a community, the local hospital loses insured patients within 6 months and physician coverage gaps follow."`;
+
+  p += `\n\nBRAND SAFETY CHECK:
+Before finalizing, read the post through the lens of a hospital CMO considering working with Steadfast.
+If it would make them hesitate, rewrite. Specifically NEVER:
+- Personal attacks on named individuals (criticize STRATEGY and DECISIONS, never the person)
+- Partisan political alignment (healthcare policy commentary is allowed, partisan alignment is not)
+- Mocking physicians, patients, or healthcare workers
+- Engagement bait phrases like "comment if you agree" or "share this if you care"
+- Anything that feels manufactured to go viral`;
+
+  // Trending topic / topic seed
+  if (trendingTopic) {
+    p += `\n\nSEED TOPIC (current viral story):\nTitle: ${trendingTopic.topic}\nAngle: ${trendingTopic.angle}\nWhy it's trending: ${trendingTopic.whyTrending}`;
+    if (trendingTopic.suggestedHook) p += `\nSuggested hook: ${trendingTopic.suggestedHook}`;
+  } else if (topic) {
+    p += `\n\nSEED TOPIC: ${topic}`;
+  } else if (fridayPostType !== 'hot_take') {
+    p += `\n\nNo seed topic provided. Identify a viral story, trending healthcare moment, recent company news, or pattern you've noticed — whatever fits the assigned post type — and use it.`;
+  }
+
+  if (keywords && keywords.length) p += `\n\nKeywords to weave in naturally: ${keywords.join(', ')}`;
+  if (keyPhrases && keyPhrases.length) p += `\n\nKey phrases to riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
+
+  if (avoidTopics && avoidTopics.length) {
+    const list = avoidTopics.map((t, i) => `${i + 1}. ${t}`).join('\n');
+    p += `\n\nTOPICS ALREADY COVERED THIS WEEK — DO NOT REPEAT:\n${list}\n\nThis Friday post must address a topic DIFFERENT from every item above.`;
+  }
+
+  p += `\n\nHARD CONSTRAINTS:
+- ZERO em dashes (—, –, --). Use commas, periods, colons, or line breaks instead.
+- Under ${ft.lengthCap} words. Counted in actual words, not tokens.
+- The bridge to physician workforce must be natural, not forced.
+- No engagement bait phrases.
+- No partisan political alignment.
+- No personal attacks; analyze strategy and decisions, never character.
+- Brand-safe by the CMO hesitation test.
+- ${ft.needsTag ? 'Include a placeholder tag for the relevant exec or original poster.' : 'No tagging required for this post type.'}`;
+
+  p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)}. Write something FRESH and ORIGINAL.`;
+  p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for 1-2 key phrases. Hashtags optional on Friday (text-only is fine).';
   return p;
 }
 

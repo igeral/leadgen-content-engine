@@ -34,6 +34,11 @@ export const STEADFAST_PRESET = {
     { day: 'Wednesday', time: '5:15 PM',  pillar: 'Industry Commentary', audience: 'Both',             hookFormula: 'bold_stat',       imageStyle: 'stat',  variant: 'dark'  },
     { day: 'Thursday',  time: '12:00 PM', pillar: 'Staffing Strategy',   audience: 'Hospital Leaders', hookFormula: 'contrarian',      imageStyle: 'multi', variant: 'dark'  },
     { day: 'Thursday',  time: '5:15 PM',  pillar: 'Lead Magnet',         audience: 'Hospital Leaders', hookFormula: 'story_opener',    imageStyle: 'quote', variant: 'light' },
+    // FRIDAY = attention engine. Two posts, text-only by default (image optional
+    // per the doc). Post type chosen at runtime from FRIDAY_POST_TYPES so each
+    // Friday rotates through different angles (Newsjack, Hot Take, etc.).
+    { day: 'Friday',    time: '10:00 AM', pillar: 'Friday Newsjack',     audience: 'Both',             friday: true, imageStyle: null, variant: null },
+    { day: 'Friday',    time: '12:00 PM', pillar: 'Friday Newsjack',     audience: 'Both',             friday: true, imageStyle: null, variant: null },
   ],
   leadMagnet: {
     name: 'Proactive Coverage Playbook',
