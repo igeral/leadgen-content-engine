@@ -500,29 +500,48 @@ const FRIDAY_BRIDGES = [
 function buildFridayUserPrompt(audience, topic, opts) {
   opts = opts || {};
   const ft = FRIDAY_POST_TYPES[opts.fridayPostType];
-  let p = 'Write a FRIDAY ATTENTION POST \u2014 type: ' + ft.name + '. Audience: ' + (audience || 'Both (hospital leaders AND physicians)') + '.';
-  p += '\n\n=== FRIDAY = THE ATTENTION ENGINE ===\nUnlike Monday-Thursday authority content, Friday posts are designed for SHARES and COMMENTS.\nSharp. Opinionated. Slightly provocative. Like an industry insider reacting in real time.';
-  p += '\n\nPOST TYPE: ' + ft.name + '\n' + ft.brief + '\n\nHow this type works:\n' + ft.rules + '\n\nLength cap: under ' + ft.lengthCap + ' words.';
+  let p = '# STEADFAST PHYSICIAN PARTNERS \u2014 FRIDAY POST GENERATION\n\n' +
+    'You are generating one LinkedIn post for Steadfast Physician Partners, a locum tenens physician staffing company. This post publishes on Friday. Its sole purpose is to generate shares and comments. That is the only measure of success.\n\n' +
+    '---\n## CRITICAL: DATE ACCURACY RULE\n' +
+    'The current year is 2026. You must ONLY reference events, news, data, and stories from the current week or the past 30 days. Never reference anything older than 30 days unless it is a verified, timeless statistic that is still accurate today.\n' +
+    'Before including any story, event, or data point, verify:\n- Is this from 2026?\n- Did this happen within the last 30 days?\n- Is this still current and relevant right now?\n' +
+    'If you cannot verify that a story is current, do not use it. Old news presented as current destroys credibility instantly.\n\n' +
+    '---\n## THE COMPANY\n' +
+    'Steadfast Physician Partners is a locum tenens physician staffing company. We help hospitals eliminate physician coverage gaps in emergency medicine, hospitalist medicine, anesthesiology, surgery, radiology, and psychiatry.\n' +
+    'Category of one: The company that helps hospitals eliminate physician coverage gaps before they become crises.\n' +
+    'Brand voice: Direct, intelligent, honest. Like an industry insider who has been in the room. Never corporate, never salesy.\n' +
+    'Tagline: Reliable physician coverage. Deployed fast.\n\n' +
+    'Audience for THIS post: ' + (audience || 'Both hospital leaders AND physicians') + '.\n\n' +
+    '---\n## THE ONLY GOAL: SHARES AND COMMENTS\n\n' +
+    'Optimize for shares and comments. Not likes. Not impressions. Shares and comments.\n\n' +
+    'DRIVES SHARES:\n- Specific insight, framework, or prediction colleagues have not seen yet.\n- Names a specific company, trend, or executive so people tag others.\n- Articulates clearly something people already believe but never seen said.\n- Unsolicited strategic advice to a named company \u2014 bold and useful.\n- Short, sharp statements under 100 words that people screenshot and repost.\n\n' +
+    'DRIVES COMMENTS:\n- Controversial or contrarian takes people feel compelled to react to.\n- Specific (not generic) open-ended questions inviting expertise.\n- Tagging executives or companies by name \u2014 the tagged person often responds.\n- Statements 80% right and 20% debatable. People comment to add nuance.\n- Predictions. People love to agree, disagree, or add their own.\n- Ranking or comparison statements. "X matters more than Y" generates debate.\n\n' +
+    'KILLS SHARES AND COMMENTS:\n- Generic motivational content with no specific insight.\n- Content that reads like AI. Avoid anything templated or formulaic.\n- Engagement bait ("comment below if you agree"). LinkedIn penalizes these in 2026.\n- Em dashes. Never. Use a comma, a period, or rewrite.\n- Posts over 200 words. Friday under 150. Hot takes under 100.\n- No tie-back to healthcare staffing or physician workforce.\n\n' +
+    '---\n## THIS POST TYPE: ' + ft.name.toUpperCase() + '\n\n' +
+    ft.brief + '\n\nHow this type works:\n' + ft.rules + '\n\nLength cap: under ' + ft.lengthCap + ' words. Counted in actual words. Shorter is better.';
   if (ft.needsTag) {
-    p += '\n\nTAGGING:\nUse placeholders the user will fill in before publishing: "@[CMO Name, System Name]" or "@[Original Poster Name]". Tag at the start of a sentence.';
+    p += '\n\n## TAGGING\nThis post type tags a specific executive or original poster to extend reach. You do NOT know real names \u2014 use clearly-marked placeholders the user will fill in before publishing:\n- "@[CMO Name, Health System Name]"\n- "@[CEO Name]"\n- "@[Original Poster Name]"\nTag at the start of a sentence, not buried mid-paragraph.';
   }
-  p += '\n\nTIE-BACK FRAMEWORK (mandatory):\nThe post MUST connect to physician workforce, healthcare staffing, or hospital operations. Pick ONE bridge:\n' + FRIDAY_BRIDGES.map(function(b, i) { return (i + 1) + '. ' + b; }).join('\n') + '\n\nBridge test: state the connection in ONE sentence. If you can not, pick a different topic.';
-  p += '\n\nBRAND SAFETY CHECK:\nRead through the lens of a hospital CMO considering working with Steadfast. NEVER: personal attacks, partisan political alignment, mocking healthcare workers, engagement bait, anything that feels manufactured to go viral.';
+  p += '\n\n## THE TIE-BACK TEST (mandatory)\nEvery Friday post must connect to physician workforce, healthcare staffing, or hospital leadership. State the bridge in ONE sentence. If it takes more than one sentence, the connection is too weak \u2014 pick a different topic.\n\nBridge categories to choose from:\n' + FRIDAY_BRIDGES.map(function(b, i) { return (i + 1) + '. ' + b; }).join('\n') + '\n\nGood bridge: "When a major employer leaves a community, the local hospital loses insured patients within 6 months and physician coverage gaps follow."\nBad bridge: "This celebrity controversy reminds me that in healthcare, people also face difficult situations, which is why staffing matters."\nIf your bridge sounds like the bad example, discard it.';
+  p += '\n\n## BRAND SAFETY CHECK\nA hospital CMO is considering contracting with Steadfast. They see this post. Does it make them more likely to trust Steadfast, or give them a reason to hesitate?\nIf any hesitation, rewrite or discard.\n\nNEVER:\n- Personal attacks on named individuals (criticize STRATEGY and DECISIONS, never the person)\n- Partisan political alignment (healthcare policy commentary is fine; political alignment is not)\n- Mocking physicians, patients, or healthcare workers\n- Engagement bait phrases\n- Content older than 30 days presented as current\n- Anything that feels manufactured to go viral';
   if (opts.trendingTopic) {
-    p += '\n\nSEED TOPIC:\nTitle: ' + opts.trendingTopic.topic + '\nAngle: ' + opts.trendingTopic.angle;
+    p += '\n\n## SEED TOPIC (current within last 30 days)\nTitle: ' + opts.trendingTopic.topic + '\nAngle: ' + opts.trendingTopic.angle + '\nWhy it is trending: ' + (opts.trendingTopic.whyTrending || '');
   } else if (topic) {
-    p += '\n\nSEED TOPIC: ' + topic;
+    p += '\n\n## SEED TOPIC\n' + topic;
   } else if (opts.fridayPostType !== 'hot_take') {
-    p += '\n\nNo seed topic provided. Identify a viral story, trending moment, recent company news, or pattern that fits the assigned type.';
+    p += '\n\n## SOURCE MATERIAL\nNo seed provided. Identify a viral story, trending healthcare moment, recent company news (within last 30 days), or pattern that fits the assigned type. Verify the story is current before using it.';
   }
-  if (opts.keywords && opts.keywords.length) p += '\n\nKeywords: ' + opts.keywords.join(', ');
+  if (opts.keywords && opts.keywords.length) p += '\n\nKeywords to weave in naturally (do not force them): ' + opts.keywords.join(', ');
+  if (opts.keyPhrases && opts.keyPhrases.length) p += '\n\nKey phrases to riff on:\n' + opts.keyPhrases.map(function(k) { return '- "' + k + '"'; }).join('\n');
   if (opts.avoidTopics && opts.avoidTopics.length) {
     const list = opts.avoidTopics.map(function(t, i) { return (i + 1) + '. ' + t; }).join('\n');
-    p += '\n\nTOPICS ALREADY COVERED THIS WEEK \u2014 DO NOT REPEAT:\n' + list;
+    p += '\n\n## TOPICS ALREADY COVERED THIS WEEK \u2014 DO NOT REPEAT\n' + list + '\n\nThis Friday post must address a topic DIFFERENT from every item above. Different news event, statistic, or angle. Not a rephrasing.';
   }
-  p += '\n\nHARD CONSTRAINTS:\n- ZERO em dashes.\n- Under ' + ft.lengthCap + ' words.\n- Natural bridge to physician workforce.\n- No engagement bait.\n- No partisan alignment.\n- No personal attacks.\n- Brand-safe by CMO hesitation test.\n' + (ft.needsTag ? '- Include a [PLACEHOLDER] exec tag.' : '');
-  p += '\n\nUNIQUENESS SEED: ' + Math.random().toString(36).substring(2, 8) + '.';
-  p += '\n\nReturn ONLY the raw post text. No labels or commentary. Hashtags optional.';
+  p += '\n\n## VOCABULARY RULES (mandatory)\n- Say "coverage gaps" not "open positions"\n- Say "physicians" not "providers"\n- Say "hospital CMOs and administrators" not "clients"\n- Say "locum tenens" not "temps" or "temporary staff"\n- Say "proactive coverage model" not "backup plan"\n- Say "credentialed and vetted" not "qualified"\n- Say "physician workforce strategy" not "staffing solution"\n- Never use em dashes \u2014 use a comma, a period, a colon, or rewrite.';
+  p += '\n\n## RHYTHM RULES (mandatory)\nShort lines. Frequent line breaks. Vary sentence length.\nOne sentence on its own line has more weight than the same sentence buried in a paragraph.\nThe first word of every line matters. It is what scanners read.\nMaximum two sentences per paragraph. One is often stronger.\nFriday posts feel punchy, direct, and fast. Not polished. Not produced. Real.';
+  p += '\n\n## HARD CONSTRAINTS\n- ZERO em dashes (\u2014, \u2013, --). Comma, period, colon, or rewrite.\n- Under ' + ft.lengthCap + ' words. Counted in actual words.\n- Bridge to physician workforce must be natural, not forced.\n- No engagement bait, no partisan alignment, no personal attacks.\n- Brand-safe by the CMO hesitation test.\n- Vocabulary rules above are non-negotiable.\n' + (ft.needsTag ? '- Include a [PLACEHOLDER] exec tag at the start of a sentence.' : '- No tagging required for this post type.');
+  p += '\n\nUNIQUENESS SEED: ' + Math.random().toString(36).substring(2, 8) + '. Write something FRESH and ORIGINAL.';
+  p += '\n\n## OUTPUT\nReturn ONLY the raw post text \u2014 no labels, no meta commentary, no "why this generates engagement" notes, no headers like "Post:" or "Caption:". Use **bold** sparingly for 1-2 key phrases at most. Hashtags optional on Friday (text-only is acceptable).';
   return p;
 }
 
@@ -585,7 +604,7 @@ function buildSystemPrompt(brand, platform, opts) {
 '- 150-300 words total.\n' +
 '- Every sentence earns its place. No filler.\n\n' +
 'CTA STYLE\n' + (ctaMap[opts.ctaType] || ctaMap.question) +
-'\n\nVARIETY RULES\n- Do NOT repeat common AI phrases like \"here\'s the thing\", \"let that sink in\", \"read that again\", \"the harsh truth\".\n- Use a FRESH hook every time. Surprise the reader.\n- Follow the pillar 7-beat sequence (in the user message) for structure.';
+'\n\nVARIETY RULES\n- Do NOT repeat common AI phrases like \"here\'s the thing\", \"let that sink in\", \"read that again\", \"the harsh truth\".\n- Use a FRESH hook every time. Surprise the reader.\n- Follow the pillar 7-beat sequence (in the user message) for structure.\n\n=== VOCABULARY RULES (apply to ALL Steadfast content) ===\n- Always say \"coverage gaps\" not \"open positions\".\n- Always say \"physicians\" not \"providers\".\n- Always say \"hospital CMOs and administrators\" not \"clients\".\n- Always say \"locum tenens\" not \"temps\" or \"temporary staff\".\n- Always say \"proactive coverage model\" not \"backup plan\".\n- Always say \"credentialed and vetted\" not \"qualified\".\n- Always say \"physician workforce strategy\" not \"staffing solution\".\n- NEVER use em dashes. Use a comma, a period, a colon, or rewrite.\n\n=== RHYTHM RULES (apply to ALL Steadfast content) ===\n- Short lines. Frequent line breaks. Vary sentence length.\n- One sentence on its own line has more weight than the same sentence buried in a paragraph.\n- The first word of every line matters \u2014 that is what scanners read.\n- Maximum two sentences per paragraph. One is often stronger.\n- Posts feel punchy, direct, and fast. Not polished. Not produced. Real.\n\nDATE ACCURACY\nThe current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. Verified timeless statistics that are still accurate today (e.g. 86,000 projected physician shortage by 2036) are the only exception. If you cannot verify a story is current, do not use it.';
 }
 
 function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, opts) {

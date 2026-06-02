@@ -720,7 +720,31 @@ ${ctaMap[ctaType] || ctaMap.question}
 VARIETY RULES
 - Do NOT repeat common AI phrases like "here's the thing", "let that sink in", "read that again", "the harsh truth", "let me explain".
 - Use a FRESH hook every time. Surprise the reader.
-- The pillar framework and 7-beat sequence (in the user message) is the structure. Follow it.`;
+- The pillar framework and 7-beat sequence (in the user message) is the structure. Follow it.
+
+═══════════════════════════════════════════════════════════════════
+VOCABULARY RULES (apply to ALL Steadfast content, every post, every line)
+═══════════════════════════════════════════════════════════════════
+- Always say "coverage gaps" not "open positions".
+- Always say "physicians" not "providers".
+- Always say "hospital CMOs and administrators" not "clients".
+- Always say "locum tenens" not "temps" or "temporary staff".
+- Always say "proactive coverage model" not "backup plan".
+- Always say "credentialed and vetted" not "qualified".
+- Always say "physician workforce strategy" not "staffing solution".
+- NEVER use em dashes (—, –, --). Use a comma, a period, a colon, or rewrite the sentence.
+
+═══════════════════════════════════════════════════════════════════
+RHYTHM RULES (apply to ALL Steadfast content)
+═══════════════════════════════════════════════════════════════════
+- Short lines. Frequent line breaks. Vary sentence length deliberately.
+- One sentence on its own line has more weight than the same sentence buried in a paragraph.
+- The first word of every line matters — that is what scanners read in the F-shaped pattern.
+- Maximum two sentences per paragraph. One is often stronger.
+- Posts feel punchy, direct, and fast. Not polished. Not produced. Real.
+
+DATE ACCURACY
+The current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. The only exception is verified timeless statistics that are still accurate today (e.g. "86,000 projected physician shortage by 2036"). If you cannot verify a story is current, do not use it.`;
 }
 
 export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, fridayPostType } = {}) {
@@ -781,81 +805,159 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
 
 
 // ─── FRIDAY USER PROMPT BUILDER ───
-// Builds the user-message prompt for one Friday attention post. Skips pillar
-// brief, SLAY/PASS, 7-beat sequences, hook formulas (none of those apply).
-// Instead injects the chosen post type + tie-back framework + brand safety.
+// Spec-grade Friday attention post prompt. Skips pillar/SLAY/PASS/7-beat
+// sequence — Friday has its own rules. Includes: 2026 date accuracy guard,
+// share/comment drivers, what kills engagement, AI photo guidance,
+// vocabulary + rhythm rules, brand-safety check.
 function buildFridayUserPrompt(audience, topic, { keywords, keyPhrases, avoidTopics, trendingTopic, fridayPostType }) {
   const ft = FRIDAY_POST_TYPES[fridayPostType];
-  let p = `Write a FRIDAY ATTENTION POST — type: ${ft.name}. Audience: ${audience || 'Both (hospital leaders AND physicians)'}.`;
+  let p = `# STEADFAST PHYSICIAN PARTNERS — FRIDAY POST GENERATION
 
-  p += `\n\n═══ FRIDAY = THE ATTENTION ENGINE ═══
-Unlike Monday-Thursday authority content (which builds trust over time), Friday posts are designed for SHARES and COMMENTS.
-Sharp. Opinionated. Slightly provocative.
-Like an industry insider reacting in real time — NOT a strategist explaining a framework.`;
+You are generating one LinkedIn post for Steadfast Physician Partners, a locum tenens physician staffing company. This post publishes on Friday. Its sole purpose is to generate shares and comments. That is the only measure of success.
 
-  p += `\n\nPOST TYPE: ${ft.name}
+---
+## CRITICAL: DATE ACCURACY RULE
+The current year is 2026. You must ONLY reference events, news, data, and stories from the current week or the past 30 days. Never reference anything older than 30 days unless it is a verified, timeless statistic that is still accurate today.
+Before including any story, event, or data point, verify:
+- Is this from 2026?
+- Did this happen within the last 30 days?
+- Is this still current and relevant right now?
+If you cannot verify that a story is current, do not use it. Old news presented as current destroys credibility instantly.
+
+---
+## THE COMPANY
+Steadfast Physician Partners is a locum tenens physician staffing company. We help hospitals eliminate physician coverage gaps in emergency medicine, hospitalist medicine, anesthesiology, surgery, radiology, and psychiatry.
+Category of one: The company that helps hospitals eliminate physician coverage gaps before they become crises.
+Brand voice: Direct, intelligent, honest. Like an industry insider who has been in the room. Never corporate, never salesy.
+Tagline: Reliable physician coverage. Deployed fast.
+
+Audience for THIS post: ${audience || 'Both hospital leaders AND physicians'}.
+
+---
+## THE ONLY GOAL: SHARES AND COMMENTS
+
+Optimize for shares and comments. Not likes. Not impressions. Shares and comments.
+
+DRIVES SHARES:
+- Specific insight, framework, or prediction colleagues have not seen yet.
+- Names a specific company, trend, or executive so people tag others.
+- Articulates clearly something people already believe but never seen said.
+- Unsolicited strategic advice to a named company — bold and useful.
+- Short, sharp statements under 100 words that people screenshot and repost.
+
+DRIVES COMMENTS:
+- Controversial or contrarian takes people feel compelled to react to.
+- Specific (not generic) open-ended questions inviting expertise.
+- Tagging executives or companies by name — the tagged person often responds.
+- Statements that are 80% right and 20% debatable. People comment to add nuance.
+- Predictions. People love to agree, disagree, or add their own.
+- Ranking or comparison statements. "X matters more than Y" generates debate.
+
+KILLS SHARES AND COMMENTS:
+- Generic motivational content with no specific insight.
+- Content that reads like AI. Avoid anything templated or formulaic.
+- Engagement bait ("comment below if you agree"). LinkedIn penalizes these in 2026.
+- Em dashes. Never. Use a comma, a period, or rewrite.
+- Posts over 200 words. Friday under 150. Hot takes under 100.
+- No tie-back to healthcare staffing or physician workforce.
+
+---
+## THIS POST TYPE: ${ft.name.toUpperCase()}
+
 ${ft.brief}
 
 How this type works:
 ${ft.rules}
 
-Length cap: under ${ft.lengthCap} words. Shorter is better — the shorter the post, the more shareable.`;
+Length cap: under ${ft.lengthCap} words. Counted in actual words. Shorter is better.`;
 
   if (ft.needsTag) {
-    p += `\n\nTAGGING:
-This post type relies on tagging a real executive or original poster to extend reach into THEIR audience.
-You do NOT know real names. Use clearly-marked placeholders the user will fill in before publishing:
+    p += `\n\n## TAGGING
+This post type tags a specific executive or original poster to extend reach. You do NOT know real names — use clearly-marked placeholders the user will fill in before publishing:
 - "@[CMO Name, Health System Name]"
 - "@[CEO Name]"
 - "@[Original Poster Name]"
-Always tag at the start of a sentence, not buried mid-paragraph.`;
+Tag at the start of a sentence, not buried mid-paragraph.`;
   }
 
-  p += `\n\nTIE-BACK FRAMEWORK (mandatory — every Friday post must pass the one-sentence bridge test):
-The post MUST connect the topic to the physician workforce, healthcare staffing, or hospital operations. Pick ONE of these 7 bridge categories:
+  p += `\n\n## THE TIE-BACK TEST (mandatory)
+Every Friday post must connect to physician workforce, healthcare staffing, or hospital leadership. State the bridge in ONE sentence. If it takes more than one sentence, the connection is too weak — pick a different topic.
+
+Bridge categories to choose from:
 ${FRIDAY_BRIDGES.map((b, i) => `${i + 1}. ${b}`).join('\n')}
 
-Bridge test: state the connection in ONE sentence. If you can't, you've picked a forced topic — pick a different one. Forced bridges sound like "this celebrity controversy reminds me that in healthcare, people also face difficult situations" — never write that. A natural bridge sounds like "When a major employer leaves a community, the local hospital loses insured patients within 6 months and physician coverage gaps follow."`;
+Good bridge: "When a major employer leaves a community, the local hospital loses insured patients within 6 months and physician coverage gaps follow."
+Bad bridge: "This celebrity controversy reminds me that in healthcare, people also face difficult situations, which is why staffing matters."
+If your bridge sounds like the bad example, discard it.`;
 
-  p += `\n\nBRAND SAFETY CHECK:
-Before finalizing, read the post through the lens of a hospital CMO considering working with Steadfast.
-If it would make them hesitate, rewrite. Specifically NEVER:
+  p += `\n\n## BRAND SAFETY CHECK
+A hospital CMO is considering contracting with Steadfast. They see this post. Does it make them more likely to trust Steadfast, or give them a reason to hesitate?
+If any hesitation, rewrite or discard.
+
+NEVER:
 - Personal attacks on named individuals (criticize STRATEGY and DECISIONS, never the person)
-- Partisan political alignment (healthcare policy commentary is allowed, partisan alignment is not)
+- Partisan political alignment (healthcare policy commentary is fine; political alignment is not)
 - Mocking physicians, patients, or healthcare workers
-- Engagement bait phrases like "comment if you agree" or "share this if you care"
+- Engagement bait phrases
+- Content older than 30 days presented as current
 - Anything that feels manufactured to go viral`;
 
   // Trending topic / topic seed
   if (trendingTopic) {
-    p += `\n\nSEED TOPIC (current viral story):\nTitle: ${trendingTopic.topic}\nAngle: ${trendingTopic.angle}\nWhy it's trending: ${trendingTopic.whyTrending}`;
+    p += `\n\n## SEED TOPIC (current within last 30 days)
+Title: ${trendingTopic.topic}
+Angle: ${trendingTopic.angle}
+Why it's trending: ${trendingTopic.whyTrending}`;
     if (trendingTopic.suggestedHook) p += `\nSuggested hook: ${trendingTopic.suggestedHook}`;
   } else if (topic) {
-    p += `\n\nSEED TOPIC: ${topic}`;
+    p += `\n\n## SEED TOPIC\n${topic}`;
   } else if (fridayPostType !== 'hot_take') {
-    p += `\n\nNo seed topic provided. Identify a viral story, trending healthcare moment, recent company news, or pattern you've noticed — whatever fits the assigned post type — and use it.`;
+    p += `\n\n## SOURCE MATERIAL
+No seed provided. Identify a viral story, trending healthcare moment, recent company news (within last 30 days), or pattern that fits the assigned type. Verify the story is current before using it.`;
   }
 
-  if (keywords && keywords.length) p += `\n\nKeywords to weave in naturally: ${keywords.join(', ')}`;
+  if (keywords && keywords.length) p += `\n\nKeywords to weave in naturally (do not force them): ${keywords.join(', ')}`;
   if (keyPhrases && keyPhrases.length) p += `\n\nKey phrases to riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
 
   if (avoidTopics && avoidTopics.length) {
     const list = avoidTopics.map((t, i) => `${i + 1}. ${t}`).join('\n');
-    p += `\n\nTOPICS ALREADY COVERED THIS WEEK — DO NOT REPEAT:\n${list}\n\nThis Friday post must address a topic DIFFERENT from every item above.`;
+    p += `\n\n## TOPICS ALREADY COVERED THIS WEEK — DO NOT REPEAT
+${list}
+
+This Friday post must address a topic DIFFERENT from every item above. Different news event, statistic, or angle. Not a rephrasing.`;
   }
 
-  p += `\n\nHARD CONSTRAINTS:
-- ZERO em dashes (—, –, --). Use commas, periods, colons, or line breaks instead.
-- Under ${ft.lengthCap} words. Counted in actual words, not tokens.
-- The bridge to physician workforce must be natural, not forced.
-- No engagement bait phrases.
-- No partisan political alignment.
-- No personal attacks; analyze strategy and decisions, never character.
+  p += `\n\n## VOCABULARY RULES (mandatory)
+- Say "coverage gaps" not "open positions"
+- Say "physicians" not "providers"
+- Say "hospital CMOs and administrators" not "clients"
+- Say "locum tenens" not "temps" or "temporary staff"
+- Say "proactive coverage model" not "backup plan"
+- Say "credentialed and vetted" not "qualified"
+- Say "physician workforce strategy" not "staffing solution"
+- Never use em dashes — use a comma, a period, a colon, or rewrite.`;
+
+  p += `\n\n## RHYTHM RULES (mandatory)
+Short lines. Frequent line breaks. Vary sentence length.
+One sentence on its own line has more weight than the same sentence buried in a paragraph.
+The first word of every line matters. It is what scanners read.
+Maximum two sentences per paragraph. One is often stronger.
+Friday posts feel punchy, direct, and fast. Not polished. Not produced. Real.`;
+
+  p += `\n\n## HARD CONSTRAINTS
+- ZERO em dashes (—, –, --). Comma, period, colon, or rewrite.
+- Under ${ft.lengthCap} words. Counted in actual words.
+- Bridge to physician workforce must be natural, not forced.
+- No engagement bait, no partisan alignment, no personal attacks.
 - Brand-safe by the CMO hesitation test.
-- ${ft.needsTag ? 'Include a placeholder tag for the relevant exec or original poster.' : 'No tagging required for this post type.'}`;
+- Vocabulary rules above are non-negotiable.
+- ${ft.needsTag ? 'Include a [PLACEHOLDER] exec tag at the start of a sentence.' : 'No tagging required for this post type.'}`;
 
   p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)}. Write something FRESH and ORIGINAL.`;
-  p += '\n\nReturn ONLY the raw post text. No labels, titles, or commentary. Use **bold** for 1-2 key phrases. Hashtags optional on Friday (text-only is fine).';
+
+  p += `\n\n## OUTPUT
+Return ONLY the raw post text — no labels, no meta commentary, no "why this generates engagement" notes, no headers like "Post:" or "Caption:". Use **bold** sparingly for 1-2 key phrases at most. Hashtags optional on Friday (text-only is acceptable).`;
+
   return p;
 }
 
