@@ -6,7 +6,6 @@ import Header from './components/Header';
 import NavBar from './components/NavBar';
 import GeneratePage from './components/GeneratePage';
 import CalendarPage from './components/CalendarPage';
-import SavedPage from './components/SavedPage';
 import ArchivePage from './components/ArchivePage';
 import ImageStudioPage from './components/ImageStudioPage';
 import SettingsPage from './components/SettingsPage';
@@ -144,8 +143,21 @@ export default function App() {
   // One-click lane switching from the header (no Settings round-trip).
   const switchBrand = (presetId) => {
     setBrand(presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET);
+    // If the current page doesn't exist in the target lane's nav, land on Generate.
+    if (presetId !== 'databricks' && (page === 'radar' || page === 'saved')) setPage('generate');
+    if (page === 'saved') setPage('archive');
     showToast(presetId === 'databricks' ? 'Switched to Databricks (personal)' : 'Switched to Steadfast');
   };
+
+  // Lane theming: the whole UI re-tints from the active brand's colors, so
+  // Steadfast feels like Steadfast and the Databricks lane feels like Victor's.
+  useEffect(() => {
+    const root = document.documentElement;
+    const accent = brand?.colors?.accent || '#3b82f6';
+    const accent2 = brand?.presetId === 'databricks' ? '#ff7a45' : '#6366f1';
+    root.style.setProperty('--accent', accent);
+    root.style.setProperty('--accent-2', accent2);
+  }, [brand]);
 
   // Build Radar -> Generate handoff: carries the picked idea's topic + brief.
   const [radarDraft, setRadarDraft] = useState(null);
@@ -157,7 +169,7 @@ export default function App() {
   return (
     <div className="min-h-screen gradient-bg">
       <Header brand={brand} manualKey={manualKey} setManualKey={setManualKey} live={live} theme={theme} setTheme={setTheme} switchBrand={switchBrand} />
-      <NavBar page={page} setPage={setPage} />
+      <NavBar page={page} setPage={setPage} brand={brand} />
 
       <main className="p-6 max-w-7xl mx-auto">
         {/* Always-mounted pages preserve state across navigation. Only the active page is visible. */}
@@ -169,9 +181,6 @@ export default function App() {
         </div>
         <div className="page-panel" style={{ display: page ==='archive' ? 'block' : 'none' }}>
           <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='saved' ? 'block' : 'none' }}>
-          <SavedPage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
         </div>
         <div className="page-panel" style={{ display: page ==='images' ? 'block' : 'none' }}>
           <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />

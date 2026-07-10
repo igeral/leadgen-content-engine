@@ -10,7 +10,7 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
       <div className="flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center text-white logo-mark"
-          style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}
+          style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
         >
           <Icon name="zap" size={20} strokeWidth={2.4} />
         </div>

@@ -13,7 +13,7 @@ export const STEADFAST_PRESET = {
   },
   pillars: [
     { name: 'Workforce Insights', audience: 'Hospital Leaders', description: 'Data-driven content about physician shortages and capacity gaps. Default framework PASS, hooks Bold Stat or Reframe.' },
-    { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Content for physicians considering locum work and career flexibility. Default framework SLAY, hooks Direct Question, Story Opener, Bold Stat.' },
+    { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Practical career-and-money content for physicians considering locum work: pay benchmarks by specialty, 1099 vs W-2 reality, quarterly taxes, multi-state licensing (IMLC), contract red flags, and honest day-in-the-life stories. These are the proven topics every major agency\'s content library targets because physicians actually search them. Default framework SLAY, hooks Direct Question, Story Opener, Bold Stat.' },
     { name: 'Staffing Strategy', audience: 'Hospital Leaders', description: 'Proactive staffing frameworks, cost analysis, and locum strategy. Default framework PASS or SLAY, hooks Contrarian Claim or POV Scenario.' },
     { name: 'Industry Commentary', audience: 'Both', description: 'Hot takes on healthcare policy, Match results, market shifts. Default framework SLAY adapted, hook Reframe.' },
     { name: 'Lead Magnet', audience: 'Physicians', description: 'Soft introduction to the physician lead magnet (1099 Starter Kit). Thursday 5:15 PM slot. Hooks Story Opener or Direct Question. CTA is a comment trigger ("comment TAX and I will DM it") serviced by the Engagement Studio. Never external links.' },
