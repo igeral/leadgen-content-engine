@@ -226,8 +226,19 @@ function parseJsonStringArray(raw) {
 }
 
 // ═══════════ TRENDING TOPIC DISCOVERY ═══════════
+// Tries the ":online" web-search model variant first so "trending" means THIS
+// week, not the model's training cutoff (stale years-old "news" in Friday
+// posts is a credibility killer). Falls back to the base model on error.
 export async function fetchTrendingTopics(manualKey, model, brand, pillar, platform, count = 5) {
   const key = getApiKey(manualKey);
+  try {
+    return await fetchTrendingTopicsWithModel(key, `${model}:online`, brand, pillar, platform, count);
+  } catch (e) {
+    return await fetchTrendingTopicsWithModel(key, model, brand, pillar, platform, count);
+  }
+}
+
+async function fetchTrendingTopicsWithModel(key, model, brand, pillar, platform, count) {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -263,6 +274,7 @@ For each topic, provide:
 CRITICAL RULES:
 - Be SPECIFIC and TIMELY. Not "physician burnout" but "Why 3 major health systems just announced 4-day work weeks for physicians — and what it means for staffing"
 - Reference REAL industry trends, reports, legislation, events happening NOW in 2026
+- RECENCY IS NON-NEGOTIABLE: if you have web search results, use ONLY events verifiable in them. If you cannot verify an event happened within the last 30 days, DO NOT include it. Never present an event from a previous year as if it is current — a single stale "news" post destroys the brand's credibility.
 - Each topic must be DIFFERENT from the others — different angles, different emotions, different formats
 - Think about what would actually go VIRAL on ${platform}, not just what's "relevant"
 
