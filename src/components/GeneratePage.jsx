@@ -841,7 +841,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // ─── BATCH GENERATE (one post per trending topic) ───
   const generateAllTrending = async () => {
     if (!trendingTopics || trendingTopics.length === 0) {
-      showToast('No trending topics \u2014 click "Find Now" first');
+      showToast('No trending topics. Click "Find Now" first.');
       return;
     }
     if (!live) {
@@ -885,7 +885,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           manualKey,
           selModel,
           buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, formatting }),
-          buildUserPrompt(bankPillar, bankPillar.audience, 'EVERGREEN post: a timeless lesson, story, or defensible opinion. Must NOT reference current news, dates, or recent events — it should read just as well six months from now.', brand.dataPoints, null, { brandName: brand.name, avoidTopics: avoid })
+          buildUserPrompt(bankPillar, bankPillar.audience, 'EVERGREEN post: a timeless lesson, story, or defensible opinion. Must NOT reference current news, dates, or recent events. It should read just as well six months from now.', brand.dataPoints, null, { brandName: brand.name, avoidTopics: avoid })
         );
         texts.push(t);
         avoid.push((t.split('\n').find((l) => l.trim()) || '').slice(0, 120));
@@ -1044,7 +1044,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           <label className="block text-sm font-medium text-gray-300 mb-1">
             Content Pillar
             {brand.schedule && brand.schedule.length > 0 && (
-              <span className="text-xs text-amber-300 font-normal ml-2">(schedule overrides — each slot uses its own pillar)</span>
+              <span className="text-xs text-amber-300 font-normal ml-2">(schedule overrides: each slot uses its own pillar)</span>
             )}
           </label>
           <select
@@ -1055,7 +1055,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             title={brand.schedule && brand.schedule.length > 0 ? 'Pillar is set per slot by the schedule' : ''}
           >
             {brand.pillars.map((p, i) => (
-              <option key={i} value={i}>{`${p.name} — ${p.audience}`}</option>
+              <option key={i} value={i}>{`${p.name} (${p.audience})`}</option>
             ))}
           </select>
 
@@ -1148,7 +1148,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Topic (manual - shown when no trending selected) */}
           {!selectedTrending && (
             <>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional — or use trending above)'}</span></label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional, or use trending above)'}</span></label>
               <textarea className="input-field mb-3" placeholder={brand.presetId === 'databricks' ? 'e.g., What the AI data-center buildout looks like in real grid data...' : 'e.g., The hidden cost of reactive physician staffing...'} value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
             </>
           )}
