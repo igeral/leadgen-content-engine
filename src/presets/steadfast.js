@@ -1,7 +1,8 @@
 export const STEADFAST_PRESET = {
+  presetId: 'steadfast',
   name: 'Steadfast Physician Partners',
-  tagline: 'Reliable Physician Coverage. Deployed Fast.',
-  category: 'The company that helps hospitals eliminate physician coverage gaps before they become crises.',
+  tagline: 'The physician’s guide to locum tenens. Pay, licensing, and the 1099 life.',
+  category: 'The company that helps physicians build profitable locum tenens careers, and helps hospital leaders see coverage gaps before they become crises. Physician-first: the audience we grow and serve is physicians; hospital-facing authority content keeps the brand credible to the buyers those physicians eventually work for.',
   colors: {
     primary: '#1a365d',
     secondary: '#2c5282',
@@ -15,25 +16,20 @@ export const STEADFAST_PRESET = {
     { name: 'Physician Lifestyle', audience: 'Physicians', description: 'Content for physicians considering locum work and career flexibility. Default framework SLAY, hooks Direct Question, Story Opener, Bold Stat.' },
     { name: 'Staffing Strategy', audience: 'Hospital Leaders', description: 'Proactive staffing frameworks, cost analysis, and locum strategy. Default framework PASS or SLAY, hooks Contrarian Claim or POV Scenario.' },
     { name: 'Industry Commentary', audience: 'Both', description: 'Hot takes on healthcare policy, Match results, market shifts. Default framework SLAY adapted, hook Reframe.' },
-    { name: 'Lead Magnet', audience: 'Hospital Leaders', description: 'Soft introduction to the offer. Thursday 5:15 PM slot. Hooks Story Opener or Direct Question. Link in comments, never in caption.' },
+    { name: 'Lead Magnet', audience: 'Physicians', description: 'Soft introduction to the physician lead magnet (1099 Starter Kit). Thursday 5:15 PM slot. Hooks Story Opener or Direct Question. CTA is a comment trigger ("comment TAX and I will DM it") serviced by the Engagement Studio. Never external links.' },
   ],
-  // Master weekly schedule (Steadfast Pillar Post Schedule v1.0).
-  // 11 fixed slots Mon-Thu. Each slot dictates pillar, audience, hook formula,
-  // image system, and variant. Image variants chosen to obey the
-  // "no two consecutive dark images same day" rule (multi-set variants
-  // assigned Light on Tue/Wed noon to break up the Dark Stat Card runs).
+  // Master weekly schedule (Steadfast Pillar Post Schedule v2.0 — heartbeat).
+  // 6 slots: one post per weekday, two on Friday (the attention engine).
+  // Cut from 13 (2026-07-09): company-page reach (~1.6% of followers) makes
+  // extra volume worthless; distribution now comes from the monthly invite
+  // ritual + commenting as the page, not post count. Mix is physician-first
+  // (3 physician, 1 hospital, 2 both) because physicians are the side the
+  // affiliate model monetizes (see strategy/ unified doc).
   schedule: [
-    { day: 'Monday',    time: '7:30 AM',  pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'direct_question', imageStyle: 'quote', variant: 'light' },
-    { day: 'Monday',    time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'bold_stat',       imageStyle: 'stat',  variant: 'dark'  },
-    { day: 'Tuesday',   time: '7:30 AM',  pillar: 'Industry Commentary', audience: 'Both',             hookFormula: 'reframe',         imageStyle: 'quote', variant: 'light' },
-    { day: 'Tuesday',   time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'bold_stat',       imageStyle: 'multi', variant: 'light' },
-    { day: 'Tuesday',   time: '2:30 PM',  pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'story_opener',    imageStyle: 'stat',  variant: 'dark'  },
-    { day: 'Tuesday',   time: '5:15 PM',  pillar: 'Staffing Strategy',   audience: 'Hospital Leaders', hookFormula: 'pov_scenario',    imageStyle: 'quote', variant: 'light' },
-    { day: 'Wednesday', time: '7:30 AM',  pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'bold_stat',       imageStyle: 'quote', variant: 'light' },
-    { day: 'Wednesday', time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'contrarian',      imageStyle: 'multi', variant: 'light' },
-    { day: 'Wednesday', time: '5:15 PM',  pillar: 'Industry Commentary', audience: 'Both',             hookFormula: 'bold_stat',       imageStyle: 'stat',  variant: 'dark'  },
-    { day: 'Thursday',  time: '12:00 PM', pillar: 'Staffing Strategy',   audience: 'Hospital Leaders', hookFormula: 'contrarian',      imageStyle: 'multi', variant: 'dark'  },
-    { day: 'Thursday',  time: '5:15 PM',  pillar: 'Lead Magnet',         audience: 'Hospital Leaders', hookFormula: 'story_opener',    imageStyle: 'quote', variant: 'light' },
+    { day: 'Monday',    time: '12:00 PM', pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'story_opener',    imageStyle: 'quote', variant: 'light' },
+    { day: 'Tuesday',   time: '12:00 PM', pillar: 'Workforce Insights',  audience: 'Hospital Leaders', hookFormula: 'bold_stat',       imageStyle: 'stat',  variant: 'dark'  },
+    { day: 'Wednesday', time: '12:00 PM', pillar: 'Physician Lifestyle', audience: 'Physicians',       hookFormula: 'direct_question', imageStyle: 'multi', variant: 'light' },
+    { day: 'Thursday',  time: '5:15 PM',  pillar: 'Lead Magnet',         audience: 'Physicians',       hookFormula: 'story_opener',    imageStyle: 'quote', variant: 'light' },
     // FRIDAY = attention engine. Two posts, text-only by default (image optional
     // per the doc). Post type chosen at runtime from FRIDAY_POST_TYPES so each
     // Friday rotates through different angles (Newsjack, Hot Take, etc.).
@@ -41,10 +37,10 @@ export const STEADFAST_PRESET = {
     { day: 'Friday',    time: '12:00 PM', pillar: 'Friday Newsjack',     audience: 'Both',             friday: true, imageStyle: null, variant: null },
   ],
   leadMagnet: {
-    name: 'Proactive Coverage Playbook',
-    audience: 'Hospital CMOs and operations leaders',
-    description: 'A practical framework for eliminating physician coverage gaps before they become crises. Five-step proactive staffing model, specialty risk matrix, credentialing timeline templates.',
-    cta: 'The link to download is in the first comment.',
+    name: 'The Locum Physician 1099 Starter Kit',
+    audience: 'Physicians curious about or already doing locum tenens work',
+    description: 'A practical starter kit for the business side of locum work: 1099 vs W-2 basics, deduction checklist, quarterly tax calendar, IMLC multi-state licensing overview, and the questions to ask any agency before signing. Cites real sources (IRS publications, IMLC.gov). Not tax or legal advice.',
+    cta: 'Comment "TAX" and I will DM you the kit. No email required.',
   },
   dataPoints: [
     '86,000 projected physician shortage by 2036',
