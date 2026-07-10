@@ -1,0 +1,278 @@
+import { useState, useEffect } from 'react';
+
+// One saved DM template per lane/identity. Steadfast services the 1099 Starter
+// Kit comment trigger; Databricks services "comment DATA and I'll send the
+// pattern/repo" posts on Victor's personal profile.
+const DEFAULT_TEMPLATES = {
+  steadfast:
+    'Hi {{name}},\n\nThanks for commenting on my post. Here is the Locum Physician 1099 Starter Kit:\n[PASTE LEAD MAGNET LINK HERE, e.g. a Google Drive share link]\n\nLet me know if you have any questions!',
+  databricks:
+    'Hey {{name}},\n\nThanks for the comment. Here is the repo/pattern from the post:\n[PASTE GITHUB OR DRIVE LINK HERE]\n\nIf you build on it or would have done it differently, I genuinely want to hear how it goes.',
+};
+const templateKey = (lane) => `leadgen.engagement.template.${lane}`;
+
+export default function EngagementPage({ showToast }) {
+  const [rawInput, setRawInput] = useState('');
+  const [lane, setLane] = useState('steadfast');
+  const [messageTemplate, setMessageTemplate] = useState(DEFAULT_TEMPLATES.steadfast);
+  const [leads, setLeads] = useState([]);
+  const [processedIds, setProcessedIds] = useState(new Set());
+
+  // Load the active lane's template from localStorage (legacy single-template
+  // key migrates into the steadfast lane).
+  useEffect(() => {
+    const cached = localStorage.getItem(templateKey(lane)) || (lane === 'steadfast' ? localStorage.getItem('leadgen.engagement.template') : null);
+    setMessageTemplate(cached || DEFAULT_TEMPLATES[lane]);
+  }, [lane]);
+
+  const handleTemplateChange = (e) => {
+    setMessageTemplate(e.target.value);
+    localStorage.setItem(templateKey(lane), e.target.value);
+  };
+
+  const parseComments = () => {
+    if (!rawInput.trim()) {
+      showToast('Please paste some text first!');
+      return;
+    }
+
+    const lines = rawInput
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const parsedLeads = [];
+    const seenNames = new Set();
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Match typical LinkedIn comment timestamp indicators: e.g. "1d", "3h", "12h", "1w", "2wk", "1mo", "just now"
+      const isTimestamp = /^(just now|now|\d+[mhdw]k?|1mo|2mo|1yr)$/i.test(line);
+
+      if (isTimestamp && i > 0 && i < lines.length - 1) {
+        // Comment text is the next line
+        let commentText = lines[i + 1];
+
+        // Skip standard action buttons that paste with comments
+        const skipKeywords = ['like', 'reply', 'share', 'vertical ellipsis', '...', 'translate'];
+        if (skipKeywords.includes(commentText.toLowerCase())) {
+          continue;
+        }
+
+        // Search backward for the name.
+        // LinkedIn comment blocks usually have the name 2-3 lines before the timestamp.
+        let name = '';
+        let j = i - 1;
+        while (j >= 0) {
+          const prev = lines[j];
+          // Skip connection tags ("• 1st", "• 2nd", "3rd+") and empty rows
+          if (prev.includes('•') || /^(1st|2nd|3rd)/i.test(prev)) {
+            j--;
+            continue;
+          }
+          // The line preceding the connection tag/headline block is the author name.
+          // Let's grab the first valid line.
+          name = prev;
+          break;
+        }
+
+        // Clean up duplicate name pastes if they occur (e.g. "Jane Doe\nJane Doe")
+        if (name && !seenNames.has(name)) {
+          seenNames.add(name);
+          parsedLeads.push({
+            id: `lead_${Date.now()}_${parsedLeads.length}`,
+            name: name,
+            comment: commentText,
+          });
+          // Move index past the comment line to avoid double-processing
+          i++;
+        }
+      }
+    }
+
+    if (parsedLeads.length === 0) {
+      // Fallback: Try a simpler line-by-line keyword scanner if formatting is weird
+      showToast('No structured comments found. Attempting basic parser...');
+      let fallbackIndex = 0;
+      for (let k = 0; k < lines.length - 1; k++) {
+        if (/^(tax|guide|leads|pdf|yes|info|interested|send)$/i.test(lines[k + 1])) {
+          const nameCandidate = lines[k].replace(/•.*/, '').trim();
+          if (nameCandidate && nameCandidate.length > 2 && !seenNames.has(nameCandidate)) {
+            seenNames.add(nameCandidate);
+            parsedLeads.push({
+              id: `lead_fb_${Date.now()}_${fallbackIndex++}`,
+              name: nameCandidate,
+              comment: lines[k + 1],
+            });
+          }
+        }
+      }
+    }
+
+    setLeads(parsedLeads);
+    setProcessedIds(new Set());
+    showToast(`Parsed ${parsedLeads.length} leads!`);
+  };
+
+  const getFirstName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.split(' ');
+    // Filter out prefixes like Dr., MD, PhD, etc.
+    const namePart = parts.find((p) => !/^(dr\.?|md|ph\.?d|m\.?d\.?)$/i.test(p));
+    return namePart || parts[0] || '';
+  };
+
+  const generateMessage = (fullName) => {
+    const firstName = getFirstName(fullName);
+    return messageTemplate.replace(/\{\{name\}\}/g, firstName);
+  };
+
+  const processLead = (lead) => {
+    const msg = generateMessage(lead.name);
+    navigator.clipboard.writeText(msg);
+    
+    // Set status to processed
+    setProcessedIds((prev) => {
+      const next = new Set(prev);
+      next.add(lead.id);
+      return next;
+    });
+
+    // Open LinkedIn Search for the profile
+    const searchUrl = `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(lead.name)}`;
+    window.open(searchUrl, '_blank');
+    showToast(`Copied text & opened search page for ${getFirstName(lead.name)}!`);
+  };
+
+  return (
+    <div className="animate-fade-in text-gray-200">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          ⚡ Engagement Studio (Comment-to-DM Loop)
+        </h2>
+        <p className="text-sm text-gray-400 mt-1">
+          A risk-free, 100% compliant way to automate sending Lead Magnets. No browser bots or APIs needed.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT COLUMN: Input & Templates */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <div className="card p-5">
+            <h3 className="text-lg font-semibold text-white mb-3">1. Paste Post Comments</h3>
+            <p className="text-xs text-gray-400 mb-3">
+              Right-click and drag to select all comments on your LinkedIn post, press Copy, and paste the raw text here:
+            </p>
+            <textarea
+              className="input-field w-full h-40 text-sm font-mono mb-3"
+              placeholder="Paste LinkedIn comments here..."
+              value={rawInput}
+              onChange={(e) => setRawInput(e.target.value)}
+            />
+            <button className="btn-primary w-full" onClick={parseComments}>
+              Parse Comment Leads
+            </button>
+          </div>
+
+          <div className="card p-5">
+            <h3 className="text-lg font-semibold text-white mb-3">2. Edit DM Template</h3>
+            <div className="flex gap-2 mb-3">
+              <button
+                className={`flex-1 text-xs px-3 py-2 rounded-lg font-semibold border transition-all ${lane === 'steadfast' ? 'border-blue-500 bg-blue-900 bg-opacity-20 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500'}`}
+                onClick={() => setLane('steadfast')}
+              >
+                {'🏥'} Steadfast (1099 Kit)
+              </button>
+              <button
+                className={`flex-1 text-xs px-3 py-2 rounded-lg font-semibold border transition-all ${lane === 'databricks' ? 'border-blue-500 bg-blue-900 bg-opacity-20 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500'}`}
+                onClick={() => setLane('databricks')}
+              >
+                {'🧱'} Databricks (Personal)
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              Use <code className="text-blue-400">{"{{name}}"}</code> to insert the prospect's first name automatically.
+            </p>
+            <textarea
+              className="input-field w-full h-48 text-sm mb-3"
+              value={messageTemplate}
+              onChange={handleTemplateChange}
+              placeholder="Hi {{name}}, here is the link..."
+            />
+            <div className="text-xs text-gray-400">
+              <strong>Preview Example:</strong>
+              <div className="bg-slate-900 p-3 rounded mt-2 border border-slate-700 font-mono text-slate-300 whitespace-pre-wrap">
+                {generateMessage('Dr. Jane Doe')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Parsed Leads & Action Station */}
+        <div className="lg:col-span-7 card p-5 flex flex-col min-h-[500px]">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-700">
+            <h3 className="text-lg font-semibold text-white">
+              Parsed Leads ({leads.length})
+            </h3>
+            {leads.length > 0 && (
+              <span className="text-xs text-gray-400">
+                Processed: {processedIds.size} / {leads.length}
+              </span>
+            )}
+          </div>
+
+          {leads.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+              <span className="text-5xl mb-3 text-slate-500">💬</span>
+              <h4 className="text-base font-medium text-slate-400 mb-1">No leads loaded</h4>
+              <p className="text-xs text-slate-500 max-w-sm">
+                Paste raw post comments into the input panel and click "Parse" to populate this workspace.
+              </p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto max-h-[600px] pr-2 flex flex-col gap-3">
+              {leads.map((lead) => {
+                const isProcessed = processedIds.has(lead.id);
+                return (
+                  <div
+                    key={lead.id}
+                    className={`card p-4 transition-all ${
+                      isProcessed ? 'bg-slate-800/40 border-slate-700 opacity-60' : 'border-slate-700 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-white text-sm">{lead.name}</h4>
+                          {isProcessed && (
+                            <span className="bg-green-900/40 text-green-400 border border-green-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">
+                              ✓ Processed
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Comment: <span className="text-blue-300 font-semibold">"{lead.comment}"</span>
+                        </p>
+                      </div>
+
+                      <button
+                        className={`w-full sm:w-auto text-xs px-4 py-2 rounded-lg font-semibold transition-all ${
+                          isProcessed
+                            ? 'bg-slate-700 text-gray-400 hover:bg-slate-600'
+                            : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-md'
+                        }`}
+                        onClick={() => processLead(lead)}
+                      >
+                        Copy Msg & Open Search
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

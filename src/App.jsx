@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isLiveMode, isUsingEnvKey, TEXT_MODELS, IMAGE_MODELS } from './utils/openrouter';
 import { STEADFAST_PRESET } from './presets/steadfast';
+import { DATABRICKS_PRESET } from './presets/databricks';
 import Header from './components/Header';
 import NavBar from './components/NavBar';
 import GeneratePage from './components/GeneratePage';
@@ -9,6 +10,8 @@ import SavedPage from './components/SavedPage';
 import ArchivePage from './components/ArchivePage';
 import ImageStudioPage from './components/ImageStudioPage';
 import SettingsPage from './components/SettingsPage';
+import EngagementPage from './components/EngagementPage';
+import BuildRadarPage from './components/BuildRadarPage';
 import Toast from './components/Toast';
 
 // ─── PERSISTENCE HELPERS ───
@@ -79,18 +82,21 @@ export default function App() {
   const [brand, setBrand] = useState(() => {
     const stored = loadJSON(BRAND_STORAGE_KEY, null);
     if (!stored) return STEADFAST_PRESET;
+    // The overlay base follows the stored preset so a Databricks brand doesn't
+    // get Steadfast's schedule/pillars stamped back onto it (and vice versa).
+    const base = stored.presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET;
     const userPillars = Array.isArray(stored.pillars) ? stored.pillars : [];
     const haveByName = new Set(userPillars.map((p) => p && p.name));
     const mergedPillars = [...userPillars];
-    for (const pp of STEADFAST_PRESET.pillars) {
+    for (const pp of base.pillars) {
       if (!haveByName.has(pp.name)) mergedPillars.push(pp);
     }
     return {
-      ...STEADFAST_PRESET,
+      ...base,
       ...stored,
       pillars: mergedPillars,
-      schedule: STEADFAST_PRESET.schedule,
-      leadMagnet: STEADFAST_PRESET.leadMagnet,
+      schedule: base.schedule,
+      leadMagnet: base.leadMagnet,
     };
   });
   const [manualKey, setManualKey] = useState(() => loadString(KEY_STORAGE_KEY));
@@ -153,6 +159,12 @@ export default function App() {
         </div>
         <div style={{ display: page === 'images' ? 'block' : 'none' }}>
           <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />
+        </div>
+        <div style={{ display: page === 'engagement' ? 'block' : 'none' }}>
+          <EngagementPage showToast={showToast} />
+        </div>
+        <div style={{ display: page === 'radar' ? 'block' : 'none' }}>
+          <BuildRadarPage manualKey={manualKey} selModel={selModel} live={live} showToast={showToast} />
         </div>
         <div style={{ display: page === 'settings' ? 'block' : 'none' }}>
           <SettingsPage brand={brand} setBrand={setBrand} manualKey={manualKey} setManualKey={setManualKey} selModel={selModel} setSelModel={setSelModel} selImgModel={selImgModel} setSelImgModel={setSelImgModel} live={live} />

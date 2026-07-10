@@ -299,6 +299,75 @@ Return ONLY valid JSON array. No markdown, no code blocks.
   throw new Error('Could not parse trending topics');
 }
 
+// ═══════════ BUILD RADAR (Databricks personal-brand lane) ═══════════
+// Finds trending, data-attachable topics and pairs each with a REAL public
+// dataset + a weekend-scale Databricks Free Edition build idea. Tries the
+// OpenRouter ":online" web-search variant first (adds ~cents/scan, gives
+// live results); falls back to the base model's knowledge if unavailable.
+export async function fetchBuildIdeas(manualKey, model, count = 5) {
+  const key = getApiKey(manualKey);
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const prompt = `You are a hybrid trend analyst + senior data engineer. Today is ${today}.
+
+You advise a data analytics engineer who builds small public projects on Databricks Free Edition every weekend and posts about them on his personal LinkedIn. His audience is data leaders, analytics managers, and hiring managers. His goal: attach real data analysis to topics people are ALREADY talking about, so the posts ride an existing wave.
+
+TASK: Identify the ${count} best "build opportunities" RIGHT NOW. Each pairs (a) a topic currently generating heavy discussion on LinkedIn / tech media with (b) a real, freely accessible public dataset, and (c) a 2-3 hour Databricks build.
+
+TOPIC POOL TO DRAW FROM (not exhaustive — add better ones if they are hotter right now): AI data-center buildout and electricity demand, energy grids and renewables, the AI capex race, chip supply, data breaches and security incidents, CEO/company performance comparisons, tech layoffs and hiring data, robotics adoption, housing/cost-of-living data, sports analytics moments.
+
+DATASET RULES (critical):
+- Only name datasets that REALLY exist and are freely downloadable or API-accessible today. Examples of the caliber expected: EIA Open Data API (US energy), Our World in Data energy/CO2 GitHub CSVs, SEC EDGAR filings, HHS breach portal CSV, NYC TLC trip data, Cloudflare Radar, BLS/FRED APIs, Kaggle datasets (name the exact dataset), GitHub Archive on BigQuery-equivalent public buckets.
+- If unsure a dataset exists, either drop the idea or clearly set "verified": false.
+- No datasets that require paid licenses, scraping against ToS, or employer credentials.
+
+For each opportunity return:
+- topic: specific and timely (reference the actual live discussion, not a generic theme)
+- whyHot: 1 sentence on why this is being discussed right now
+- dataset: {name, source, access: exact URL or API name, verified: true|false}
+- buildIdea: what to build in 2-3 hours on Databricks Free Edition (medallion layers, a DBSQL dashboard, a Genie space, a Lakeflow pipeline — pick what fits), phrased as concrete steps
+- postAngle: the one-line hook the resulting LinkedIn post would open with
+- audienceMatch: "data-leaders" if data/analytics professionals specifically discuss this, "general" if it is broad-public viral
+- effortHours: realistic estimate (2-6)
+
+Rank by (audienceMatch === "data-leaders") first, then heat. Return ONLY a valid JSON array, no markdown fences.
+[{"topic":"...","whyHot":"...","dataset":{"name":"...","source":"...","access":"...","verified":true},"buildIdea":"...","postAngle":"...","audienceMatch":"...","effortHours":3}]`;
+
+  const callModel = async (modelId) => {
+    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: apiHeaders(key),
+      body: JSON.stringify({
+        model: modelId,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.9,
+        max_tokens: 3000,
+      }),
+    });
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      throw new Error(e.error?.message || 'Build radar request failed');
+    }
+    const data = await resp.json();
+    let raw = data.choices?.[0]?.message?.content || '';
+    raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const match = raw.match(/\[[\s\S]*\]/);
+    const ideas = JSON.parse(match ? match[0] : raw);
+    if (!Array.isArray(ideas) || ideas.length < 1) throw new Error('No ideas returned');
+    return ideas.slice(0, count);
+  };
+
+  // ":online" adds OpenRouter's web-search plugin so results reflect THIS week,
+  // not the model's training cutoff. Fall back to the base model if the online
+  // variant errors (not all models/accounts support it).
+  try {
+    return { ideas: await callModel(`${model}:online`), live: true };
+  } catch (e) {
+    const ideas = await callModel(model);
+    return { ideas, live: false };
+  }
+}
+
 // ─── EXTRACT IMAGE URL FROM RESPONSE ───
 function extractImageUrl(data) {
   const msg = data.choices?.[0]?.message;
@@ -605,7 +674,7 @@ export const STEADFAST_PILLAR_MAP = {
       'Introduce the guide by name and audience. Be specific about who it was written for so the reader self-selects.',
       'List four to five things inside the guide. Each one a different angle. Together they cover the whole framework.',
       'State who it was written for. Practical. Free. Written for the person who does not have time to figure this out mid-crisis.',
-      'Direct the reader to the link in the comments. Never put external links in the caption. LinkedIn deprioritises posts with external links.',
+      'Tell the reader to comment one trigger word (e.g. "TAX") to get the resource by DM. No external links anywhere: not in the caption, not in the comments. LinkedIn deprioritises posts with links, and the comment trigger is what feeds the Engagement Studio DM loop.',
       'Standard soft follow CTA. Consistent with the rest of the week.',
     ],
   },
@@ -656,26 +725,60 @@ export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, fo
     none: 'No explicit CTA. Let the content speak for itself.',
   };
 
-  return `You are an expert social media content strategist writing on ${platform} for ${brand.name || 'the client'}.
+  const bn = brand.name || 'the client';
+  const isSteadfast = /steadfast/i.test(bn);
+  const brandRef = isSteadfast ? 'Steadfast' : bn;
+  // Brand-specific storytelling ingredients. Steadfast keeps its tuned wording
+  // byte-for-byte; other presets supply their own via brand.voiceExamples and
+  // brand.vocabulary, with neutral fallbacks.
+  const ve = brand.voiceExamples || {};
+  const readerWorld = isSteadfast ? 'THEIR life, THEIR hospital, THEIR career, THEIR decisions' : (ve.readerWorld || 'THEIR life, THEIR work, THEIR career, THEIR decisions');
+  const badExample = isSteadfast ? 'Steadfast helps hospitals close coverage gaps.' : (ve.bad || `${bn} shares insights about the industry.`);
+  const goodExample = isSteadfast ? 'POV: You just lost a hospitalist with two weeks notice.' : (ve.good || "POV: the reader's exact problem, named in one line.");
+  const registerLine = isSteadfast ? 'That is me. That is my hospital. That is my problem.' : 'That is me. That is my world. That is my problem.';
+  const vocabRules = isSteadfast
+    ? `- Always say "coverage gaps" not "open positions".
+- Always say "physicians" not "providers".
+- Always say "hospital CMOs and administrators" not "clients".
+- Always say "locum tenens" not "temps" or "temporary staff".
+- Always say "proactive coverage model" not "backup plan".
+- Always say "credentialed and vetted" not "qualified".
+- Always say "physician workforce strategy" not "staffing solution".`
+    : (Array.isArray(brand.vocabulary) && brand.vocabulary.length ? brand.vocabulary.map((v) => `- ${v}`).join('\n') : '- Plain, precise language. No filler jargon.');
+  const timelessExample = isSteadfast ? ' (e.g. "86,000 projected physician shortage by 2036")' : '';
+  const emDashWrong = isSteadfast ? 'Most physicians still love patient care — it is the system around it that wore them down.' : 'The dashboard looked fine — the numbers behind it were three days stale.';
+  const emDashRight1 = isSteadfast ? 'Most physicians still love patient care.' : 'The dashboard looked fine.';
+  const emDashRight2 = isSteadfast ? 'It is the system around it that wore them down.' : 'The numbers behind it were three days stale.';
+  // Optional brand-level blocks (Steadfast has neither, so its prompt is unchanged).
+  const positioningBlock = brand.positioning ? `
+STRATEGIC INTENT (the reason every post exists — never state it in the post, SHOW it)
+${brand.positioning}
+` : '';
+  const engagementBlock = brand.engagementStrategy ? `
+ENGAGEMENT STRATEGY (when this conflicts with the CTA style above, this wins)
+${brand.engagementStrategy}
+` : '';
+
+  return `You are an expert social media content strategist writing on ${platform} for ${bn}.
 
 BRAND
-- Name: ${brand.name || 'the client'}
+- Name: ${bn}
 - Tagline: ${brand.tagline || 'N/A'}
 - Category: ${brand.category || 'N/A'}
 - Pillars: ${brand.pillars.map((p) => p.name).join(', ')}
-
+${positioningBlock}
 VOICE & TONE
 ${toneMap[tone] || toneMap.authoritative}
 
 ═══════════════════════════════════════════════════════════════════
-STEADFAST STORYTELLING PRINCIPLES (Part 1 — apply to EVERY post)
+${isSteadfast ? 'STEADFAST' : bn.toUpperCase()} STORYTELLING PRINCIPLES (Part 1 — apply to EVERY post)
 ═══════════════════════════════════════════════════════════════════
 
 1.1 THE READER IS THE MAIN CHARACTER
-Every post must make the reader feel the story is about THEIR life, THEIR hospital, THEIR career, THEIR decisions. Not about Steadfast. Not about the team. Not about the company.
-- Bad opening: "Steadfast helps hospitals close coverage gaps."
-- Good opening: "POV: You just lost a hospitalist with two weeks notice."
-When the reader sees the hook, their brain should immediately register: "That is me. That is my hospital. That is my problem."
+Every post must make the reader feel the story is about ${readerWorld}. Not about ${brandRef}. Not about the team. Not about the company.
+- Bad opening: "${badExample}"
+- Good opening: "${goodExample}"
+When the reader sees the hook, their brain should immediately register: "${registerLine}"
 
 1.2 NO EM DASHES. EVER.
 Em dashes (—, –, --) are BANNED across all content. This is non-negotiable.
@@ -683,10 +786,10 @@ Em dashes (—, –, --) are BANNED across all content. This is non-negotiable.
 - Do NOT use en dashes in place of em dashes.
 - Do NOT use double hyphens (--) as a substitute.
 When tempted to use one, use instead: a comma, a period and a new sentence, a colon, a line break, or rewrite the sentence.
-- Wrong: "Most physicians still love patient care \u2014 it is the system around it that wore them down."
-- Right: "Most physicians still love patient care."
-- Right: "It is the system around it that wore them down."
-Em dashes signal AI-generated content and feel performative. Steadfast's voice is direct.
+- Wrong: "${emDashWrong}"
+- Right: "${emDashRight1}"
+- Right: "${emDashRight2}"
+Em dashes signal AI-generated content and feel performative. ${brandRef}'s voice is direct.
 
 1.3 RHYTHM IS THE ENTERTAINMENT PILLAR
 Posts flow like a song, not a report. Use:
@@ -716,26 +819,20 @@ FORMATTING (LinkedIn specifics)
 
 CTA STYLE
 ${ctaMap[ctaType] || ctaMap.question}
-
+${engagementBlock}
 VARIETY RULES
 - Do NOT repeat common AI phrases like "here's the thing", "let that sink in", "read that again", "the harsh truth", "let me explain".
 - Use a FRESH hook every time. Surprise the reader.
 - The pillar framework and 7-beat sequence (in the user message) is the structure. Follow it.
 
 ═══════════════════════════════════════════════════════════════════
-VOCABULARY RULES (apply to ALL Steadfast content, every post, every line)
+VOCABULARY RULES (apply to ALL ${brandRef} content, every post, every line)
 ═══════════════════════════════════════════════════════════════════
-- Always say "coverage gaps" not "open positions".
-- Always say "physicians" not "providers".
-- Always say "hospital CMOs and administrators" not "clients".
-- Always say "locum tenens" not "temps" or "temporary staff".
-- Always say "proactive coverage model" not "backup plan".
-- Always say "credentialed and vetted" not "qualified".
-- Always say "physician workforce strategy" not "staffing solution".
+${vocabRules}
 - NEVER use em dashes (—, –, --). Use a comma, a period, a colon, or rewrite the sentence.
 
 ═══════════════════════════════════════════════════════════════════
-RHYTHM RULES (apply to ALL Steadfast content)
+RHYTHM RULES (apply to ALL ${brandRef} content)
 ═══════════════════════════════════════════════════════════════════
 - Short lines. Frequent line breaks. Vary sentence length deliberately.
 - One sentence on its own line has more weight than the same sentence buried in a paragraph.
@@ -744,10 +841,10 @@ RHYTHM RULES (apply to ALL Steadfast content)
 - Posts feel punchy, direct, and fast. Not polished. Not produced. Real.
 
 DATE ACCURACY
-The current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. The only exception is verified timeless statistics that are still accurate today (e.g. "86,000 projected physician shortage by 2036"). If you cannot verify a story is current, do not use it.`;
+The current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. The only exception is verified timeless statistics that are still accurate today${timelessExample}. If you cannot verify a story is current, do not use it.`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, fridayPostType } = {}) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, fridayPostType, brandName, sourceNotes } = {}) {
   // FRIDAY BRANCH — completely different rules from Mon-Thu.
   if (fridayPostType && FRIDAY_POST_TYPES[fridayPostType]) {
     return buildFridayUserPrompt(audience, topic, { keywords, keyPhrases, avoidTopics, trendingTopic, fridayPostType });
@@ -766,6 +863,18 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   } else if (cfg && cfg.bestHooks.length) {
     const allowed = cfg.bestHooks.map((h) => HOOK_FORMULAS[h].name).join(' or ');
     p += `\n\nHOOK FORMULA FOR THIS POST: choose ONE of: ${allowed}. The first line MUST be \u226415 words.`;
+  }
+
+  // SOURCE NOTES — the honesty guardrail for personal/practitioner brands.
+  // When the author supplies notes from real work, they are the ONLY permitted
+  // source of experiential claims. Without notes, first-person build stories
+  // are forbidden (a fabricated "I built this" is credibility suicide the
+  // first time a reader asks a follow-up question).
+  const isBuildLog = /build\s*log/i.test(pillar.name || '');
+  if (sourceNotes && sourceNotes.trim()) {
+    p += `\n\nSOURCE NOTES (the author's real notes — the ONLY source of experiential claims):\n"""\n${sourceNotes.trim()}\n"""\nRULES FOR USING THE NOTES:\n- Every first-person claim (what was built, what broke, what it cost, what the numbers were) MUST come from these notes.\n- Do NOT invent tools, error messages, metrics, timelines, or outcomes that are not in the notes.\n- You may polish wording, structure, and add public general knowledge for context, but the experience itself is only what the notes say.\n- If the notes are thin on some detail, write around it. Never fill the gap with fiction.`;
+  } else if (isBuildLog) {
+    p += `\n\nNO SOURCE NOTES PROVIDED. This is a Build Log pillar, so you MUST NOT write a first-person "I built this" story — there is no real build to report. Instead, frame the post as forward-looking or analytical: what the author is planning to build next and why, or a breakdown of how one WOULD approach it, clearly framed as a plan, not a completed project. Zero fabricated experiences.`;
   }
 
   // Trending topic takes priority as the main angle
@@ -792,7 +901,7 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   if (imageStyle === 'quote') p += '\n\nThis post is paired with a quote card. Lead with a strong, quotable opinion.';
 
   // Hard guardrails (repeated here because LLMs sometimes ignore the system prompt)
-  p += '\n\nHARD CONSTRAINTS:\n- ZERO em dashes (\u2014, \u2013, --). Use commas, periods, colons, or line breaks instead.\n- Reader is the main character. Frame everything from THEIR perspective, never Steadfast\u2019s.\n- Hook \u226415 words. Must work above the see-more cutoff.\n- Soft CTA only. No engagement bait.';
+  p += '\n\nHARD CONSTRAINTS:\n- ZERO em dashes (\u2014, \u2013, --). Use commas, periods, colons, or line breaks instead.\n- Reader is the main character. Frame everything from THEIR perspective, never ' + (brandName || 'the brand') + '\u2019s.\n- Hook \u226415 words. Must work above the see-more cutoff.\n- Soft CTA only. No engagement bait.';
   if (avoidTopics?.length) {
     p += `\n- Topic distinctness: this post must NOT reuse any subject from the "topics already covered" list above. Different topic, not a different angle on the same topic.`;
   }
@@ -962,12 +1071,16 @@ Return ONLY the raw post text — no labels, no meta commentary, no "why this ge
 }
 
 export function buildImagePrompt(brand, pillar, style) {
-  const base = `Professional social media image for ${brand.name || 'a B2B company'}. Colors: navy (#1a365d), steel blue (#2c5282), accent (#3182ce). Clean, modern, corporate. No text or words in image. 16:9 landscape.`;
+  const c = brand.colors || {};
+  const primary = c.primary || '#1a365d';
+  const secondary = c.secondary || '#2c5282';
+  const accent = c.accent || '#3182ce';
+  const base = `Professional social media image for ${brand.name || 'a B2B company'}. Colors: primary (${primary}), secondary (${secondary}), accent (${accent}). Clean, modern, corporate. No text or words in image. 16:9 landscape.`;
   if (style === 'stat') {
-    return base + ` Bold data visualization or infographic feel. Dark navy gradient background. Abstract charts, graphs, or data-flow elements. Topic: ${pillar.name}.`;
+    return base + ` Bold data visualization or infographic feel. Dark primary-color gradient background. Abstract charts, graphs, or data-flow elements. Topic: ${pillar.name}.`;
   }
   if (style === 'quote') {
-    return base + ' Thought leadership feel. Steel blue gradient. Abstract geometric shapes suggesting insight and clarity. Authoritative mood.';
+    return base + ' Thought leadership feel. Secondary-color gradient. Abstract geometric shapes suggesting insight and clarity. Authoritative mood.';
   }
-  return base + ' Clean, structured layout suggesting a multi-part story. Light background with navy accents. Sequential/progression visual.';
+  return base + ' Clean, structured layout suggesting a multi-part story. Light background with primary-color accents. Sequential/progression visual.';
 }

@@ -320,6 +320,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [pillarIdx, setPillarIdx] = useState(0);
   const [audience, setAudience] = useState('');
   const [topic, setTopic] = useState('');
+  const [sourceNotes, setSourceNotes] = useState('');
 
   // ─── TRENDING TOPICS ───
   const [trendingTopics, setTrendingTopics] = useState([]);
@@ -608,6 +609,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       keywords: parseList(keywords),
       keyPhrases: parseList(keyPhrases),
       trendingTopic: null,
+      sourceNotes,
     };
 
     let activeTrending = forcedTrending || selectedTrending;
@@ -634,7 +636,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           manualKey,
           selModel,
           buildSystemPrompt(brand, platform, advancedOpts),
-          buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, contentOpts)
+          buildUserPrompt(pillar, audience, topic, brand.dataPoints, imageStyle, { ...contentOpts, brandName: brand.name })
         );
         postTexts = [t];
         // Single-post path uses the existing fewest-weekday logic via batch save below.
@@ -672,7 +674,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             manualKey,
             selModel,
             buildSystemPrompt(brand, platform, advancedOpts),
-            buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, slotContentOpts)
+            buildUserPrompt(slotPillar, slot.audience, topic, brand.dataPoints, slot.imageStyle, { ...slotContentOpts, brandName: brand.name })
           );
         };
         for (let i = 0; i < SCHEDULE.length; i++) {
@@ -1085,6 +1087,20 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
             </>
           )}
+
+          {/* Source notes — real-work material for practitioner posts (Build Log etc.).
+              The prompt treats these as the ONLY allowed source of first-person claims. */}
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            My notes from real work <span className="text-gray-500">(optional — required for Build Log posts)</span>
+          </label>
+          <textarea
+            className="input-field mb-1"
+            placeholder="Paste rough notes from what you actually built: what you made, what broke, the numbers. The post will only claim what's in here."
+            value={sourceNotes}
+            onChange={(e) => setSourceNotes(e.target.value)}
+            rows={3}
+          />
+          <p className="text-xs text-gray-500 mb-3">Posts never invent first-person experiences. No notes = no "I built this" claims.</p>
 
           {/* Advanced toggle */}
           <button

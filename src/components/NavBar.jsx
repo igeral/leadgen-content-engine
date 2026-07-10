@@ -4,6 +4,8 @@ const NAV_ITEMS = [
   { id: 'archive', label: 'Archive', icon: '\uD83D\uDDC2' },
   { id: 'saved', label: 'Saved', icon: '\uD83D\uDCBE' },
   { id: 'images', label: 'Images', icon: '\uD83D\uDDBC' },
+  { id: 'engagement', label: 'Engagement', icon: '💬' },
+  { id: 'radar', label: 'Build Radar', icon: '📡' },
   { id: 'settings', label: 'Settings', icon: '\u2699' },
 ];
 
