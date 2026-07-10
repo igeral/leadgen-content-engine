@@ -257,7 +257,7 @@ function buildMultiSlides(facets, count) {
       topic: 'BY THE NUMBERS',
       title: nf.stat,
       sub: shortenWords(nf.label, 14),
-      subSub: numericFacts[1] ? shortenWords(numericFacts[1].stat + ' \u2014 ' + numericFacts[1].label, 12) : '',
+      subSub: numericFacts[1] ? shortenWords(numericFacts[1].stat + ': ' + numericFacts[1].label, 12) : '',
     };
   } else {
     s2 = {
@@ -1417,7 +1417,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                 ) : images[selectedImg]?.textOnly ? (
                   <div className="w-full rounded-lg bg-amber-900/30 border border-amber-700/40 p-8 text-center">
                     <div className="text-amber-300 text-sm font-bold tracking-wider mb-1">TEXT-ONLY POST</div>
-                    <div className="text-amber-200/70 text-xs">Friday attention posts are text-only by design {'\u2014'} no card image.</div>
+                    <div className="text-amber-200/70 text-xs">Friday attention posts are text-only by design. No card image.</div>
                     <div className="text-amber-200/50 text-xs mt-2">{selectedImg + 1} of {images.length}</div>
                   </div>
                 ) : null}

@@ -45,7 +45,7 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
         <button
           className={`lane-pill ${activeLane === 'databricks' ? 'lane-pill-active' : ''}`}
           onClick={() => switchBrand && switchBrand('databricks')}
-          title="Victor — Databricks (personal LinkedIn)"
+          title="Victor: Databricks (personal LinkedIn)"
         >
           <Icon name="package" size={14} /> Databricks
         </button>

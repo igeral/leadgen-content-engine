@@ -59,19 +59,19 @@ export default function BuildRadarPage({ manualKey, selModel, live, showToast, o
   };
 
   const briefAsNotesSeed = (idea) =>
-    `Weekend build brief (from Build Radar):\nTopic: ${idea.topic}\nDataset: ${idea.dataset?.name} — ${idea.dataset?.access}\nPlanned build: ${idea.buildIdea}\n\n[REPLACE THIS AFTER THE BUILD with your real notes: what you built, what broke, the numbers.]`;
+    `Weekend build brief (from Build Radar):\nTopic: ${idea.topic}\nDataset: ${idea.dataset?.name} (${idea.dataset?.access})\nPlanned build: ${idea.buildIdea}\n\n[REPLACE THIS AFTER THE BUILD with your real notes: what you built, what broke, the numbers.]`;
 
   const copyBrief = (idea) => {
     const brief = `WEEKEND BUILD BRIEF
 Topic: ${idea.topic}
 Why it's hot: ${idea.whyHot}
-Dataset: ${idea.dataset?.name} — ${idea.dataset?.source} (${idea.dataset?.access})${idea.dataset?.verified === false ? ' [UNVERIFIED — confirm it exists before starting]' : ''}
+Dataset: ${idea.dataset?.name}, ${idea.dataset?.source} (${idea.dataset?.access})${idea.dataset?.verified === false ? ' [UNVERIFIED: confirm it exists before starting]' : ''}
 Build (~${idea.effortHours}h on Databricks Free Edition): ${idea.buildIdea}
 Post hook: ${idea.postAngle}
 
 After the build, paste your REAL notes (what you built, what broke, the numbers) into Generate → "My notes from real work".`;
     navigator.clipboard.writeText(brief);
-    showToast('Build brief copied — save it for the weekend.');
+    showToast('Build brief copied. Save it for the weekend.');
   };
 
   return (
@@ -103,7 +103,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
 
       {scannedAt && (
         <p className="text-xs text-gray-500 mb-4">
-          Last scan: {new Date(scannedAt).toLocaleString()} {liveScan === false && '— from model knowledge, not live web search. Double-check "why it\'s hot" claims before posting.'}
+          Last scan: {new Date(scannedAt).toLocaleString()} {liveScan === false && '(from model knowledge, not live web search. Double-check "why it\'s hot" claims before posting.)'}
         </p>
       )}
 
@@ -142,7 +142,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                   <div className="text-gray-400 mt-1 break-all">{idea.dataset?.access}</div>
                 )}
                 {idea.dataset?.verified === false && (
-                  <div className="text-yellow-400 mt-1 font-semibold">{'⚠'} Unverified — confirm this dataset exists before building.</div>
+                  <div className="text-yellow-400 mt-1 font-semibold">{'⚠'} Unverified: confirm this dataset exists before building.</div>
                 )}
               </div>
               <div className="text-xs text-gray-300">
@@ -154,7 +154,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                   className="btn-primary text-xs flex-1"
                   onClick={() => {
                     onUseIdea && onUseIdea({ topic: idea.topic, notes: briefAsNotesSeed(idea), postAngle: idea.postAngle });
-                    showToast('Sent to Generate — topic and brief pre-filled.');
+                    showToast('Sent to Generate. Topic and brief pre-filled.');
                   }}
                 >
                   <span className="inline-flex items-center gap-1.5 justify-center"><Icon name="zap" size={13} /> Use in Generate</span>

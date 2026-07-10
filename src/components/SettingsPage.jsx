@@ -94,7 +94,7 @@ export default function SettingsPage({ brand, setBrand, manualKey, setManualKey,
             className={`flex-1 p-4 rounded-lg border text-left transition-all ${preset === 'databricks' ? 'border-blue-500 bg-blue-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500'}`}
             onClick={() => load('databricks')}
           >
-            <div className="font-bold text-white">{'\ud83e\uddf1'} Victor {'\u2014'} Databricks (Personal)</div>
+            <div className="font-bold text-white">{'\ud83e\uddf1'} Victor: Databricks (Personal)</div>
             <div className="text-xs text-gray-400 mt-1">Personal LinkedIn, 2 posts/week, public knowledge only</div>
           </button>
           <button

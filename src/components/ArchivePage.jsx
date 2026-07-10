@@ -195,7 +195,7 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
     const text = posts.map((p, i) => {
       const sep = '=' .repeat(72);
       const meta = `${p.platform || ''} | ${p.pillar || ''} | ${p.createdAt || ''}`;
-      return `${sep}\nPOST ${i + 1} of ${posts.length} \u2014 ${day}\n${meta}\n${sep}\n\n${p.text}\n`;
+      return `${sep}\nPOST ${i + 1} of ${posts.length} (${day})\n${meta}\n${sep}\n\n${p.text}\n`;
     }).join('\n\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const a = document.createElement('a');
@@ -224,7 +224,7 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2.5"><Icon name="archive" size={22} strokeWidth={2.2} /> Content Archive</h2>
           <p className="text-sm text-gray-400 mt-1">
-            {filteredCount} of {totalCount} posts {dayFilter !== 'all' ? `\u2014 ${dayFilter}` : 'across the week'}
+            {filteredCount} of {totalCount} posts {dayFilter !== 'all' ? `(${dayFilter})` : 'across the week'}
           </p>
         </div>
         <div className="flex items-center gap-2">
