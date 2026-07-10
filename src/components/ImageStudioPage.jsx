@@ -31,11 +31,11 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     const cv = cvRef.current;
     if (!cv) return;
     if (style === 'stat') {
-      generateStatCard(cv, { stat, label, subtitle, brandName: brand.name, orientation: 'portrait', variant: 'dark' });
+      generateStatCard(cv, { stat, label, subtitle, brandName: brand.name, brandColors: brand.colors, orientation: 'portrait', variant: 'dark' });
     } else if (style === 'quote') {
-      generateQuoteCard(cv, { quote, context, closingLine, brandName: brand.name, orientation: 'portrait', variant: 'light' });
+      generateQuoteCard(cv, { quote, context, closingLine, brandName: brand.name, brandColors: brand.colors, orientation: 'portrait', variant: 'light' });
     } else {
-      generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, brandName: brand.name, orientation: 'portrait' });
+      generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, brandName: brand.name, brandColors: brand.colors, orientation: 'portrait' });
     }
     setImages([{ url: cv.toDataURL('image/png'), prompt: `Branded ${style} card`, error: null }]);
     setSelectedImg(0);
@@ -83,11 +83,19 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     if (tab === 'branded') makeBranded();
   }, [style, tab]);
 
-  const QUICK_PROMPTS = [
-    { l: 'Stat Card', p: `Professional dark navy infographic card for ${brand.name || 'a healthcare company'}. One large bold stat "86,000". Clean, modern. "Projected U.S. physician shortage by 2036" below. 16:9.` },
+  // Example prompts follow the loaded brand so the Databricks lane never sees
+  // healthcare boilerplate (and vice versa).
+  const isSteadfastBrand = /steadfast/i.test(brand.name || '');
+  const QUICK_PROMPTS = isSteadfastBrand ? [
+    { l: 'Stat Card', p: `Professional dark navy infographic card for ${brand.name}. One large bold stat "86,000". Clean, modern. "Projected U.S. physician shortage by 2036" below. 16:9.` },
     { l: 'Quote Card', p: 'Thought leadership social media card. Steel blue gradient. Large quotation mark. "A strong locum tenens strategy is not a backup plan." Split layout. 16:9.' },
     { l: 'Hospital Scene', p: 'Modern hospital corridor, physician in white coat walking confidently. Warm, hopeful. Natural candid composition. Landscape 16:9.' },
     { l: 'Data Viz', p: 'Clean data visualization on dark background. Upward trend line. Blue/teal palette. "Physician Demand Forecast 2024-2036". Elegant, LinkedIn-ready. 16:9.' },
+  ] : [
+    { l: 'Stat Card', p: `Professional dark infographic card for ${brand.name || 'a data professional'}. One large bold stat. Clean, modern, data-engineering aesthetic. Accent color ${brand.colors?.accent || '#3b82f6'}. 16:9.` },
+    { l: 'Quote Card', p: 'Thought leadership social media card. Dark gradient. Large quotation mark. A sharp one-line opinion about data engineering. Split layout. 16:9.' },
+    { l: 'Pipeline Scene', p: 'Abstract visualization of a modern data pipeline: bronze, silver, gold layered flow. Dark background, glowing accents. Elegant, technical. Landscape 16:9.' },
+    { l: 'Data Viz', p: 'Clean data visualization on dark background. Upward trend line. Modern palette. Dashboard aesthetic, LinkedIn-ready. 16:9.' },
   ];
 
   const successfulImages = images.filter((i) => i.url);

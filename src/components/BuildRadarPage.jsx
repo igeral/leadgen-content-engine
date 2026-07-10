@@ -8,7 +8,7 @@ import { fetchBuildIdeas } from '../utils/openrouter';
 // real notes into Generate's "my notes" field → the week's posts come from it.
 const CACHE_KEY = 'leadgen.buildradar.ideas.v1';
 
-export default function BuildRadarPage({ manualKey, selModel, live, showToast }) {
+export default function BuildRadarPage({ manualKey, selModel, live, showToast, onUseIdea }) {
   const [ideas, setIdeas] = useState([]);
   const [liveScan, setLiveScan] = useState(null); // true = web-search results, false = model knowledge
   const [scanning, setScanning] = useState(false);
@@ -49,6 +49,17 @@ export default function BuildRadarPage({ manualKey, selModel, live, showToast })
     }
   };
 
+  const clearIdeas = () => {
+    setIdeas([]);
+    setScannedAt(null);
+    setLiveScan(null);
+    try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+    showToast('Radar cleared.');
+  };
+
+  const briefAsNotesSeed = (idea) =>
+    `Weekend build brief (from Build Radar):\nTopic: ${idea.topic}\nDataset: ${idea.dataset?.name} — ${idea.dataset?.access}\nPlanned build: ${idea.buildIdea}\n\n[REPLACE THIS AFTER THE BUILD with your real notes: what you built, what broke, the numbers.]`;
+
   const copyBrief = (idea) => {
     const brief = `WEEKEND BUILD BRIEF
 Topic: ${idea.topic}
@@ -73,9 +84,16 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
             never the other way around.
           </p>
         </div>
-        <button className="btn-primary whitespace-nowrap" onClick={scan} disabled={scanning}>
-          {scanning ? 'Scanning...' : ideas.length ? 'Re-scan' : 'Scan for build ideas'}
-        </button>
+        <div className="flex gap-2">
+          {ideas.length > 0 && (
+            <button className="btn-ghost whitespace-nowrap" onClick={clearIdeas} disabled={scanning}>
+              {'🗑'} Clear
+            </button>
+          )}
+          <button className="btn-primary whitespace-nowrap" onClick={scan} disabled={scanning}>
+            {scanning ? 'Scanning...' : ideas.length ? 'Re-scan' : 'Scan for build ideas'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -130,9 +148,20 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                 <span className="font-semibold text-blue-300">Build (~{idea.effortHours}h):</span> {idea.buildIdea}
               </div>
               <div className="text-xs text-gray-400 italic">Hook: "{idea.postAngle}"</div>
-              <button className="btn-secondary text-xs mt-auto" onClick={() => copyBrief(idea)}>
-                Copy build brief
-              </button>
+              <div className="flex gap-2 mt-auto">
+                <button
+                  className="btn-primary text-xs flex-1"
+                  onClick={() => {
+                    onUseIdea && onUseIdea({ topic: idea.topic, notes: briefAsNotesSeed(idea), postAngle: idea.postAngle });
+                    showToast('Sent to Generate — topic and brief pre-filled.');
+                  }}
+                >
+                  {'⚡'} Use in Generate
+                </button>
+                <button className="btn-secondary text-xs" onClick={() => copyBrief(idea)}>
+                  Copy brief
+                </button>
+              </div>
             </div>
           ))}
         </div>

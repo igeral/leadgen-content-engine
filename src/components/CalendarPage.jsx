@@ -1,5 +1,4 @@
 export default function CalendarPage({ brand }) {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const sched = brand.schedule.length > 0
     ? brand.schedule
     : [
@@ -8,6 +7,10 @@ export default function CalendarPage({ brand }) {
         { day: 'Wednesday', time: '9:00 AM', pillar: 'Industry', audience: 'Primary', imageStyle: 'multi' },
         { day: 'Thursday', time: '12:00 PM', pillar: 'Lead Magnet', audience: 'Primary', imageStyle: 'stat' },
       ];
+  // Weekdays always render; weekend columns appear only when the brand's
+  // schedule actually posts there (e.g. the Databricks Saturday slot).
+  const WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const days = WEEK.filter((d, i) => i < 5 || sched.some((s) => s.day === d));
   const styleColors = { stat: '#3b82f6', quote: '#8b5cf6', multi: '#10b981' };
   const styleLabels = { stat: 'Stat Card', quote: 'Quote Card', multi: 'Multi-Set' };
 
@@ -23,7 +26,7 @@ export default function CalendarPage({ brand }) {
       <h2 className="text-2xl font-bold text-white mb-6">{'\uD83D\uDCC5'} Weekly Content Calendar</h2>
 
       <div className="card p-6 mb-6">
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
           {days.map((d) => {
             const ds = sched.filter((s) => s.day === d);
             return (
@@ -36,7 +39,7 @@ export default function CalendarPage({ brand }) {
                       <div className="text-sm font-semibold text-white mb-1">{s.pillar}</div>
                       <div className="text-xs text-gray-400 mb-2">{'\u2192'} {s.audience}</div>
                       <span className="badge text-xs" style={{ background: styleColors[s.imageStyle] || '#475569', color: '#fff' }}>
-                        {styleLabels[s.imageStyle] || s.imageStyle}
+                        {styleLabels[s.imageStyle] || (s.friday ? 'Text Only' : s.imageStyle || 'Text Only')}
                       </span>
                     </div>
                   )) : (

@@ -10,13 +10,46 @@ const DEFAULT_TEMPLATES = {
     'Hey {{name}},\n\nThanks for the comment. Here is the repo/pattern from the post:\n[PASTE GITHUB OR DRIVE LINK HERE]\n\nIf you build on it or would have done it differently, I genuinely want to hear how it goes.',
 };
 const templateKey = (lane) => `leadgen.engagement.template.${lane}`;
+const SESSION_KEY = 'leadgen.engagement.session.v1';
 
 export default function EngagementPage({ showToast }) {
   const [rawInput, setRawInput] = useState('');
   const [lane, setLane] = useState('steadfast');
   const [messageTemplate, setMessageTemplate] = useState(DEFAULT_TEMPLATES.steadfast);
-  const [leads, setLeads] = useState([]);
-  const [processedIds, setProcessedIds] = useState(new Set());
+  // Leads + processed status survive a page refresh: losing track of who was
+  // already DM'd mid-session means double-messaging prospects.
+  const [leads, setLeads] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')?.leads || []; } catch (e) { return []; }
+  });
+  const [processedIds, setProcessedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')?.processedIds || []); } catch (e) { return new Set(); }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ leads, processedIds: [...processedIds] }));
+    } catch (e) { /* storage full — leads are re-parseable, not critical */ }
+  }, [leads, processedIds]);
+
+  const exportCsv = () => {
+    if (!leads.length) { showToast('No leads to export.'); return; }
+    const esc = (v) => `"${String(v || '').replace(/"/g, '""')}"`;
+    const rows = [['Name', 'Comment', 'Processed'].join(',')];
+    leads.forEach((l) => rows.push([esc(l.name), esc(l.comment), processedIds.has(l.id) ? 'yes' : 'no'].join(',')));
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `engagement-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    showToast(`Exported ${leads.length} leads.`);
+  };
+
+  const clearLeads = () => {
+    setLeads([]);
+    setProcessedIds(new Set());
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    showToast('Lead list cleared.');
+  };
 
   // Load the active lane's template from localStorage (legacy single-template
   // key migrates into the steadfast lane).
@@ -215,9 +248,13 @@ export default function EngagementPage({ showToast }) {
               Parsed Leads ({leads.length})
             </h3>
             {leads.length > 0 && (
-              <span className="text-xs text-gray-400">
-                Processed: {processedIds.size} / {leads.length}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">
+                  Processed: {processedIds.size} / {leads.length}
+                </span>
+                <button className="btn-ghost text-xs" onClick={exportCsv}>{'📤'} CSV</button>
+                <button className="btn-ghost text-xs" onClick={clearLeads}>{'🗑'} Clear</button>
+              </div>
             )}
           </div>
 

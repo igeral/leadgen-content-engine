@@ -138,35 +138,56 @@ export default function App() {
     try { localStorage.setItem(MODEL_STORAGE_KEY, JSON.stringify(models)); } catch (e) {}
   }, [models]);
 
+  // Theme (dark default). Stamped on <html data-theme> so index.css tokens
+  // and light-mode overrides apply everywhere.
+  const [theme, setTheme] = useState(() => loadString('leadgen.theme.v1') || 'dark');
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('leadgen.theme.v1', theme); } catch (e) {}
+  }, [theme]);
+
+  // One-click lane switching from the header (no Settings round-trip).
+  const switchBrand = (presetId) => {
+    setBrand(presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET);
+    showToast(presetId === 'databricks' ? 'Switched to Databricks (personal)' : 'Switched to Steadfast');
+  };
+
+  // Build Radar -> Generate handoff: carries the picked idea's topic + brief.
+  const [radarDraft, setRadarDraft] = useState(null);
+  const useRadarIdea = (draft) => {
+    setRadarDraft(draft);
+    setPage('generate');
+  };
+
   return (
     <div className="min-h-screen gradient-bg">
-      <Header brand={brand} manualKey={manualKey} setManualKey={setManualKey} live={live} />
+      <Header brand={brand} manualKey={manualKey} setManualKey={setManualKey} live={live} theme={theme} setTheme={setTheme} switchBrand={switchBrand} />
       <NavBar page={page} setPage={setPage} />
 
       <main className="p-6 max-w-7xl mx-auto">
         {/* Always-mounted pages preserve state across navigation. Only the active page is visible. */}
-        <div style={{ display: page === 'generate' ? 'block' : 'none' }}>
-          <GeneratePage brand={brand} manualKey={manualKey} selModel={selModel} selImgModel={selImgModel} live={live} showToast={showToast} savedPosts={savedPosts} setSavedPosts={setSavedPosts} />
+        <div className="page-panel" style={{ display: page ==='generate' ? 'block' : 'none' }}>
+          <GeneratePage brand={brand} manualKey={manualKey} selModel={selModel} selImgModel={selImgModel} live={live} showToast={showToast} savedPosts={savedPosts} setSavedPosts={setSavedPosts} radarDraft={radarDraft} />
         </div>
-        <div style={{ display: page === 'calendar' ? 'block' : 'none' }}>
+        <div className="page-panel" style={{ display: page ==='calendar' ? 'block' : 'none' }}>
           <CalendarPage brand={brand} />
         </div>
-        <div style={{ display: page === 'archive' ? 'block' : 'none' }}>
+        <div className="page-panel" style={{ display: page ==='archive' ? 'block' : 'none' }}>
           <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
         </div>
-        <div style={{ display: page === 'saved' ? 'block' : 'none' }}>
+        <div className="page-panel" style={{ display: page ==='saved' ? 'block' : 'none' }}>
           <SavedPage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
         </div>
-        <div style={{ display: page === 'images' ? 'block' : 'none' }}>
+        <div className="page-panel" style={{ display: page ==='images' ? 'block' : 'none' }}>
           <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />
         </div>
-        <div style={{ display: page === 'engagement' ? 'block' : 'none' }}>
+        <div className="page-panel" style={{ display: page ==='engagement' ? 'block' : 'none' }}>
           <EngagementPage showToast={showToast} />
         </div>
-        <div style={{ display: page === 'radar' ? 'block' : 'none' }}>
-          <BuildRadarPage manualKey={manualKey} selModel={selModel} live={live} showToast={showToast} />
+        <div className="page-panel" style={{ display: page ==='radar' ? 'block' : 'none' }}>
+          <BuildRadarPage manualKey={manualKey} selModel={selModel} live={live} showToast={showToast} onUseIdea={useRadarIdea} />
         </div>
-        <div style={{ display: page === 'settings' ? 'block' : 'none' }}>
+        <div className="page-panel" style={{ display: page ==='settings' ? 'block' : 'none' }}>
           <SettingsPage brand={brand} setBrand={setBrand} manualKey={manualKey} setManualKey={setManualKey} selModel={selModel} setSelModel={setSelModel} selImgModel={selImgModel} setSelImgModel={setSelImgModel} live={live} />
         </div>
       </main>

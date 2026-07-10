@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TEXT_MODELS, IMAGE_MODELS, isUsingEnvKey } from '../utils/openrouter';
 import { STEADFAST_PRESET } from '../presets/steadfast';
 import { DATABRICKS_PRESET } from '../presets/databricks';
@@ -17,6 +17,13 @@ export default function SettingsPage({ brand, setBrand, manualKey, setManualKey,
     setEb(d);
     setPreset(p);
   };
+
+  // Keep the edit buffer in sync when the brand changes elsewhere (e.g. the
+  // header lane switcher) — pages stay mounted, so local state would go stale.
+  useEffect(() => {
+    setEb({ ...brand });
+    if (brand?.presetId) setPreset(brand.presetId);
+  }, [brand]);
 
   const upd = (field, value) => {
     const u = { ...eb, [field]: value };

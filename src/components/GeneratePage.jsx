@@ -314,13 +314,20 @@ function stripPlainText(s) {
   return String(s).replace(/^[\s\u2192\u2022\u25ba\u25cf\-\*]+\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
 }
 
-export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts }) {
+export default function GeneratePage({ brand, manualKey, selModel, selImgModel, live, showToast, savedPosts, setSavedPosts, radarDraft }) {
   // ─── CORE STATE ───
   const [platform, setPlatform] = useState('LinkedIn');
   const [pillarIdx, setPillarIdx] = useState(0);
   const [audience, setAudience] = useState('');
   const [topic, setTopic] = useState('');
   const [sourceNotes, setSourceNotes] = useState('');
+
+  // Build Radar handoff: when an idea is sent over, pre-fill topic + notes.
+  useEffect(() => {
+    if (!radarDraft) return;
+    setTopic(radarDraft.topic || '');
+    setSourceNotes(radarDraft.notes || '');
+  }, [radarDraft]);
 
   // ─── TRENDING TOPICS ───
   const [trendingTopics, setTrendingTopics] = useState([]);
@@ -348,6 +355,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [post, setPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
+  const [bankLoading, setBankLoading] = useState(false);
   const [imgProgress, setImgProgress] = useState('');
   const [error, setError] = useState('');
   const [images, setImages] = useState([]);
@@ -419,6 +427,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         label: sl.label,
         subtitle: facets.topicLabel ? facets.topicLabel.toLowerCase() : (slotPillarName + ' · ' + (brand.tagline || '')).trim(),
         brandName: brand.name,
+        brandColors: brand.colors,
         orientation: 'portrait',
         variant,
       });
@@ -432,6 +441,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       generateQuoteCard(cv, {
         quote, context, closingLine: closing,
         brandName: brand.name,
+        brandColors: brand.colors,
         orientation: 'portrait',
         variant,
       });
@@ -457,6 +467,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         points: c.points,
         closingLine: c.closing,
         brandName: brand.name,
+        brandColors: brand.colors,
         orientation: 'portrait',
         variant: pageVariant,
       });
@@ -855,6 +866,60 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     showToast(`Batch complete: ${count}/${total} posts auto-saved to Archive`);
   };
 
+  // ─── STATICS BANK ───
+  // Batch-generates evergreen posts (not tied to news or builds) straight to
+  // Saved. They're the fallback buffer: any week the build doesn't happen,
+  // post from the bank and the lane never goes dark.
+  const generateStaticsBank = async () => {
+    if (!live) { showToast('Add an OpenRouter API key first.'); return; }
+    const BANK_SIZE = 8;
+    const pillarName = brand.presetId === 'databricks' ? 'Career & Craft' : 'Physician Lifestyle';
+    const bankPillar = brand.pillars.find((p) => p.name === pillarName) || brand.pillars[0];
+    setBankLoading(true);
+    const texts = [];
+    const avoid = [];
+    try {
+      for (let i = 0; i < BANK_SIZE; i++) {
+        setGenPhase(`Statics bank ${i + 1}/${BANK_SIZE} · ${bankPillar.name}...`);
+        const t = await callOpenRouter(
+          manualKey,
+          selModel,
+          buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, formatting }),
+          buildUserPrompt(bankPillar, bankPillar.audience, 'EVERGREEN post: a timeless lesson, story, or defensible opinion. Must NOT reference current news, dates, or recent events — it should read just as well six months from now.', brand.dataPoints, null, { brandName: brand.name, avoidTopics: avoid })
+        );
+        texts.push(t);
+        avoid.push((t.split('\n').find((l) => l.trim()) || '').slice(0, 120));
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      const now = new Date();
+      setSavedPosts((current) => [
+        ...current,
+        ...texts.map((txt, i) => ({
+          id: Date.now() + i,
+          text: txt,
+          platform,
+          pillar: bankPillar.name,
+          audience: bankPillar.audience,
+          tone,
+          ctaType,
+          imageStyle: null,
+          imageMode: 'branded',
+          imageData: null,
+          allImages: [],
+          pageCount: 0,
+          createdAt: now.toLocaleString(),
+          staticsBank: true,
+        })),
+      ]);
+      showToast(`Statics bank filled: ${texts.length} evergreen posts in Saved.`);
+    } catch (e) {
+      showToast(`Statics bank stopped after ${texts.length}: ${e.message}`);
+    } finally {
+      setBankLoading(false);
+      setGenPhase('');
+    }
+  };
+
   const savePost = () => {
     // Save the currently-selected post (paired with its card)
     const currentText = posts[selectedImg] || post;
@@ -1208,8 +1273,18 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <span className="text-xs opacity-70 ml-2">Canvas-based, instant, on-brand</span>
           </div>
 
+          {/* Statics bank — evergreen fallback buffer */}
+          <button
+            className="btn-secondary w-full mb-3 text-sm flex items-center justify-center gap-2"
+            onClick={generateStaticsBank}
+            disabled={loading || imgLoading || bankLoading}
+            title="Batch-generate 8 evergreen posts to Saved — your fallback buffer for weeks when the build doesn't happen"
+          >
+            {bankLoading ? (<><span className="spinner" /> {genPhase || 'Filling bank...'}</>) : (<>{'🗃'} Fill Statics Bank (8 evergreen posts)</>)}
+          </button>
+
           {/* Generate button */}
-          <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading}>
+          <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading || bankLoading}>
             {loading ? (
               <><span className="spinner" /> {genPhase || 'Generating...'}</>
             ) : imgLoading ? (

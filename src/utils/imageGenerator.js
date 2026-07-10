@@ -36,6 +36,29 @@ const STYLE = {
   },
 };
 
+// Brand-aware palette. Steadfast (or missing brand colors) keeps the tuned
+// STYLE exactly; other brands derive the same light/dark card variants from
+// their preset colors so each lane's cards carry its own identity.
+const STEADFAST_PRIMARY = '#1a365d';
+function resolveStyle(variant, brandColors) {
+  const c = brandColors || {};
+  if (!c.primary || String(c.primary).toLowerCase() === STEADFAST_PRIMARY) return STYLE[variant];
+  const accent = c.accent || c.primary;
+  const soft = c.light || '#e2e8f0';
+  if (variant === 'light') {
+    return {
+      bg: '#f4f2ec', headline: c.primary, headlineAlt: accent, body: '#4a5568',
+      bodySoft: '#6b7280', accent, accentSoft: accent, counter: accent,
+      panelBg: '#ffffff', panelText: c.primary, panelAccent: accent,
+    };
+  }
+  return {
+    bg: '#0a0a14', headline: '#ffffff', headlineAlt: soft, body: '#d9d5cc',
+    bodySoft: '#a8a89d', accent, accentSoft: soft, counter: soft,
+    panelBg: '#ffffff', panelText: '#0a0a14', panelAccent: c.primary,
+  };
+}
+
 // ─── CANVAS HELPERS ───
 function wrapLine(ctx, text, x, y, maxW, lh, maxLines) {
   if (!text) return y;
@@ -175,7 +198,7 @@ export function generateStatCard(canvas, opts) {
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   const variant = opts.variant === 'light' ? 'light' : 'dark';
-  const s = STYLE[variant];
+  const s = resolveStyle(variant, opts.brandColors);
   const pad = normalizePadding(W);
 
   // Background
@@ -245,7 +268,7 @@ export function generateQuoteCard(canvas, opts) {
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   const variant = opts.variant === 'dark' ? 'dark' : 'light';
-  const s = STYLE[variant];
+  const s = resolveStyle(variant, opts.brandColors);
   const pad = normalizePadding(W);
 
   ctx.fillStyle = s.bg;
@@ -337,7 +360,7 @@ export function generateMultiCard(canvas, opts) {
   const total = parseInt(opts.totalCards || '3', 10);
   const defaultVariant = n % 2 === 1 ? 'dark' : 'light';
   const variant = opts.variant === 'light' || opts.variant === 'dark' ? opts.variant : defaultVariant;
-  const s = STYLE[variant];
+  const s = resolveStyle(variant, opts.brandColors);
   const pad = normalizePadding(W);
 
   ctx.fillStyle = s.bg;
