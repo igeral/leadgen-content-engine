@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Icon from './Icon';
 
 // One saved DM template per lane/identity. Steadfast services the 1099 Starter
 // Kit comment trigger; Databricks services "comment DATA and I'll send the
@@ -180,8 +181,8 @@ export default function EngagementPage({ showToast }) {
   return (
     <div className="animate-fade-in text-gray-200">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          ⚡ Engagement Studio (Comment-to-DM Loop)
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
+          <Icon name="message" size={22} strokeWidth={2.2} /> Engagement Studio (Comment-to-DM Loop)
         </h2>
         <p className="text-sm text-gray-400 mt-1">
           A risk-free, 100% compliant way to automate sending Lead Magnets. No browser bots or APIs needed.
@@ -214,13 +215,13 @@ export default function EngagementPage({ showToast }) {
                 className={`flex-1 text-xs px-3 py-2 rounded-lg font-semibold border transition-all ${lane === 'steadfast' ? 'border-blue-500 bg-blue-900 bg-opacity-20 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500'}`}
                 onClick={() => setLane('steadfast')}
               >
-                {'🏥'} Steadfast (1099 Kit)
+                <span className="inline-flex items-center gap-1.5 justify-center"><Icon name="building" size={13} /> Steadfast (1099 Kit)</span>
               </button>
               <button
                 className={`flex-1 text-xs px-3 py-2 rounded-lg font-semibold border transition-all ${lane === 'databricks' ? 'border-blue-500 bg-blue-900 bg-opacity-20 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500'}`}
                 onClick={() => setLane('databricks')}
               >
-                {'🧱'} Databricks (Personal)
+                <span className="inline-flex items-center gap-1.5 justify-center"><Icon name="package" size={13} /> Databricks (Personal)</span>
               </button>
             </div>
             <p className="text-xs text-gray-400 mb-3">
@@ -252,8 +253,8 @@ export default function EngagementPage({ showToast }) {
                 <span className="text-xs text-gray-400">
                   Processed: {processedIds.size} / {leads.length}
                 </span>
-                <button className="btn-ghost text-xs" onClick={exportCsv}>{'📤'} CSV</button>
-                <button className="btn-ghost text-xs" onClick={clearLeads}>{'🗑'} Clear</button>
+                <button className="btn-ghost text-xs flex items-center gap-1.5" onClick={exportCsv}><Icon name="download" size={12} /> CSV</button>
+                <button className="btn-ghost text-xs flex items-center gap-1.5" onClick={clearLeads}><Icon name="trash" size={12} /> Clear</button>
               </div>
             )}
           </div>

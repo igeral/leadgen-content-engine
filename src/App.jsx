@@ -20,7 +20,7 @@ import Toast from './components/Toast';
 // all images → keep text only. The user's text content is never lost.
 const STORAGE_KEY = 'leadgen.savedPosts.v1';
 const KEY_STORAGE_KEY = 'leadgen.manualKey.v1';
-const BRAND_STORAGE_KEY = 'leadgen.brand.v1';
+const BRAND_STORAGE_KEY = 'leadgen.brand.v2'; // v2: preset lanes always rehydrate from code
 const MODEL_STORAGE_KEY = 'leadgen.models.v1';
 
 function loadSavedPosts() {
@@ -82,22 +82,17 @@ export default function App() {
   const [brand, setBrand] = useState(() => {
     const stored = loadJSON(BRAND_STORAGE_KEY, null);
     if (!stored) return STEADFAST_PRESET;
-    // The overlay base follows the stored preset so a Databricks brand doesn't
-    // get Steadfast's schedule/pillars stamped back onto it (and vice versa).
-    const base = stored.presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET;
-    const userPillars = Array.isArray(stored.pillars) ? stored.pillars : [];
-    const haveByName = new Set(userPillars.map((p) => p && p.name));
-    const mergedPillars = [...userPillars];
-    for (const pp of base.pillars) {
-      if (!haveByName.has(pp.name)) mergedPillars.push(pp);
+    if (stored.presetId) {
+      // Preset lanes ALWAYS rehydrate from code. Strategy changes ship in the
+      // preset files, and a cached copy must never resurrect an old schedule,
+      // pillar mix, or tagline (this is exactly what happened pre-v2). Only
+      // user-added data points survive the merge.
+      const base = stored.presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET;
+      const extraDp = (stored.dataPoints || []).filter((d) => !base.dataPoints.includes(d));
+      return { ...base, dataPoints: [...base.dataPoints, ...extraDp] };
     }
-    return {
-      ...base,
-      ...stored,
-      pillars: mergedPillars,
-      schedule: base.schedule,
-      leadMagnet: base.leadMagnet,
-    };
+    // Custom brand (built from the blank template): the user's own edits win.
+    return stored;
   });
   const [manualKey, setManualKey] = useState(() => loadString(KEY_STORAGE_KEY));
   const [models, setModels] = useState(() => loadJSON(MODEL_STORAGE_KEY, { text: TEXT_MODELS[0].id, image: IMAGE_MODELS[0].id }));

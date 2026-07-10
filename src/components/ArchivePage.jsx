@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import Icon from './Icon';
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const DAY_ACCENTS = {
   Monday:    { bar: '#3b82f6', chip: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
@@ -8,6 +9,8 @@ const DAY_ACCENTS = {
   Wednesday: { bar: '#10b981', chip: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
   Thursday:  { bar: '#f59e0b', chip: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
   Friday:    { bar: '#ef4444', chip: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
+  Saturday:  { bar: '#06b6d4', chip: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+  Sunday:    { bar: '#64748b', chip: 'bg-slate-500/20 text-slate-300 border-slate-500/40' },
 };
 
 // Build a human-readable filename from the post text. Strips markdown,
@@ -219,19 +222,19 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">{'\uD83D\uDDC2'} Content Archive</h2>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2.5"><Icon name="archive" size={22} strokeWidth={2.2} /> Content Archive</h2>
           <p className="text-sm text-gray-400 mt-1">
             {filteredCount} of {totalCount} posts {dayFilter !== 'all' ? `\u2014 ${dayFilter}` : 'across the week'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn-ghost text-sm" onClick={exportAll}>{'\uD83D\uDCE4'} Export Archive</button>
+          <button className="btn-ghost text-sm flex items-center gap-1.5" onClick={exportAll}><Icon name="download" size={14} /> Export Archive</button>
           <button
-            className="btn-ghost text-sm text-red-400 hover:text-red-300"
+            className="btn-ghost text-sm text-red-400 hover:text-red-300 flex items-center gap-1.5"
             onClick={clearAll}
             title="Delete every post in the Archive"
           >
-            {'\uD83D\uDDD1'} Clear All
+            <Icon name="trash" size={14} /> Clear All
           </button>
         </div>
       </div>
@@ -302,6 +305,9 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
         {WEEKDAYS.map((day) => {
           if (dayFilter !== 'all' && dayFilter !== day) return null;
           const posts = byDay[day];
+          // Weekend sections only appear when they have content (the Databricks
+          // lane posts Saturdays; Steadfast doesn't) — no empty noise.
+          if ((day === 'Saturday' || day === 'Sunday') && posts.length === 0 && dayFilter === 'all') return null;
           const accent = DAY_ACCENTS[day];
           return (
             <section key={day} className="card p-5" style={{ borderLeft: `4px solid ${accent.bar}` }}>

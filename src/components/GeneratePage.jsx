@@ -1149,7 +1149,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {!selectedTrending && (
             <>
               <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional — or use trending above)'}</span></label>
-              <textarea className="input-field mb-3" placeholder="e.g., The hidden cost of reactive physician staffing..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+              <textarea className="input-field mb-3" placeholder={brand.presetId === 'databricks' ? 'e.g., What the AI data-center buildout looks like in real grid data...' : 'e.g., The hidden cost of reactive physician staffing...'} value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
             </>
           )}
 

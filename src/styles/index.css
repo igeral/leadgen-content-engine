@@ -58,6 +58,17 @@ body {
   color: var(--text-2);
   margin: 0;
   transition: background 0.4s ease, color 0.4s ease;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Type scale: tight tracking on display text, tabular numerals for data */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+.badge, .text-xs {
+  letter-spacing: 0.01em;
 }
 
 ::selection {
@@ -211,7 +222,48 @@ select.input-field {
   background-position: right 12px center;
 }
 
-/* ═══ NAV TABS — sliding-feel pills ═══ */
+/* ═══ NAV — measured sliding pill + icon tabs ═══
+   The active pill physically travels between tabs (spring-flavored curve,
+   ~350ms). Tabs themselves only change color, so the motion reads as one
+   object moving, not two states swapping. */
+.nav-bar {
+  background: var(--header-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.nav-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  box-shadow: 0 2px 14px -2px rgba(59, 130, 246, 0.55);
+  transition: transform 0.35s cubic-bezier(0.3, 1.25, 0.45, 1), width 0.3s var(--ease-out-soft), height 0.3s var(--ease-out-soft);
+  z-index: 0;
+  pointer-events: none;
+}
+.nav-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.18s ease, transform 0.15s var(--ease-out-soft);
+}
+.nav-tab:hover { color: var(--text-1); }
+.nav-tab:active { transform: scale(0.95); }
+.nav-tab-active { color: #fff; }
+.nav-tab-active:hover { color: #fff; }
+
+/* Legacy tab classes kept for any remaining usage */
 .tab-active {
   background: linear-gradient(135deg, #3b82f6, #6366f1);
   color: #fff;
@@ -226,10 +278,6 @@ select.input-field {
   background: var(--surface-2);
   color: var(--text-1);
 }
-nav button {
-  transition: background 0.25s ease, color 0.2s ease, box-shadow 0.3s ease, transform 0.2s var(--ease-out-soft);
-}
-nav button:active { transform: scale(0.96); }
 
 /* ═══ HEADER — frosted glass ═══ */
 .app-header {
@@ -335,6 +383,66 @@ nav button:active { transform: scale(0.96); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ═══ STAGGERED ENTRANCES ═══
+   Cards cascade in 45ms apart (research sweet spot: 40-120ms) every time a
+   page becomes visible. `backwards` keeps them invisible until their delay. */
+.page-panel .card {
+  animation: cardIn 0.45s var(--ease-out-soft) backwards;
+}
+.page-panel .card:nth-child(1) { animation-delay: 0ms; }
+.page-panel .card:nth-child(2) { animation-delay: 45ms; }
+.page-panel .card:nth-child(3) { animation-delay: 90ms; }
+.page-panel .card:nth-child(4) { animation-delay: 135ms; }
+.page-panel .card:nth-child(5) { animation-delay: 180ms; }
+.page-panel .card:nth-child(6) { animation-delay: 225ms; }
+.page-panel .card:nth-child(n+7) { animation-delay: 260ms; }
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Calendar slot micro-hover */
+.slot-card {
+  transition: transform 0.2s var(--ease-out-soft), border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.slot-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 6px 16px -6px rgba(59, 130, 246, 0.25);
+}
+
+/* ═══ TOAST — slide up + settle, glass surface ═══ */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: var(--text-1);
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--card-highlight) inset;
+  backdrop-filter: blur(12px);
+  animation: toastIn 0.4s cubic-bezier(0.3, 1.25, 0.45, 1);
+}
+.toast-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+:root[data-theme='light'] .toast-check { color: #15803d; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    LIGHT-MODE REMAPS
    Components use Tailwind color utilities tuned for the dark surface;
@@ -381,6 +489,8 @@ nav button:active { transform: scale(0.96); }
 /* Reduced motion: honor the user's OS preference */
 @media (prefers-reduced-motion: reduce) {
   .page-panel,
-  .animate-fade-in { animation: none; }
+  .animate-fade-in,
+  .page-panel .card,
+  .toast { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }

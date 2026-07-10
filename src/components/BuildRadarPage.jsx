@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchBuildIdeas } from '../utils/openrouter';
+import Icon from './Icon';
 
 // Build Radar — the Databricks personal-brand lane's topic scanner.
 // Finds what's being discussed RIGHT NOW that a public dataset can be attached
@@ -77,7 +78,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
     <div className="animate-fade-in text-gray-200">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">{'📡'} Build Radar</h2>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2.5"><Icon name="radar" size={22} strokeWidth={2.2} /> Build Radar</h2>
           <p className="text-sm text-gray-400 mt-1 max-w-2xl">
             Scans what data people are talking about right now and pairs each topic with a real public dataset
             and a 2-3 hour Databricks Free Edition build. Pick one per weekend. The post comes from the build,
@@ -86,8 +87,8 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
         </div>
         <div className="flex gap-2">
           {ideas.length > 0 && (
-            <button className="btn-ghost whitespace-nowrap" onClick={clearIdeas} disabled={scanning}>
-              {'🗑'} Clear
+            <button className="btn-ghost whitespace-nowrap flex items-center gap-1.5" onClick={clearIdeas} disabled={scanning}>
+              <Icon name="trash" size={14} /> Clear
             </button>
           )}
           <button className="btn-primary whitespace-nowrap" onClick={scan} disabled={scanning}>
@@ -108,7 +109,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
 
       {ideas.length === 0 && !scanning ? (
         <div className="card p-10 flex flex-col items-center text-center">
-          <span className="text-5xl mb-3 text-slate-500">{'📡'}</span>
+          <span className="mb-4 text-slate-500"><Icon name="radar" size={52} strokeWidth={1.5} /></span>
           <h4 className="text-base font-medium text-slate-400 mb-1">No scan yet</h4>
           <p className="text-xs text-slate-500 max-w-md">
             Hit "Scan for build ideas" to find topics trending right now that you can attach a real dataset to.
@@ -156,7 +157,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                     showToast('Sent to Generate — topic and brief pre-filled.');
                   }}
                 >
-                  {'⚡'} Use in Generate
+                  <span className="inline-flex items-center gap-1.5 justify-center"><Icon name="zap" size={13} /> Use in Generate</span>
                 </button>
                 <button className="btn-secondary text-xs" onClick={() => copyBrief(idea)}>
                   Copy brief

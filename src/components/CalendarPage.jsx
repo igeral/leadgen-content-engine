@@ -1,50 +1,107 @@
-export default function CalendarPage({ brand }) {
-  const sched = brand.schedule.length > 0
-    ? brand.schedule
-    : [
-        { day: 'Monday', time: '9:00 AM', pillar: 'Educational', audience: 'Primary', imageStyle: 'stat' },
-        { day: 'Tuesday', time: '12:00 PM', pillar: 'Storytelling', audience: 'Both', imageStyle: 'quote' },
-        { day: 'Wednesday', time: '9:00 AM', pillar: 'Industry', audience: 'Primary', imageStyle: 'multi' },
-        { day: 'Thursday', time: '12:00 PM', pillar: 'Lead Magnet', audience: 'Primary', imageStyle: 'stat' },
-      ];
-  // Weekdays always render; weekend columns appear only when the brand's
-  // schedule actually posts there (e.g. the Databricks Saturday slot).
-  const WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const days = WEEK.filter((d, i) => i < 5 || sched.some((s) => s.day === d));
-  const styleColors = { stat: '#3b82f6', quote: '#8b5cf6', multi: '#10b981' };
-  const styleLabels = { stat: 'Stat Card', quote: 'Quote Card', multi: 'Multi-Set' };
+import Icon from './Icon';
 
-  const CHECKLIST = [
-    { t: 'Before Posting', d: 'Spend 20 min engaging with target audience posts. Thoughtful comments warm the algorithm.' },
-    { t: 'First 30 Minutes', d: 'Reply to every comment within 30 min. LinkedIn measures comments/min in the first hour.' },
-    { t: 'The 1+3 Rule', d: 'Leave 3 comments: behind-the-scenes context, an educational tip, and a question.' },
-    { t: 'End of Day', d: "Return to yesterday's post. Late engagement extends distribution." },
-  ];
+const WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const STYLE_META = {
+  stat: { label: 'Stat Card', color: '#3b82f6' },
+  quote: { label: 'Quote Card', color: '#8b5cf6' },
+  multi: { label: 'Carousel', color: '#10b981' },
+};
+
+const HOOK_LABELS = {
+  direct_question: 'Direct Question',
+  bold_stat: 'Bold Stat',
+  reframe: 'Reframe',
+  story_opener: 'Story Opener',
+  contrarian: 'Contrarian',
+  pov_scenario: 'POV Scenario',
+};
+
+// Sort slots within a day by clock time.
+function timeMinutes(t) {
+  const m = String(t || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+// Lane-specific operating checklists — these mirror the actual strategy docs,
+// not generic social-media advice.
+const CHECKLIST_STEADFAST = [
+  { t: 'Before posting', d: 'Comment as the page on 2-3 large physician/hospital-leadership posts. Warm the algorithm, get the page seen.' },
+  { t: 'First hour', d: 'Reply to every comment fast. Early comments multiply reach ~5x.' },
+  { t: 'Thursday (magnet day)', d: 'Watch for "TAX" comments on the lead-magnet post. Run them through Engagement Studio the same evening.' },
+  { t: 'Monthly (2nd Saturday)', d: 'Invite ritual: page invites + engager invites + follower log. Calendar reminder is set; process in strategy/linkedin-page-growth-ritual.md.' },
+];
+
+const CHECKLIST_DATABRICKS = [
+  { t: 'Weekend', d: 'One 2-3h build on Databricks Free Edition (pick it in Build Radar). Jot rough notes; paste them into Generate. The build feeds the whole week.' },
+  { t: 'Before posting', d: 'Spend 10 min leaving 2 genuinely expert comments on big data-engineering posts. Peers notice peers.' },
+  { t: 'First hour', d: 'Reply to every comment, ask a follow-up back. WHO comments matters more than how many.' },
+  { t: 'Every post', d: 'End with ONE expertise invite ("built this differently? tell me how"). Never generic engagement bait.' },
+];
+
+export default function CalendarPage({ brand }) {
+  const sched = Array.isArray(brand.schedule) ? brand.schedule : [];
+  const isDatabricks = brand.presetId === 'databricks';
+  const days = WEEK.filter((d) => sched.some((s) => s.day === d));
+  const checklist = isDatabricks ? CHECKLIST_DATABRICKS : CHECKLIST_STEADFAST;
+
+  if (!sched.length) {
+    return (
+      <div className="animate-fade-in">
+        <div className="card p-12 text-center">
+          <h2 className="text-xl font-bold text-white mb-2">No schedule for this brand</h2>
+          <p className="text-gray-400 text-sm">This brand has no posting schedule defined. Add one in the preset, or switch lanes in the header.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-white mb-6">{'\uD83D\uDCC5'} Weekly Content Calendar</h2>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
+          <Icon name="calendar" size={22} strokeWidth={2.2} /> Weekly Content Calendar
+        </h2>
+        <p className="text-sm text-gray-400 mt-1">
+          {brand.name} · {sched.length} posts/week · {isDatabricks
+            ? 'build-first personal lane: Tue build story, Thu pattern, Sat ecosystem take'
+            : 'heartbeat cadence: one post per weekday, Friday runs the attention engine'}
+        </p>
+      </div>
 
       <div className="card p-6 mb-6">
         <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
           {days.map((d) => {
-            const ds = sched.filter((s) => s.day === d);
+            const ds = sched.filter((s) => s.day === d).sort((a, b) => timeMinutes(a.time) - timeMinutes(b.time));
             return (
               <div key={d}>
                 <h3 className="font-bold text-white mb-3 text-center pb-2 border-b border-gray-600">{d}</h3>
                 <div className="space-y-2">
-                  {ds.length > 0 ? ds.map((s, i) => (
-                    <div key={i} className="bg-gray-800 rounded-lg p-3 border border-gray-700 hover:border-blue-500 transition-all">
-                      <div className="text-xs text-gray-400 mb-1">{s.time}</div>
-                      <div className="text-sm font-semibold text-white mb-1">{s.pillar}</div>
-                      <div className="text-xs text-gray-400 mb-2">{'\u2192'} {s.audience}</div>
-                      <span className="badge text-xs" style={{ background: styleColors[s.imageStyle] || '#475569', color: '#fff' }}>
-                        {styleLabels[s.imageStyle] || (s.friday ? 'Text Only' : s.imageStyle || 'Text Only')}
-                      </span>
-                    </div>
-                  )) : (
-                    <div className="text-center text-gray-600 text-sm py-4">No posts</div>
-                  )}
+                  {ds.map((s, i) => {
+                    const sm = STYLE_META[s.imageStyle];
+                    return (
+                      <div key={i} className="slot-card bg-gray-800 rounded-lg p-3 border border-gray-700">
+                        <div className="text-xs text-gray-400 mb-1 flex items-center gap-1.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          <Icon name="clock" size={11} /> {s.time}
+                        </div>
+                        <div className="text-sm font-semibold text-white mb-1">{s.pillar}</div>
+                        <div className="text-xs text-gray-400 mb-2">{'→'} {s.audience}</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {s.hookFormula && HOOK_LABELS[s.hookFormula] && (
+                            <span className="badge text-xs" style={{ background: 'rgba(148,163,184,0.15)', color: '#cbd5e1' }}>
+                              {HOOK_LABELS[s.hookFormula]}
+                            </span>
+                          )}
+                          <span className="badge text-xs" style={{ background: sm ? sm.color : '#475569', color: '#fff' }}>
+                            {sm ? sm.label : 'Text Only'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -53,9 +110,10 @@ export default function CalendarPage({ brand }) {
       </div>
 
       <div className="card p-6">
-        <h3 className="text-lg font-bold text-white mb-4">{'\uD83D\uDD25'} Daily Engagement Checklist</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {CHECKLIST.map((item, i) => (
+        <h3 className="text-lg font-bold text-white mb-1">Operating checklist</h3>
+        <p className="text-xs text-gray-500 mb-4">{isDatabricks ? 'The weekly loop for the personal Databricks lane.' : 'The weekly loop for the Steadfast page.'}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {checklist.map((item, i) => (
             <div key={i} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <div className="text-blue-400 font-bold text-sm mb-1">{item.t}</div>
               <div className="text-gray-300 text-sm">{item.d}</div>

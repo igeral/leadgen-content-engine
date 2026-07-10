@@ -1,3 +1,5 @@
+import Icon from './Icon';
+
 export default function SavedPage({ savedPosts, setSavedPosts, showToast }) {
   if (!savedPosts.length) {
     return (
@@ -21,8 +23,8 @@ export default function SavedPage({ savedPosts, setSavedPosts, showToast }) {
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">{'\uD83D\uDCBE'} Saved Posts ({savedPosts.length})</h2>
-        <button className="btn-ghost text-sm" onClick={exportAll}>{'\uD83D\uDCE4'} Export All</button>
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2.5"><Icon name="bookmark" size={22} strokeWidth={2.2} /> Saved Posts ({savedPosts.length})</h2>
+        <button className="btn-ghost text-sm flex items-center gap-1.5" onClick={exportAll}><Icon name="download" size={14} /> Export All</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {savedPosts.slice().reverse().map((p) => (

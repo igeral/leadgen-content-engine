@@ -1,26 +1,50 @@
+import { useRef, useState, useEffect, useLayoutEffect } from 'react';
+import Icon from './Icon';
+
 const NAV_ITEMS = [
-  { id: 'generate', label: 'Generate', icon: '\u26A1' },
-  { id: 'calendar', label: 'Calendar', icon: '\uD83D\uDCC5' },
-  { id: 'archive', label: 'Archive', icon: '\uD83D\uDDC2' },
-  { id: 'saved', label: 'Saved', icon: '\uD83D\uDCBE' },
-  { id: 'images', label: 'Images', icon: '\uD83D\uDDBC' },
-  { id: 'engagement', label: 'Engagement', icon: '💬' },
-  { id: 'radar', label: 'Build Radar', icon: '📡' },
-  { id: 'settings', label: 'Settings', icon: '\u2699' },
+  { id: 'generate', label: 'Generate', icon: 'zap' },
+  { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+  { id: 'archive', label: 'Archive', icon: 'archive' },
+  { id: 'saved', label: 'Saved', icon: 'bookmark' },
+  { id: 'images', label: 'Images', icon: 'image' },
+  { id: 'engagement', label: 'Engagement', icon: 'message' },
+  { id: 'radar', label: 'Build Radar', icon: 'radar' },
+  { id: 'settings', label: 'Settings', icon: 'sliders' },
 ];
 
+// The active-tab pill physically slides between tabs (measured, not faked),
+// which is most of what makes navigation feel engineered rather than swapped.
 export default function NavBar({ page, setPage }) {
+  const btnRefs = useRef({});
+  const [pill, setPill] = useState(null);
+
+  const measure = () => {
+    const el = btnRefs.current[page];
+    if (el) setPill({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
+  };
+
+  useLayoutEffect(measure, [page]);
+  useEffect(() => {
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
+
   return (
-    <nav className="border-b border-gray-700 px-6 flex gap-1 py-2">
+    <nav className="nav-bar border-b border-gray-700 px-6 flex gap-1 py-2 relative flex-wrap">
+      {pill && (
+        <span
+          className="nav-pill"
+          style={{ transform: `translate(${pill.left}px, ${pill.top}px)`, width: pill.width, height: pill.height }}
+        />
+      )}
       {NAV_ITEMS.map((n) => (
         <button
           key={n.id}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            page === n.id ? 'tab-active' : 'tab-inactive'
-          }`}
+          ref={(el) => { btnRefs.current[n.id] = el; }}
+          className={`nav-tab ${page === n.id ? 'nav-tab-active' : ''}`}
           onClick={() => setPage(n.id)}
         >
-          {n.icon} {n.label}
+          <Icon name={n.icon} size={15} strokeWidth={2.2} /> {n.label}
         </button>
       ))}
     </nav>
