@@ -110,7 +110,18 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
               <p className="text-xs text-gray-400">{idea.whyHot}</p>
               <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 text-xs">
                 <div className="text-gray-300"><span className="font-semibold text-blue-300">Dataset:</span> {idea.dataset?.name} <span className="text-gray-500">({idea.dataset?.source})</span></div>
-                <div className="text-gray-400 mt-1 break-all">{idea.dataset?.access}</div>
+                {/^https?:\/\//i.test(idea.dataset?.access || '') ? (
+                  <a
+                    href={idea.dataset.access}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all"
+                  >
+                    Open dataset {'↗'}
+                  </a>
+                ) : (
+                  <div className="text-gray-400 mt-1 break-all">{idea.dataset?.access}</div>
+                )}
                 {idea.dataset?.verified === false && (
                   <div className="text-yellow-400 mt-1 font-semibold">{'⚠'} Unverified — confirm this dataset exists before building.</div>
                 )}
