@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { callImageAPI, generateMultipleImages, IMAGE_MODELS } from '../utils/openrouter';
-import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
+import { generateStatCard, generateQuoteCard, generateMultiCard, generateChartCard } from '../utils/imageGenerator';
 
 export default function ImageStudioPage({ brand, manualKey, selImgModel, live, showToast }) {
   const [tab, setTab] = useState('branded');
@@ -17,6 +17,15 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
   const [multiTopic, setMultiTopic] = useState('THE COST OF DOING NOTHING');
   const [multiTag, setMultiTag] = useState('WORKFORCE DATA');
   const [cardNum, setCardNum] = useState('1');
+  // Data chart card inputs. Defaults use a real, citable series.
+  const [chartType, setChartType] = useState('bar');
+  const [chartKicker, setChartKicker] = useState('PHYSICIAN WORKFORCE DATA');
+  const [chartTitle, setChartTitle] = useState('The physician shortage keeps widening');
+  const [chartRows, setChartRows] = useState('2026: 37800\n2031: 61000\n2036: 86000');
+  const [chartSource, setChartSource] = useState('Source: AAMC physician workforce projections');
+  const [chartPrefix, setChartPrefix] = useState('');
+  const [chartSuffix, setChartSuffix] = useState('');
+  const [chartVariant, setChartVariant] = useState('dark');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiModel, setAiModel] = useState(selImgModel || IMAGE_MODELS[0].id);
   const [aiLoading, setAiLoading] = useState(false);
@@ -34,6 +43,12 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
       generateStatCard(cv, { stat, label, subtitle, brandName: brand.name, brandColors: brand.colors, orientation: 'portrait', variant: 'dark' });
     } else if (style === 'quote') {
       generateQuoteCard(cv, { quote, context, closingLine, brandName: brand.name, brandColors: brand.colors, orientation: 'portrait', variant: 'light' });
+    } else if (style === 'chart') {
+      const data = chartRows.split('\n').map((line) => {
+        const m = line.match(/^\s*(.+?)\s*[:,]\s*\$?\s*([\d,]+(?:\.\d+)?)\s*%?\s*$/);
+        return m ? { label: m[1], value: parseFloat(m[2].replace(/,/g, '')) } : null;
+      }).filter(Boolean);
+      generateChartCard(cv, { chartType, title: chartTitle, kicker: chartKicker, source: chartSource, data, prefix: chartPrefix, suffix: chartSuffix, brandName: brand.name, brandColors: brand.colors, variant: chartVariant });
     } else {
       generateMultiCard(cv, { cardNumber: cardNum, totalCards: '3', topicLabel: multiTopic, title: multiTitle, subtitle: multiSub, brandName: brand.name, brandColors: brand.colors, orientation: 'portrait' });
     }
@@ -132,7 +147,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
         {tab === 'branded' && (
           <div>
             <div className="flex gap-2 mb-4">
-              {[{ id: 'stat', l: '\uD83D\uDCCA Stat' }, { id: 'quote', l: '\uD83D\uDCAC Quote' }, { id: 'multi', l: '\uD83D\uDCD1 Multi' }].map((s) => (
+              {[{ id: 'stat', l: '\uD83D\uDCCA Stat' }, { id: 'quote', l: '\uD83D\uDCAC Quote' }, { id: 'multi', l: '\uD83D\uDCD1 Multi' }, { id: 'chart', l: '\uD83D\uDCC8 Chart' }].map((s) => (
                 <button key={s.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${style === s.id ? 'tab-active' : 'tab-inactive'}`} onClick={() => setStyle(s.id)}>
                   {s.l}
                 </button>
@@ -177,6 +192,36 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
                 <input className="input-field" value={multiSub} onChange={(e) => setMultiSub(e.target.value)} />
                 <label className="block text-sm font-medium text-gray-300">Tag</label>
                 <input className="input-field" value={multiTag} onChange={(e) => setMultiTag(e.target.value)} />
+              </div>
+            )}
+            {style === 'chart' && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  {[{ id: 'bar', l: 'Bar chart' }, { id: 'line', l: 'Line chart' }].map((t) => (
+                    <button key={t.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${chartType === t.id ? 'tab-active' : 'tab-inactive'}`} onClick={() => setChartType(t.id)}>{t.l}</button>
+                  ))}
+                  {[{ id: 'dark', l: 'Dark' }, { id: 'light', l: 'Light' }].map((v) => (
+                    <button key={v.id} className={`py-2 px-4 rounded-lg text-sm font-semibold ${chartVariant === v.id ? 'tab-active' : 'tab-inactive'}`} onClick={() => setChartVariant(v.id)}>{v.l}</button>
+                  ))}
+                </div>
+                <label className="block text-sm font-medium text-gray-300">Kicker (small top label)</label>
+                <input className="input-field" value={chartKicker} onChange={(e) => setChartKicker(e.target.value)} />
+                <label className="block text-sm font-medium text-gray-300">Title</label>
+                <input className="input-field" value={chartTitle} onChange={(e) => setChartTitle(e.target.value)} />
+                <label className="block text-sm font-medium text-gray-300">Data (one per line: Label: value)</label>
+                <textarea className="input-field font-mono text-sm" value={chartRows} onChange={(e) => setChartRows(e.target.value)} rows={5} placeholder={'2026: 37800\n2031: 61000\n2036: 86000'} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Value prefix</label>
+                    <input className="input-field" value={chartPrefix} onChange={(e) => setChartPrefix(e.target.value)} placeholder="$" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Value suffix</label>
+                    <input className="input-field" value={chartSuffix} onChange={(e) => setChartSuffix(e.target.value)} placeholder="%" />
+                  </div>
+                </div>
+                <label className="block text-sm font-medium text-gray-300">Source (required: a data card without a source is a rumor)</label>
+                <input className="input-field" value={chartSource} onChange={(e) => setChartSource(e.target.value)} />
               </div>
             )}
             <button className="btn-primary w-full mt-4" onClick={makeBranded}>{'\uD83C\uDFA8'} Generate Branded Card</button>

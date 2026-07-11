@@ -472,3 +472,172 @@ export function generateMultiCard(canvas, opts) {
 
   drawBrandFooter(ctx, W, H, s, opts.brandName);
 }
+
+// ═══════════ SYSTEM D — DATA CHART CARD ═══════════
+// A real chart (bar or line) rendering actual numbers, in brand colors.
+// Design rules (dataviz method): single series = one hue (the brand accent);
+// text always in ink colors, never the series color; recessive grid; thin
+// marks with rounded data-ends; direct value labels stand in for tooltips
+// since a PNG can't hover. Always cite the source line.
+// opts: { chartType: 'bar'|'line', title, kicker, source, brandName,
+//         brandColors, variant, data: [{label, value}], prefix, suffix }
+export function generateChartCard(canvas, opts) {
+  const W = 1080;
+  const H = 1350;
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const variant = opts.variant === 'light' ? 'light' : 'dark';
+  const s = resolveStyle(variant, opts.brandColors);
+  const pad = normalizePadding(W);
+
+  ctx.fillStyle = s.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const data = (opts.data || []).filter((d) => d && isFinite(d.value)).slice(0, 8);
+  const fmt = (v) => `${opts.prefix || ''}${Number(v).toLocaleString()}${opts.suffix || ''}`;
+
+  // Header: kicker + title
+  let y = pad + 34;
+  if (opts.kicker) {
+    ctx.fillStyle = s.accentSoft;
+    ctx.font = '700 30px Inter, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(String(opts.kicker).toUpperCase(), pad, y);
+    y += 64;
+  }
+  ctx.fillStyle = s.headline;
+  ctx.font = '800 64px Inter, Helvetica, Arial, sans-serif';
+  y = wrapLine(ctx, opts.title || '', pad, y + 30, W - pad * 2, 76, 3) + 40;
+
+  // Plot area
+  const plotTop = Math.max(y + 40, 400);
+  const plotBottom = H - pad - 170; // room for labels + footer
+  const plotLeft = pad;
+  const plotRight = W - pad;
+  const plotW = plotRight - plotLeft;
+  const plotH = plotBottom - plotTop;
+
+  if (!data.length) {
+    drawBrandFooter(ctx, W, H, s, opts.brandName);
+    return;
+  }
+
+  // Nice max for the value scale
+  const maxV = Math.max(...data.map((d) => d.value));
+  const mag = Math.pow(10, Math.floor(Math.log10(maxV || 1)));
+  const niceMax = Math.ceil((maxV / mag) / 0.5) * 0.5 * mag || 1;
+  const yFor = (v) => plotBottom - (v / niceMax) * plotH;
+
+  // Recessive grid: 3 lines + baseline
+  ctx.lineWidth = 2;
+  for (let g = 1; g <= 3; g++) {
+    const gy = plotBottom - (plotH * g) / 4;
+    ctx.strokeStyle = variant === 'dark' ? 'rgba(168,168,157,0.14)' : 'rgba(107,114,128,0.16)';
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, gy);
+    ctx.lineTo(plotRight, gy);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = variant === 'dark' ? 'rgba(168,168,157,0.35)' : 'rgba(107,114,128,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(plotLeft, plotBottom);
+  ctx.lineTo(plotRight, plotBottom);
+  ctx.stroke();
+
+  const n = data.length;
+  const slotW = plotW / n;
+
+  ctx.textAlign = 'center';
+  if (opts.chartType === 'line') {
+    const pts = data.map((d, i) => ({ x: plotLeft + slotW * (i + 0.5), y: yFor(d.value), v: d.value }));
+    // Soft area fill under the line (subtle, 10%)
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, plotBottom);
+    pts.forEach((p) => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(pts[pts.length - 1].x, plotBottom);
+    ctx.closePath();
+    ctx.fillStyle = hexWithAlpha(s.accent, 0.12);
+    ctx.fill();
+    // The line: thin relative to canvas, round joins
+    ctx.strokeStyle = s.accent;
+    ctx.lineWidth = 7;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.stroke();
+    // Markers with a surface ring so overlaps stay readable
+    pts.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 13, 0, Math.PI * 2);
+      ctx.fillStyle = s.bg;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = s.accent;
+      ctx.fill();
+    });
+    // Selective direct labels: first, last, and the max point
+    const maxIdx = data.reduce((mi, d, i) => (d.value > data[mi].value ? i : mi), 0);
+    const labelIdx = new Set([0, n - 1, maxIdx]);
+    ctx.font = '800 34px Inter, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = s.headline;
+    labelIdx.forEach((i) => {
+      ctx.fillText(fmt(data[i].value), pts[i].x, pts[i].y - 28);
+    });
+  } else {
+    // Bars: thin, rounded data-end at the top, anchored to the baseline
+    const barW = Math.min(slotW * 0.55, 140);
+    const r = 8;
+    data.forEach((d, i) => {
+      const cx = plotLeft + slotW * (i + 0.5);
+      const x = cx - barW / 2;
+      const yTop = yFor(d.value);
+      const h = Math.max(plotBottom - yTop, r + 2);
+      ctx.fillStyle = s.accent;
+      ctx.beginPath();
+      ctx.moveTo(x, plotBottom);
+      ctx.lineTo(x, yTop + r);
+      ctx.quadraticCurveTo(x, yTop, x + r, yTop);
+      ctx.lineTo(x + barW - r, yTop);
+      ctx.quadraticCurveTo(x + barW, yTop, x + barW, yTop + r);
+      ctx.lineTo(x + barW, plotBottom);
+      ctx.closePath();
+      ctx.fill();
+      // Direct value label above each bar (few bars, no hover available)
+      ctx.font = '800 34px Inter, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = s.headline;
+      ctx.fillText(fmt(d.value), cx, yTop - 22);
+    });
+  }
+
+  // Category labels along the baseline (ink, not series color)
+  ctx.font = '600 28px Inter, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = s.bodySoft;
+  data.forEach((d, i) => {
+    const cx = plotLeft + slotW * (i + 0.5);
+    let lbl = String(d.label || '');
+    while (ctx.measureText(lbl).width > slotW - 12 && lbl.length > 3) lbl = lbl.slice(0, -1);
+    if (lbl !== String(d.label || '')) lbl += '…';
+    ctx.fillText(lbl, cx, plotBottom + 48);
+  });
+
+  // Source line: a data card without a source is a rumor
+  if (opts.source) {
+    ctx.textAlign = 'left';
+    ctx.font = '500 26px Inter, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = s.bodySoft;
+    ctx.fillText(String(opts.source), pad, H - pad - 64);
+  }
+
+  drawBrandFooter(ctx, W, H, s, opts.brandName);
+}
+
+function hexWithAlpha(hex, alpha) {
+  const m = String(hex).replace('#', '');
+  const r = parseInt(m.substring(0, 2), 16);
+  const g = parseInt(m.substring(2, 4), 16);
+  const b = parseInt(m.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
