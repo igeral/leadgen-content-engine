@@ -1134,18 +1134,23 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Topic (manual - shown when no trending selected) */}
           {!selectedTrending && (
             <>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Target Brand (Enterprise) <span className="text-gray-500">{'(optional)'}</span></label>
+              <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Target Brand (Enterprise) <span className="text-[var(--text-3)]">{'(optional)'}</span></label>
               <input className="input-field mb-3" placeholder="e.g. Visa, Tesla, Netflix" value={targetBrand} onChange={(e) => setTargetBrand(e.target.value)} />
               
-              <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional, or use trending above)'}</span></label>
-              <textarea className="input-field mb-3" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+              <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Topic / Angle <span className="text-[var(--text-3)]">{'(optional, or use trending above)'}</span></label>
+              <textarea className="input-field mb-2" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+              <div className="flex gap-2 mb-4 flex-wrap">
+                <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Contrarian Hook: Why [conventional wisdom] is wrong about [topic]")}>Contrarian Hook</button>
+                <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Story Hook: How we solved [problem] using [dataset/tech]")}>Story Hook</button>
+                <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Trend Hook: What no one realizes about the rise of [trend]")}>Trend Hook</button>
+              </div>
             </>
           )}
 
           {/* Source notes — real-work material for practitioner posts (Build Log etc.).
               The prompt treats these as the ONLY allowed source of first-person claims. */}
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            My notes from real work <span className="text-gray-500">(optional — required for Build Log posts)</span>
+          <label className="block text-sm font-medium text-[var(--text-2)] mb-1">
+            My notes from real work <span className="text-[var(--text-3)]">(optional — required for Build Log posts)</span>
           </label>
           <textarea
             className="input-field mb-1"
@@ -1154,7 +1159,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             onChange={(e) => setSourceNotes(e.target.value)}
             rows={3}
           />
-          <p className="text-xs text-gray-500 mb-3">Posts never invent first-person experiences. No notes = no "I built this" claims.</p>
+          <p className="text-xs text-[var(--text-3)] mb-3">Posts never invent first-person experiences. No notes = no "I built this" claims.</p>
 
           {/* Advanced toggle */}
           <button

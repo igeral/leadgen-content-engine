@@ -29,7 +29,7 @@
   --input-bg: rgba(11, 17, 32, 0.7);
   --input-border: rgba(148, 163, 184, 0.16);
   --header-bg: rgba(11, 17, 32, 0.75);
-  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 :root[data-theme='light'] {
@@ -101,7 +101,7 @@ h1, h2, h3 {
    .page-panel animates every time it flips from display:none to visible,
    so tab switches get a soft rise-and-settle without remounting pages. */
 .page-panel {
-  animation: pageIn 0.38s var(--ease-out-soft);
+  animation: pageIn 0.25s var(--ease-out-soft);
 }
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(10px) scale(0.995); }

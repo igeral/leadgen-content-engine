@@ -56,9 +56,10 @@ export default function Sidebar({ page, setPage }) {
                       onClick={() => setPage(item.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         isActive
-                          ? 'bg-[var(--accent)] bg-opacity-20 text-[var(--accent)] font-semibold'
+                          ? 'font-semibold'
                           : 'text-[var(--text-2)] hover:bg-[var(--surface)] hover:text-[var(--text-1)]'
                       }`}
+                      style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' } : undefined}
                     >
                       <Icon name={item.icon} size={16} strokeWidth={isActive ? 2.5 : 2} />
                       {item.label}

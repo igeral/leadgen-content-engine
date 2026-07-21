@@ -87,11 +87,11 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
   };
 
   return (
-    <div className="animate-fade-in text-gray-200">
+    <div className="animate-fade-in text-[var(--text-1)]">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2.5"><Icon name="radar" size={22} strokeWidth={2.2} /> Build Radar</h2>
-          <p className="text-sm text-gray-400 mt-1 max-w-2xl">
+          <h2 className="text-2xl font-bold text-[var(--text-1)] flex items-center gap-2.5"><Icon name="radar" size={22} strokeWidth={2.2} /> Build Radar</h2>
+          <p className="text-sm text-[var(--text-2)] mt-1 max-w-2xl">
             Scans what data people are talking about right now and pairs each topic with a real public dataset
             and a 2-3 hour Databricks Free Edition build. Pick one per weekend. The post comes from the build,
             never the other way around.
@@ -120,50 +120,62 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
       )}
 
       {ideas.length === 0 && !scanning ? (
-        <div className="card p-10 flex flex-col items-center text-center">
-          <span className="mb-4 text-slate-500"><Icon name="radar" size={52} strokeWidth={1.5} /></span>
-          <h4 className="text-base font-medium text-slate-400 mb-1">No scan yet</h4>
-          <p className="text-xs text-slate-500 max-w-md">
+        <div className="card p-10 flex flex-col items-center text-center mt-6">
+          <span className="mb-4 text-[var(--text-3)]"><Icon name="radar" size={52} strokeWidth={1.5} /></span>
+          <h4 className="text-base font-medium text-[var(--text-2)] mb-1">No scan yet</h4>
+          <p className="text-xs text-[var(--text-3)] max-w-md">
             Hit "Scan for build ideas" to find topics trending right now that you can attach a real dataset to.
             Ideas ranked data-leaders-first: reach that impresses hiring managers beats reach that impresses strangers.
           </p>
+          <div className="mt-8 flex gap-3">
+            <button className="btn-secondary text-xs" onClick={() => scan()}>Scan Current Trends</button>
+            <button className="btn-secondary text-xs" onClick={() => scan()}>Scan Databricks Ideas</button>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-6">
+          <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--card-border)] flex gap-4 items-center">
+            <Icon name="zap" size={20} className="text-[var(--accent)]" />
+            <div>
+              <h4 className="text-sm font-bold text-[var(--text-1)]">Trend Summary</h4>
+              <p className="text-xs text-[var(--text-2)] mt-0.5">We constrained the discovery to high-ROI data leader topics. Most interest right now revolves around data engineering architectures, cost optimization, and supply chain telemetry.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {ideas.map((idea, i) => (
             <div key={i} className="card p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="text-base font-bold text-white leading-snug">{idea.topic}</h3>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap border ${idea.audienceMatch === 'data-leaders' ? 'bg-green-900/40 text-green-300 border-green-700' : 'bg-yellow-900/30 text-yellow-300 border-yellow-700'}`}>
+                <h3 className="text-base font-bold text-[var(--text-1)] leading-snug">{idea.topic}</h3>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap border ${idea.audienceMatch === 'data-leaders' ? 'bg-green-900/40 text-green-500 border-green-700/50' : 'bg-yellow-900/30 text-yellow-500 border-yellow-700/50'}`}>
                   {idea.audienceMatch === 'data-leaders' ? 'data leaders' : 'general viral'}
                 </span>
               </div>
-              <p className="text-xs text-gray-400">{idea.whyHot}</p>
-              <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 text-xs">
-                <div className="text-gray-300"><span className="font-semibold text-blue-300">Dataset:</span> {idea.dataset?.name} <span className="text-gray-500">({idea.dataset?.source})</span></div>
+              <p className="text-xs text-[var(--text-2)]">{idea.whyHot}</p>
+              <div className="bg-[var(--surface-2)] rounded-lg p-3 border border-[var(--input-border)] text-xs">
+                <div className="text-[var(--text-2)]"><span className="font-semibold text-[var(--accent)]">Dataset:</span> {idea.dataset?.name} <span className="text-[var(--text-3)]">({idea.dataset?.source})</span></div>
                 {/^https?:\/\//i.test(idea.dataset?.access || '') ? (
                   <a
                     href={idea.dataset.access}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block mt-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all"
+                    className="inline-block mt-2 px-3 py-1.5 rounded-lg bg-[var(--accent)] hover:opacity-80 text-white font-semibold transition-all"
                   >
                     Open dataset {'↗'}
                   </a>
                 ) : (
-                  <div className="text-gray-400 mt-1 break-all">{idea.dataset?.access}</div>
+                  <div className="text-[var(--text-3)] mt-1 break-all">{idea.dataset?.access}</div>
                 )}
                 {idea.targetBrand && (
-                  <div className="text-gray-300 mt-2"><span className="font-semibold text-purple-400">Target Brand:</span> {idea.targetBrand}</div>
+                  <div className="text-[var(--text-2)] mt-2"><span className="font-semibold text-purple-400">Target Brand:</span> {idea.targetBrand}</div>
                 )}
                 {idea.dataset?.verified === false && (
-                  <div className="text-yellow-400 mt-1 font-semibold">{'⚠'} Unverified: confirm this dataset exists before building.</div>
+                  <div className="text-yellow-500 mt-1 font-semibold">{'⚠'} Unverified: confirm this dataset exists before building.</div>
                 )}
               </div>
-              <div className="text-xs text-gray-300">
-                <span className="font-semibold text-blue-300">Build (~{idea.effortHours}h):</span> {idea.buildIdea}
+              <div className="text-xs text-[var(--text-2)]">
+                <span className="font-semibold text-[var(--accent)]">Build (~{idea.effortHours}h):</span> {idea.buildIdea}
               </div>
-              <div className="text-xs text-gray-400 italic">Hook: "{idea.postAngle}"</div>
+              <div className="text-xs text-[var(--text-3)] italic">Hook: "{idea.postAngle}"</div>
               <div className="flex gap-2 mt-auto">
                 <button
                   className="btn-primary text-xs flex-1"
@@ -180,6 +192,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
               </div>
             </div>
           ))}
+        </div>
         </div>
       )}
     </div>
