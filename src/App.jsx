@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { isLiveMode, isUsingEnvKey, TEXT_MODELS, IMAGE_MODELS } from './utils/openrouter';
 import { DATABRICKS_PRESET } from './presets/databricks';
 import Header from './components/Header';
-import NavBar from './components/NavBar';
+import Sidebar from './components/Sidebar';
 import GeneratePage from './components/GeneratePage';
 import CalendarPage from './components/CalendarPage';
 import ArchivePage from './components/ArchivePage';
@@ -10,6 +10,8 @@ import ImageStudioPage from './components/ImageStudioPage';
 import SettingsPage from './components/SettingsPage';
 import EngagementPage from './components/EngagementPage';
 import BuildRadarPage from './components/BuildRadarPage';
+import YouTubeStudioPage from './components/YouTubeStudioPage';
+import BoilerplateGeneratorPage from './components/BoilerplateGeneratorPage';
 import Toast from './components/Toast';
 
 // ─── PERSISTENCE HELPERS ───
@@ -149,34 +151,45 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen gradient-bg">
+    <div className="h-screen flex flex-col gradient-bg overflow-hidden">
       <Header brand={brand} manualKey={manualKey} setManualKey={setManualKey} live={live} theme={theme} setTheme={setTheme} />
-      <NavBar page={page} setPage={setPage} />
+      
+      <div className="flex-1 flex overflow-hidden relative">
+        <Sidebar page={page} setPage={setPage} />
 
-      <main className="p-6 max-w-7xl mx-auto">
-        {/* Always-mounted pages preserve state across navigation. Only the active page is visible. */}
-        <div className="page-panel" style={{ display: page ==='generate' ? 'block' : 'none' }}>
-          <GeneratePage brand={brand} manualKey={manualKey} selModel={selModel} selImgModel={selImgModel} live={live} showToast={showToast} savedPosts={savedPosts} setSavedPosts={setSavedPosts} radarDraft={radarDraft} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='calendar' ? 'block' : 'none' }}>
-          <CalendarPage brand={brand} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='archive' ? 'block' : 'none' }}>
-          <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='images' ? 'block' : 'none' }}>
-          <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='engagement' ? 'block' : 'none' }}>
-          <EngagementPage showToast={showToast} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='radar' ? 'block' : 'none' }}>
-          <BuildRadarPage manualKey={manualKey} selModel={selModel} live={live} showToast={showToast} onUseIdea={useRadarIdea} />
-        </div>
-        <div className="page-panel" style={{ display: page ==='settings' ? 'block' : 'none' }}>
-          <SettingsPage brand={brand} setBrand={setBrand} manualKey={manualKey} setManualKey={setManualKey} selModel={selModel} setSelModel={setSelModel} selImgModel={selImgModel} setSelImgModel={setSelImgModel} live={live} />
-        </div>
-      </main>
+        <main className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+          <div className="max-w-7xl mx-auto">
+            {/* Always-mounted pages preserve state across navigation. Only the active page is visible. */}
+            <div className="page-panel" style={{ display: page ==='generate' ? 'block' : 'none' }}>
+              <GeneratePage brand={brand} manualKey={manualKey} selModel={selModel} selImgModel={selImgModel} live={live} showToast={showToast} savedPosts={savedPosts} setSavedPosts={setSavedPosts} radarDraft={radarDraft} />
+            </div>
+            <div className="page-panel" style={{ display: page ==='calendar' ? 'block' : 'none' }}>
+              <CalendarPage brand={brand} />
+            </div>
+            <div className="page-panel" style={{ display: page ==='archive' ? 'block' : 'none' }}>
+              <ArchivePage savedPosts={savedPosts} setSavedPosts={setSavedPosts} showToast={showToast} />
+            </div>
+            <div className="page-panel" style={{ display: page ==='images' ? 'block' : 'none' }}>
+              <ImageStudioPage brand={brand} manualKey={manualKey} selImgModel={selImgModel} live={live} showToast={showToast} />
+            </div>
+            <div className="page-panel" style={{ display: page ==='engagement' ? 'block' : 'none' }}>
+              <EngagementPage showToast={showToast} />
+            </div>
+            <div className="page-panel" style={{ display: page ==='radar' ? 'block' : 'none' }}>
+              <BuildRadarPage manualKey={manualKey} selModel={selModel} live={live} showToast={showToast} onUseIdea={useRadarIdea} />
+            </div>
+            <div className="page-panel" style={{ display: page ==='youtube' ? 'block' : 'none' }}>
+              <YouTubeStudioPage />
+            </div>
+            <div className="page-panel" style={{ display: page ==='boilerplate' ? 'block' : 'none' }}>
+              <BoilerplateGeneratorPage />
+            </div>
+            <div className="page-panel" style={{ display: page ==='settings' ? 'block' : 'none' }}>
+              <SettingsPage brand={brand} setBrand={setBrand} manualKey={manualKey} setManualKey={setManualKey} selModel={selModel} setSelModel={setSelModel} selImgModel={selImgModel} setSelImgModel={setSelImgModel} live={live} />
+            </div>
+          </div>
+        </main>
+      </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>

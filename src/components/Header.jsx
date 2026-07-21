@@ -5,7 +5,7 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
   const usingEnv = isUsingEnvKey(manualKey);
 
   return (
-    <header className="app-header border-b border-gray-700 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+    <header className="app-header border-b border-[var(--card-border)] px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
       <div className="flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center text-white logo-mark"
@@ -14,19 +14,19 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
           <Icon name="zap" size={20} strokeWidth={2.4} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">Content Engine</h1>
-          <p className="text-xs text-gray-400 flex items-center gap-2">
+          <h1 className="text-lg font-bold text-[var(--text-1)] tracking-tight">Architect OS</h1>
+          <p className="text-xs text-[var(--text-2)] flex items-center gap-2">
             <span
-              className="inline-block w-2 h-2 rounded-full"
-              style={{ background: brand?.colors?.accent || '#3b82f6', boxShadow: `0 0 6px ${brand?.colors?.accent || '#3b82f6'}` }}
+              className="inline-block w-2 h-2 rounded-full bg-[var(--accent)]"
+              style={{ boxShadow: `0 0 6px var(--accent)` }}
             />
-            {brand.name ? brand.name : 'No brand loaded'}
+            AI Data Product Architect
             {live ? (
-              <span className="badge mode-pill-live">
+              <span className="badge mode-pill-live border border-green-500/30">
                 {usingEnv ? 'Live (.env)' : 'Live (manual key)'}
               </span>
             ) : (
-              <span className="badge mode-pill-demo">Demo Mode</span>
+              <span className="badge mode-pill-demo border border-yellow-500/30">Demo Mode</span>
             )}
           </p>
         </div>

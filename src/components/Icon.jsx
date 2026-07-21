@@ -127,6 +127,18 @@ const PATHS = {
       <polyline points="12 6 12 12 16 14" />
     </>
   ),
+  video: (
+    <>
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </>
+  ),
+  code: (
+    <>
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 16, strokeWidth = 2, className = '', style }) {

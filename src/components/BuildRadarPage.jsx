@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchBuildIdeas } from '../utils/openrouter';
+import { parseExcelIdeas } from '../utils/excelParser';
 import Icon from './Icon';
 
 // Build Radar — the Databricks personal-brand lane's topic scanner.
@@ -36,7 +37,18 @@ export default function BuildRadarPage({ manualKey, selModel, live, showToast, o
     setScanning(true);
     setError('');
     try {
-      const { ideas: found, live: usedWeb } = await fetchBuildIdeas(manualKey, selModel, 5);
+      let excelIdeas = [];
+      try {
+        const res = await fetch('/Databricks Ideas.xlsx');
+        if (res.ok) {
+          const buffer = await res.arrayBuffer();
+          excelIdeas = await parseExcelIdeas(buffer);
+        }
+      } catch (e) {
+        console.warn('Failed to load excel ideas:', e);
+      }
+
+      const { ideas: found, live: usedWeb } = await fetchBuildIdeas(manualKey, selModel, 5, excelIdeas);
       setIdeas(found);
       setLiveScan(usedWeb);
       const at = new Date().toISOString();
@@ -141,6 +153,9 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                 ) : (
                   <div className="text-gray-400 mt-1 break-all">{idea.dataset?.access}</div>
                 )}
+                {idea.targetBrand && (
+                  <div className="text-gray-300 mt-2"><span className="font-semibold text-purple-400">Target Brand:</span> {idea.targetBrand}</div>
+                )}
                 {idea.dataset?.verified === false && (
                   <div className="text-yellow-400 mt-1 font-semibold">{'⚠'} Unverified: confirm this dataset exists before building.</div>
                 )}
@@ -153,7 +168,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                 <button
                   className="btn-primary text-xs flex-1"
                   onClick={() => {
-                    onUseIdea && onUseIdea({ topic: idea.topic, notes: briefAsNotesSeed(idea), postAngle: idea.postAngle });
+                    onUseIdea && onUseIdea({ topic: idea.topic, notes: briefAsNotesSeed(idea), postAngle: idea.postAngle, targetBrand: idea.targetBrand });
                     showToast('Sent to Generate. Topic and brief pre-filled.');
                   }}
                 >

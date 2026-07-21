@@ -139,41 +139,19 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
         {tab === 'branded' && (
           <div>
             <div className="flex gap-2 mb-4">
-              {[{ id: 'stat', l: '\uD83D\uDCCA Stat' }, { id: 'quote', l: '\uD83D\uDCAC Quote' }, { id: 'multi', l: '\uD83D\uDCD1 Multi' }, { id: 'chart', l: '\uD83D\uDCC8 Chart' }].map((s) => (
-                <button key={s.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${style === s.id ? 'tab-active' : 'tab-inactive'}`} onClick={() => setStyle(s.id)}>
+              {[{ id: 'chart', l: '📊 Data Chart' }, { id: 'multi', l: '📑 Carousel' }].map((s) => (
+                <button key={s.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${style === s.id ? 'bg-[var(--accent)] bg-opacity-20 text-[var(--accent)]' : 'bg-gray-800 text-gray-400'}`} onClick={() => setStyle(s.id)}>
                   {s.l}
                 </button>
               ))}
             </div>
 
-            {style === 'stat' && (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-300">Category</label>
-                <input className="input-field" value={category} onChange={(e) => setCategory(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Main Stat</label>
-                <input className="input-field" value={stat} onChange={(e) => setStat(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Description</label>
-                <input className="input-field" value={label} onChange={(e) => setLabel(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Subtitle</label>
-                <input className="input-field" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
-              </div>
-            )}
-            {style === 'quote' && (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-300">Main Quote</label>
-                <textarea className="input-field" value={quote} onChange={(e) => setQuote(e.target.value)} rows={3} />
-                <label className="block text-sm font-medium text-gray-300">Context</label>
-                <textarea className="input-field" value={context} onChange={(e) => setContext(e.target.value)} rows={4} />
-                <label className="block text-sm font-medium text-gray-300">Closing Line</label>
-                <input className="input-field" value={closingLine} onChange={(e) => setClosingLine(e.target.value)} />
-              </div>
-            )}
             {style === 'multi' && (
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-300">Card #</label>
                 <div className="flex gap-2">
                   {['1', '2', '3'].map((n) => (
-                    <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'tab-active' : 'tab-inactive'}`} onClick={() => setCardNum(n)}>Card {n}</button>
+                    <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`} onClick={() => setCardNum(n)}>Card {n}</button>
                   ))}
                 </div>
                 <label className="block text-sm font-medium text-gray-300">Topic</label>
@@ -190,10 +168,10 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
               <div className="space-y-3">
                 <div className="flex gap-2">
                   {[{ id: 'bar', l: 'Bar chart' }, { id: 'line', l: 'Line chart' }].map((t) => (
-                    <button key={t.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${chartType === t.id ? 'tab-active' : 'tab-inactive'}`} onClick={() => setChartType(t.id)}>{t.l}</button>
+                    <button key={t.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${chartType === t.id ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`} onClick={() => setChartType(t.id)}>{t.l}</button>
                   ))}
                   {[{ id: 'dark', l: 'Dark' }, { id: 'light', l: 'Light' }].map((v) => (
-                    <button key={v.id} className={`py-2 px-4 rounded-lg text-sm font-semibold ${chartVariant === v.id ? 'tab-active' : 'tab-inactive'}`} onClick={() => setChartVariant(v.id)}>{v.l}</button>
+                    <button key={v.id} className={`py-2 px-4 rounded-lg text-sm font-semibold ${chartVariant === v.id ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`} onClick={() => setChartVariant(v.id)}>{v.l}</button>
                   ))}
                 </div>
                 <label className="block text-sm font-medium text-gray-300">Kicker (small top label)</label>
@@ -216,7 +194,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
                 <input className="input-field" value={chartSource} onChange={(e) => setChartSource(e.target.value)} />
               </div>
             )}
-            <button className="btn-primary w-full mt-4" onClick={makeBranded}>{'\uD83C\uDFA8'} Generate Branded Card</button>
+            <button className="btn-primary w-full mt-4" onClick={makeBranded}>🎨 Generate Visual</button>
           </div>
         )}
 

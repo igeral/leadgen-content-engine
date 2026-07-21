@@ -227,8 +227,7 @@ function parseJsonStringArray(raw) {
 
 // ═══════════ TRENDING TOPIC DISCOVERY ═══════════
 // Tries the ":online" web-search model variant first so "trending" means THIS
-// week, not the model's training cutoff (stale years-old "news" presented as
-// current is a credibility killer). Falls back to the base model on error.
+// week, not the model's training cutoff. Falls back to the base model on error.
 export async function fetchTrendingTopics(manualKey, model, brand, pillar, platform, count = 5) {
   const key = getApiKey(manualKey);
   try {
@@ -312,38 +311,35 @@ Return ONLY valid JSON array. No markdown, no code blocks.
 }
 
 // ═══════════ BUILD RADAR (Databricks personal-brand lane) ═══════════
-// Finds trending, data-attachable topics and pairs each with a REAL public
-// dataset + a weekend-scale Databricks Free Edition build idea. Tries the
-// OpenRouter ":online" web-search variant first (adds ~cents/scan, gives
-// live results); falls back to the base model's knowledge if unavailable.
-export async function fetchBuildIdeas(manualKey, model, count = 5) {
+export async function fetchBuildIdeas(manualKey, model, count = 5, excelIdeas = []) {
   const key = getApiKey(manualKey);
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  const ideasContext = excelIdeas.length > 0 
+    ? `\nTARGET BRANDS & INDUSTRIES TO MIMIC (from Databricks Ideas spreadsheet):\n${excelIdeas.slice(0, 30).map(idea => `- Brand: ${idea.brand}, Industry: ${idea.industry}, Context: ${idea.data_context}`).join('\n')}\n` 
+    : '';
 
-  const prompt = `You are a hybrid trend analyst + senior data engineer. Today is ${today}.
+  const prompt = `You are a hybrid trend analyst + senior AI Data Product Architect. Today is ${today}.
 
-You advise a data analytics engineer who builds small public projects on Databricks Free Edition every weekend and posts about them on his personal LinkedIn. His audience is data leaders, analytics managers, and hiring managers. His goal: attach real data analysis to topics people are ALREADY talking about, so the posts ride an existing wave.
+You advise a technical architect who builds full-stack prototypes (Databricks backend + React/PowerApp frontend) every weekend. His goal is to post "Blueprint / Reverse Engineering" case studies on LinkedIn. He pairs trending business problems with a target enterprise brand to create a prototype "Inspired By" their challenges.
+${ideasContext}
+TASK: Identify the ${count} best "Blueprint" build opportunities RIGHT NOW. Each pairs (a) an enterprise AI or data bottleneck currently being discussed, with (b) a specific Target Brand (e.g., Visa, Tesla, or one from the list above) to "mimic", and (c) a 4-hour full-stack build.
 
-TASK: Identify the ${count} best "build opportunities" RIGHT NOW. Each pairs (a) a topic currently generating heavy discussion on LinkedIn / tech media with (b) a real, freely accessible public dataset, and (c) a 2-3 hour Databricks build.
-
-TOPIC POOL TO DRAW FROM (not exhaustive — add better ones if they are hotter right now): AI data-center buildout and electricity demand, energy grids and renewables, the AI capex race, chip supply, data breaches and security incidents, CEO/company performance comparisons, tech layoffs and hiring data, robotics adoption, housing/cost-of-living data, sports analytics moments.
-
-DATASET RULES (critical):
-- Only name datasets that REALLY exist and are freely downloadable or API-accessible today. Examples of the caliber expected: EIA Open Data API (US energy), Our World in Data energy/CO2 GitHub CSVs, SEC EDGAR filings, HHS breach portal CSV, NYC TLC trip data, Cloudflare Radar, BLS/FRED APIs, Kaggle datasets (name the exact dataset), GitHub Archive on BigQuery-equivalent public buckets.
-- If unsure a dataset exists, either drop the idea or clearly set "verified": false.
-- No datasets that require paid licenses, scraping against ToS, or employer credentials.
+DATASET RULES:
+- Name datasets that REALLY exist and are freely downloadable or API-accessible (e.g. SEC EDGAR, EIA, Kaggle).
 
 For each opportunity return:
-- topic: specific and timely (reference the actual live discussion, not a generic theme)
+- topic: specific enterprise bottleneck/challenge
 - whyHot: 1 sentence on why this is being discussed right now
 - dataset: {name, source, access: exact URL or API name, verified: true|false}
-- buildIdea: what to build in 2-3 hours on Databricks Free Edition (medallion layers, a DBSQL dashboard, a Genie space, a Lakeflow pipeline — pick what fits), phrased as concrete steps
+- targetBrand: The specific enterprise brand this prototype is "Inspired By"
+- buildIdea: what to build on the backend (Databricks medallion/API) AND the frontend (React/PowerApp).
 - postAngle: the one-line hook the resulting LinkedIn post would open with
-- audienceMatch: "data-leaders" if data/analytics professionals specifically discuss this, "general" if it is broad-public viral
-- effortHours: realistic estimate (2-6)
+- audienceMatch: "Founders / CTOs"
+- effortHours: realistic estimate (3-4)
 
-Rank by (audienceMatch === "data-leaders") first, then heat. Return ONLY a valid JSON array, no markdown fences.
-[{"topic":"...","whyHot":"...","dataset":{"name":"...","source":"...","access":"...","verified":true},"buildIdea":"...","postAngle":"...","audienceMatch":"...","effortHours":3}]`;
+Rank by heat. Return ONLY a valid JSON array, no markdown fences.
+[{"topic":"...","whyHot":"...","dataset":{"name":"...","source":"...","access":"...","verified":true},"targetBrand":"...","buildIdea":"...","postAngle":"...","audienceMatch":"...","effortHours":3}]`;
 
   const callModel = async (modelId) => {
     const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -721,7 +717,7 @@ ENGAGEMENT STRATEGY (when this conflicts with the CTA style above, this wins)
 ${brand.engagementStrategy}
 ` : '';
 
-  return `You are an expert social media content strategist writing on ${platform} for ${bn}.
+  return `You are an AI Data Product Architect and expert social media content strategist writing on ${platform} for ${bn}. You target Founding Engineers, Fractional CTOs, and enterprise data leaders. Your goal is to showcase architecture teardowns, UI showcases, and production-ready data product blueprints rather than basic tutorials.
 
 BRAND
 - Name: ${bn}
@@ -806,7 +802,7 @@ DATE ACCURACY
 The current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. The only exception is verified timeless statistics that are still accurate today${timelessExample}. If you cannot verify a story is current, do not use it.`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, brandName, sourceNotes } = {}) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, brandName, sourceNotes, targetBrand } = {}) {
 
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
 
@@ -843,6 +839,7 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   }
 
   if (topic && !trendingTopic) p += `\n\nTopic/Angle: ${topic}`;
+  if (targetBrand) p += `\n\nTARGET ENTERPRISE BRAND TO MIMIC:\nThis post should frame the project as "Inspired by ${targetBrand}" or refer to a challenge specifically faced by ${targetBrand}.`;
   if (keywords?.length) p += `\n\nKeywords to weave in naturally (don't force them): ${keywords.join(', ')}`;
   if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
   if (avoidTopics?.length) {

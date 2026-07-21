@@ -320,6 +320,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [pillarIdx, setPillarIdx] = useState(0);
   const [audience, setAudience] = useState('');
   const [topic, setTopic] = useState('');
+  const [targetBrand, setTargetBrand] = useState('');
   const [sourceNotes, setSourceNotes] = useState('');
 
   // Build Radar handoff: when an idea is sent over, pre-fill topic + notes.
@@ -327,6 +328,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     if (!radarDraft) return;
     setTopic(radarDraft.topic || '');
     setSourceNotes(radarDraft.notes || '');
+    setTargetBrand(radarDraft.targetBrand || '');
   }, [radarDraft]);
 
   // ─── TRENDING TOPICS ───
@@ -621,6 +623,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       keyPhrases: parseList(keyPhrases),
       trendingTopic: null,
       sourceNotes,
+      targetBrand,
     };
 
     let activeTrending = forcedTrending || selectedTrending;
@@ -1131,6 +1134,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Topic (manual - shown when no trending selected) */}
           {!selectedTrending && (
             <>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Target Brand (Enterprise) <span className="text-gray-500">{'(optional)'}</span></label>
+              <input className="input-field mb-3" placeholder="e.g. Visa, Tesla, Netflix" value={targetBrand} onChange={(e) => setTargetBrand(e.target.value)} />
+              
               <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional, or use trending above)'}</span></label>
               <textarea className="input-field mb-3" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
             </>
