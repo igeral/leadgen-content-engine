@@ -1,9 +1,8 @@
 import { isUsingEnvKey } from '../utils/openrouter';
 import Icon from './Icon';
 
-export default function Header({ brand, manualKey, setManualKey, live, theme, setTheme, switchBrand }) {
+export default function Header({ brand, manualKey, setManualKey, live, theme, setTheme }) {
   const usingEnv = isUsingEnvKey(manualKey);
-  const activeLane = brand?.presetId || 'steadfast';
 
   return (
     <header className="app-header border-b border-gray-700 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -15,7 +14,7 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
           <Icon name="zap" size={20} strokeWidth={2.4} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">LeadGen Content Engine</h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">Content Engine</h1>
           <p className="text-xs text-gray-400 flex items-center gap-2">
             <span
               className="inline-block w-2 h-2 rounded-full"
@@ -33,28 +32,10 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
         </div>
       </div>
 
-      {/* Lane switcher — one click between the two identities */}
-      <div className="lane-switch flex items-center gap-1 p-1 rounded-xl">
-        <button
-          className={`lane-pill ${activeLane === 'steadfast' ? 'lane-pill-active' : ''}`}
-          onClick={() => switchBrand && switchBrand('steadfast')}
-          title="Steadfast Physician Partners (company page)"
-        >
-          <Icon name="building" size={14} /> Steadfast
-        </button>
-        <button
-          className={`lane-pill ${activeLane === 'databricks' ? 'lane-pill-active' : ''}`}
-          onClick={() => switchBrand && switchBrand('databricks')}
-          title="Victor: Databricks (personal LinkedIn)"
-        >
-          <Icon name="package" size={14} /> Databricks
-        </button>
-      </div>
-
       <div className="flex items-center gap-2">
         <input
           type="password"
-          placeholder={usingEnv ? '.env key active — override here' : 'Paste OpenRouter API key'}
+          placeholder={usingEnv ? '.env key active, override here' : 'Paste OpenRouter API key'}
           className="input-field text-sm"
           style={{ width: 260 }}
           value={manualKey}

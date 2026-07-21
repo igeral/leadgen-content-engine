@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { isLiveMode, isUsingEnvKey, TEXT_MODELS, IMAGE_MODELS } from './utils/openrouter';
-import { STEADFAST_PRESET } from './presets/steadfast';
 import { DATABRICKS_PRESET } from './presets/databricks';
 import Header from './components/Header';
 import NavBar from './components/NavBar';
@@ -72,23 +71,16 @@ function loadJSON(key, fallback) {
 }
 
 export default function App() {
-  const [page, setPage] = useState('generate');
-  // Brand: persist user-editable fields (dataPoints, name, tagline) but
-  // ALWAYS overlay the current code's schedule + leadMagnet so a stale cached
-  // brand from an older session can't override the schedule we just shipped.
-  // Also merge pillars so any pillar the schedule references (e.g. "Lead Magnet")
-  // is guaranteed to exist on the brand even if the user's cached brand is older.
+  const [page, setPage] = useState('radar');
   const [brand, setBrand] = useState(() => {
     const stored = loadJSON(BRAND_STORAGE_KEY, null);
-    if (!stored) return STEADFAST_PRESET;
+    if (!stored) return DATABRICKS_PRESET;
     if (stored.presetId) {
-      // Preset lanes ALWAYS rehydrate from code. Strategy changes ship in the
-      // preset files, and a cached copy must never resurrect an old schedule,
-      // pillar mix, or tagline (this is exactly what happened pre-v2). Only
-      // user-added data points survive the merge.
-      const base = stored.presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET;
-      const extraDp = (stored.dataPoints || []).filter((d) => !base.dataPoints.includes(d));
-      return { ...base, dataPoints: [...base.dataPoints, ...extraDp] };
+      // The preset ALWAYS rehydrates from code. Strategy changes ship in the
+      // preset file, and a cached copy must never resurrect an old schedule,
+      // pillar mix, or tagline. Only user-added data points survive the merge.
+      const extraDp = (stored.dataPoints || []).filter((d) => !DATABRICKS_PRESET.dataPoints.includes(d));
+      return { ...DATABRICKS_PRESET, dataPoints: [...DATABRICKS_PRESET.dataPoints, ...extraDp] };
     }
     // Custom brand (built from the blank template): the user's own edits win.
     return stored;
@@ -140,21 +132,11 @@ export default function App() {
     try { localStorage.setItem('leadgen.theme.v1', theme); } catch (e) {}
   }, [theme]);
 
-  // One-click lane switching from the header (no Settings round-trip).
-  const switchBrand = (presetId) => {
-    setBrand(presetId === 'databricks' ? DATABRICKS_PRESET : STEADFAST_PRESET);
-    // If the current page doesn't exist in the target lane's nav, land on Generate.
-    if (presetId !== 'databricks' && (page === 'radar' || page === 'saved')) setPage('generate');
-    if (page === 'saved') setPage('archive');
-    showToast(presetId === 'databricks' ? 'Switched to Databricks (personal)' : 'Switched to Steadfast');
-  };
-
-  // Lane theming: the whole UI re-tints from the active brand's colors, so
-  // Steadfast feels like Steadfast and the Databricks lane feels like Victor's.
+  // Theming: the whole UI tints from the active brand's colors.
   useEffect(() => {
     const root = document.documentElement;
     const accent = brand?.colors?.accent || '#3b82f6';
-    const accent2 = brand?.presetId === 'databricks' ? '#ff7a45' : '#6366f1';
+    const accent2 = brand?.colors?.accent2 || '#ff7a45';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-2', accent2);
   }, [brand]);
@@ -168,8 +150,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen gradient-bg">
-      <Header brand={brand} manualKey={manualKey} setManualKey={setManualKey} live={live} theme={theme} setTheme={setTheme} switchBrand={switchBrand} />
-      <NavBar page={page} setPage={setPage} brand={brand} />
+      <Header brand={brand} manualKey={manualKey} setManualKey={setManualKey} live={live} theme={theme} setTheme={setTheme} />
+      <NavBar page={page} setPage={setPage} />
 
       <main className="p-6 max-w-7xl mx-auto">
         {/* Always-mounted pages preserve state across navigation. Only the active page is visible. */}

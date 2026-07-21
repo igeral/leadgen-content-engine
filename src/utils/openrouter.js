@@ -113,7 +113,7 @@ export async function callOpenRouter(manualKey, model, sysPrompt, userPrompt) {
 // ─── MULTI-POST VARIATIONS ───
 // Generate N posts within the same pillar but on DIFFERENT TOPICS.
 // Each post covers its own news event / stat / angle (NOT three angles on
-// one topic) and uses its own hook formula from Steadfast's six.
+// one topic) and uses its own hook formula from the six.
 export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userPromptCore, count, opts = {}) {
   const key = getApiKey(manualKey);
   const pillarName = opts.pillarName || '';
@@ -136,10 +136,10 @@ export async function callOpenRouterMultiPost(manualKey, model, sysPrompt, userP
 GENERATE EXACTLY ${count} POSTS, EACH ON A COMPLETELY DIFFERENT TOPIC within the ${pillarName || 'selected'} pillar.
 
 CRITICAL TOPIC DIVERSITY RULE:
-Each of the ${count} posts must address a DIFFERENT news event, statistic, regulation, trend, or scenario. NO TWO POSTS may cover the same underlying subject. Three angles on the same Medicare reimbursement cut is NOT acceptable. Three different topics from within healthcare workforce is what is required.
+Each of the ${count} posts must address a DIFFERENT release, feature, pattern, dataset, or scenario. NO TWO POSTS may cover the same underlying subject. Three angles on the same Unity Catalog release is NOT acceptable. Three genuinely different subjects is what is required.
 
 Examples of distinct topics within a single pillar:
-- Workforce Insights: physician shortage projections; rural-vs-urban coverage gaps; residency expansion legislation; hospital closure rates; locum tenens adoption.
+- Architecture Patterns: medallion layer boundaries; serverless vs classic compute cost; Unity Catalog lineage for audits; incremental ingestion with schema drift; BI semantic layers on the lakehouse.
 - Each item above is its OWN topic, not the same topic from a different angle.
 
 Each post uses a DIFFERENT hook formula from this list (no repeats):
@@ -190,7 +190,7 @@ Example shape:
 }
 
 // Strip em/en dashes the model may emit despite the prompt forbidding them.
-// Replaces with a period + space to preserve the rhythm break Steadfast wants.
+// Replaces with a period + space to preserve the rhythm break.
 function stripEmDashes(text) {
   if (!text) return text;
   let out = String(text)
@@ -227,8 +227,8 @@ function parseJsonStringArray(raw) {
 
 // ═══════════ TRENDING TOPIC DISCOVERY ═══════════
 // Tries the ":online" web-search model variant first so "trending" means THIS
-// week, not the model's training cutoff (stale years-old "news" in Friday
-// posts is a credibility killer). Falls back to the base model on error.
+// week, not the model's training cutoff (stale years-old "news" presented as
+// current is a credibility killer). Falls back to the base model on error.
 export async function fetchTrendingTopics(manualKey, model, brand, pillar, platform, count = 5) {
   const key = getApiKey(manualKey);
   try {
@@ -272,7 +272,7 @@ For each topic, provide:
 - suggestedHook: A 1-line opening hook for a post on this topic
 
 CRITICAL RULES:
-- Be SPECIFIC and TIMELY. Not "physician burnout" but "Why 3 major health systems just announced 4-day work weeks for physicians — and what it means for staffing"
+- Be SPECIFIC and TIMELY. Not "data governance" but "Why the Unity Catalog change shipped this month breaks the lineage assumption most teams built on"
 - Reference REAL industry trends, reports, legislation, events happening NOW in 2026
 - RECENCY IS NON-NEGOTIABLE: if you have web search results, use ONLY events verifiable in them. If you cannot verify an event happened within the last 30 days, DO NOT include it. Never present an event from a previous year as if it is current — a single stale "news" post destroys the brand's credibility.
 - Each topic must be DIFFERENT from the others — different angles, different emotions, different formats
@@ -543,9 +543,8 @@ export async function generateMultipleImages(manualKey, imageModel, prompts, onP
   return results;
 }
 
-// ─── STEADFAST STORYTELLING FRAMEWORK ───
-// Source: steadfast_storytelling_outline.docx
-// Six hook formulas (Part 1.4) — each must work in 15 words or fewer
+// ─── STORYTELLING FRAMEWORK ───
+// Six hook formulas. Each must work in 15 words or fewer
 // because that is what shows above the LinkedIn see-more cutoff.
 export const HOOK_FORMULAS = {
   bold_stat:        { name: 'Bold Stat',         brief: 'Lead with one credible specific number that creates urgency or shock.' },
@@ -562,155 +561,114 @@ export const FRAMEWORKS = {
   SLAY: 'SLAY — Story (two lines that open with a real moment, scenario, or stat), Lesson (the single insight at the heart of the post), Actionable advice (what the reader can do with the lesson), Your engagement (a genuine question that invites the reader in without being bait).',
 };
 
-// ─── FRIDAY NEWSJACKING FRAMEWORK ───
-// Source: steadfast_friday_framework.docx
-// 5 post types — each Friday picks two DIFFERENT types (no repeats per day).
-export const FRIDAY_POST_TYPES = {
-  newsjack: {
-    name: 'Newsjack',
-    brief: 'Take a currently viral news story, trend, or cultural moment and tie it to the physician workforce. Sharp, opinionated, slightly provocative. Like an industry insider reacting in real time.',
-    lengthCap: 150,
-    needsTag: false,
-    rules: 'Source: a viral news story, trending social media moment, public controversy, or cultural event. Bridge the topic to physician workforce / healthcare staffing / hospital operations. The bridge must feel natural — if forced, pick a different topic. Steadfast\'s unique perspective is insight, not just commentary.',
-  },
-  company_callout: {
-    name: 'Company Callout',
-    brief: 'Analyze a specific healthcare company\'s expansion / restructuring / acquisition and write their physician staffing strategy for them as helpful unsolicited advice.',
-    lengthCap: 250,
-    needsTag: true,
-    rules: 'Source: a hospital system, health network, or healthcare company expanding, opening new facilities, acquiring, or making workforce news. Frame the post as peer-level strategic advice, not criticism. Tag the relevant CMO/CEO/COO. Position Steadfast as the strategist who sees what most miss.',
-  },
-  viral_prediction: {
-    name: 'Viral Prediction',
-    brief: 'Call something the agent believes has viral potential even if it has not gone viral yet. Forward-looking, I-saw-this-first energy.',
-    lengthCap: 150,
-    needsTag: false,
-    rules: 'Source: an emerging trend, quiet policy change, underreported stat, or pattern not yet mainstream. Frame as a prediction or early signal. The prediction must be statable in ONE sentence. Confident but not arrogant.',
-  },
-  industry_reaction: {
-    name: 'Industry Reaction',
-    brief: 'Respond to another viral LinkedIn post in the healthcare space with a Steadfast-framed take. Quote the line you\'re reacting to, tag the original poster.',
-    lengthCap: 150,
-    needsTag: true,
-    rules: 'Source: a viral healthcare LinkedIn post from a CMO, physician influencer, or industry publication. Quote a key line (attributed), tag the original poster, then add Steadfast\'s perspective. Respectful disagreement, added nuance, or endorsement with additional insight. Never dismissive. Reaction is tighter than the original.',
-  },
-  hot_take: {
-    name: 'Hot Take',
-    brief: 'Sharp opinionated statement about the healthcare workforce designed to spark debate. State the take in 1-2 lines, support with 2-3 sentences, end with an invitation to push back.',
-    lengthCap: 100,
-    needsTag: false,
-    rules: 'No external source — Steadfast\'s own perspective. The take should be defensible if challenged. Provocative but not inflammatory for its own sake. Hot takes generate comments because people strongly agree or strongly disagree, both of which feed the algorithm.',
-  },
-};
-
-// 7 bridge categories (Part 5.1). Friday post must pass the one-sentence bridge test.
-export const FRIDAY_BRIDGES = [
-  'Direct connection — viral topic IS healthcare; comment with staffing/workforce angle.',
-  'Economic ripple — viral topic affects the economy; bridge to hospitals, physician demand, or patient volume.',
-  'Workforce parallel — another industry\'s workforce issue parallels physician workforce.',
-  'Leadership lesson — viral leadership decision; bridge to what hospital leaders can learn.',
-  'Policy impact — policy change; bridge to physician supply, hospital operations, or healthcare access.',
-  'Community impact — viral topic affects a community; bridge to that community\'s healthcare infrastructure.',
-  'Metaphor — viral topic unrelated, but the underlying principle applies perfectly to healthcare staffing.',
-];
-
-// Pillar-specific outlines (Part 2). Keys match brand.pillars[].name (case-insensitive).
-export const STEADFAST_PILLAR_MAP = {
-  'workforce insights': {
-    framework: 'PASS',
-    bestHooks: ['bold_stat', 'reframe'],
-    arc: 'Bold number → what it really means → why it is more dangerous than people think → what to do about it.',
-    feeling: 'Alert. The problem is bigger than they thought. They need to act.',
-    beats: [
-      'Open with the stat alone on its own line. Forces a pause. Establishes credibility immediately.',
-      'Reframe how leaders should interpret it. Replace their default frame with a sharper one.',
-      'State the hard truth in one or two short lines. The line that gets quoted and shared.',
-      'Agitate by listing the cascade of consequences. Lost revenue, burnout, quality decline, retention. Make the cost concrete.',
-      'Layer in supporting data or a related stat. Shows depth of expertise without becoming a research paper.',
-      'State the reframed conclusion as a principle. Not a nice-to-have. A necessity. Make the principle quotable.',
-      'Soft question CTA. Invite reflection without pushing toward a sale.',
-    ],
-  },
-  'physician lifestyle': {
+// Pillar-specific outlines. Keys match brand.pillars[].name (case-insensitive).
+export const PILLAR_MAP = {
+  'build log': {
     framework: 'SLAY',
-    bestHooks: ['direct_question', 'story_opener', 'bold_stat'],
-    arc: 'Current reality feels wrong → there is another way → here is what it actually looks like → soft invitation.',
-    feeling: 'Seen. Understood. Curious without feeling sold to.',
+    bestHooks: ['story_opener', 'pov_scenario'],
+    arc: 'Drop the reader inside the build → what broke → what the numbers actually said → what you would do differently → invite better approaches.',
+    feeling: 'This person actually builds. I want to see the repo.',
     beats: [
-      'Open with a question or scenario the physician is already thinking about. Creates immediate recognition.',
-      'Use rhythm to deepen the emotional pull. Three or four short lines that build to a single word or thought.',
-      'Validate with a credible workforce stat or trend. Shows the physician they are not alone in feeling this way.',
-      'Reframe the burnout or dissatisfaction conversation. The system is the problem, not the work.',
-      'Give specific examples of what locum tenens looks like in practice. Different scenarios, career stages, specialties.',
-      'State the simple reframe as a principle. Locum tenens is a career strategy, not just a rescue plan.',
-      'Soft invitation CTA. No pressure language. If this resonates, reach out.',
+      'Open mid-action, inside the build. A moment, a decision, or the thing that broke. Never open with a feature announcement.',
+      'State what you set out to make and which real dataset you pointed at it. One or two lines.',
+      'The friction: what failed, what surprised you, what the docs did not say. This is the part only someone who built it can write.',
+      'The numbers: rows processed, runtime, cost, rows dropped. Specific figures from the notes, never invented.',
+      'The lesson a senior practitioner would nod at. One idea, stated plainly.',
+      'Mention the repo or notebook is linked in the comments. Never a link in the caption.',
+      'Close with ONE expertise invite: if you would have built this differently, say how.',
     ],
   },
-  'staffing strategy': {
-    framework: 'PASS or SLAY',
-    bestHooks: ['contrarian', 'pov_scenario'],
-    arc: 'Conventional wisdom is wrong → here is the cost of believing it → here is the better model → invitation to reflect.',
-    feeling: 'Challenged. Slightly uncomfortable. Curious about the alternative model.',
+  'platform deep dives': {
+    framework: 'SLAY',
+    bestHooks: ['direct_question', 'reframe'],
+    arc: 'A question practitioners actually ask → what the docs say → what it means in practice → the caveat → invite counter-experience.',
+    feeling: 'Clearer than the documentation. Bookmarkable.',
     beats: [
-      'Open with the contrarian claim or POV scenario. Creates mild discomfort or instant recognition. Stops the scroll.',
-      'Validate the discomfort with a real-world detail. "And it is not the first time this year." Make the scenario specific.',
-      'State the underlying truth most leaders avoid. The system was not built for what is happening right now.',
-      'List the costs of the conventional approach. Three to five short concrete lines, each a different dimension.',
-      'Introduce the better model. Specific. Practical. Not theoretical.',
-      'State the principle that makes the better model worth adopting. The line they take into a leadership meeting next week.',
-      'Soft question CTA inviting them to share their approach. Genuinely curious.',
+      'Open with the question or misconception the feature actually resolves.',
+      'Name the feature and what it replaces or changes. Public sources only: docs, release notes, blogs.',
+      'Show the mechanics concretely: the shape of the config, the flow of the data, the order of operations.',
+      'Where it helps most, stated as a scenario the reader recognizes.',
+      'The honest caveat or limit. Credibility lives here.',
+      'Close by inviting readers who have run it in production to add what you missed.',
     ],
   },
-  'industry commentary': {
-    framework: 'SLAY (adapted for current events)',
-    bestHooks: ['reframe'],
-    arc: 'Headline → what the headline says → what the headline misses → what this means for hospitals or physicians.',
-    feeling: 'Informed. Steadfast is plugged in and worth following for context on what is happening.',
+  'architecture patterns': {
+    framework: 'PASS',
+    bestHooks: ['contrarian', 'bold_stat'],
+    arc: 'Name the architectural pain → make the cost concrete → give the pattern → the trade-off → invite other stacks.',
+    feeling: 'This person thinks at the altitude we hire for.',
     beats: [
-      'Open with the news event or stat in one line. Establishes immediacy and credibility.',
-      'State the surface-level interpretation. Two short lines that mirror the conventional read.',
-      'Pivot with the contrarian or nuanced angle. Here is what they do not say. Here is what most people miss.',
-      'Provide the specific data or detail that supports the reframe. Numbers, percentages, timelines. Show the work.',
-      'State the both-things-are-true position. It matters. And it is not enough. Avoids partisan framing while being opinionated.',
-      'Apply the insight to the reader\'s life or hospital. What this means for the hospitals managing this well in 2026.',
-      'Genuine question CTA inviting expertise-based comments. What is your read?',
+      'Name the pain in the hook: the pipeline, cost, or governance failure a data leader recognizes immediately.',
+      'Make the cost concrete: rework, compute spend, stale dashboards, the audit that failed.',
+      'Give the pattern as structure, not slogans: layers, boundaries, where governance sits, what runs where.',
+      'The trade-off you accept when you choose it. Never present a pattern as free.',
+      'Where it stops working, and what you would reach for instead at that scale.',
+      'Close by asking what their stack does instead. Peer to peer, genuinely curious.',
     ],
   },
-  'lead magnet': {
-    framework: 'Soft introduction to the offer (no PASS/SLAY)',
+  'ecosystem news': {
+    framework: 'SLAY',
+    bestHooks: ['reframe', 'contrarian'],
+    arc: 'The news in one line → what everyone will say → what it actually changes → your defensible position → invite disagreement.',
+    feeling: 'A sharper read than the announcement post everyone else wrote.',
+    beats: [
+      'State the news in one line. Assume they saw the headline. Do not summarize the press release.',
+      'Name the obvious take everyone is posting.',
+      'The reframe: what it actually changes for people who run this in production.',
+      'Take a position that is defensible if challenged. Provocative, never inflammatory.',
+      'Say plainly what you are unsure about. Certainty about the unknowable reads as noise.',
+      'Close by inviting practitioners who read it differently to make their case.',
+    ],
+  },
+  'use case breakdowns': {
+    framework: 'PASS',
+    bestHooks: ['bold_stat', 'pov_scenario'],
+    arc: 'The industry problem → the published result → the architecture behind it → what transfers → invite the next request.',
+    feeling: 'I can apply this pattern to my own industry tomorrow.',
+    beats: [
+      'Open with the operational problem the industry faced, framed so any data person feels it.',
+      'The published outcome, with the real source named. Cite it, never fabricate it.',
+      'Reverse-engineer the architecture: ingestion, layers, governance, serving.',
+      'The part that transfers to a completely different industry. This is the value.',
+      'The part that does not transfer, and why.',
+      'Close by asking which industry or dataset they want broken down next.',
+    ],
+  },
+  'career & craft': {
+    framework: 'SLAY',
     bestHooks: ['story_opener', 'direct_question'],
-    arc: 'Validate the reader\'s experience → introduce the resource → list what is inside → soft download CTA.',
-    feeling: 'Trusted. Ready to take a small action because the rest of the week has built credibility.',
+    arc: 'A real moment from the work → what it cost → the lesson → how it changed the approach → invite their version.',
+    feeling: 'Honest. Someone a few steps ahead telling the truth about the work.',
     beats: [
-      'Open with a phrase that validates a feeling the reader has had. They knew most of it. They just had not put it together as a system.',
-      'Introduce the guide by name and audience. Be specific about who it was written for so the reader self-selects.',
-      'List four to five things inside the guide. Each one a different angle. Together they cover the whole framework.',
-      'State who it was written for. Practical. Free. Written for the person who does not have time to figure this out mid-crisis.',
-      'Tell the reader to comment one trigger word (e.g. "TAX") to get the resource by DM. No external links anywhere: not in the caption, not in the comments. LinkedIn deprioritises posts with links, and the comment trigger is what feeds the Engagement Studio DM loop.',
-      'Standard soft follow CTA. Consistent with the rest of the week.',
+      'Open with a specific moment from the work. A scene, not a thesis.',
+      'What it cost: the rework, the week lost, the wrong assumption held too long.',
+      'The lesson in one line. The line worth quoting.',
+      'How it changed the way you build now, concretely.',
+      'Acknowledge how fast the tooling moves and that everyone is learning it in real time. Owning that IS the credibility.',
+      'Close by inviting their version of the same lesson.',
     ],
   },
 };
 
-// Look up the Steadfast pillar config by pillar name (case-insensitive).
+// Look up the pillar config by name (case-insensitive).
 export function getPillarConfig(pillarName) {
   if (!pillarName) return null;
   const key = String(pillarName).toLowerCase().trim();
-  if (STEADFAST_PILLAR_MAP[key]) return STEADFAST_PILLAR_MAP[key];
-  // Fuzzy fall-throughs for common renames
-  if (key.includes('workforce')) return STEADFAST_PILLAR_MAP['workforce insights'];
-  if (key.includes('physician') && key.includes('lifestyle')) return STEADFAST_PILLAR_MAP['physician lifestyle'];
-  if (key.includes('staffing') || key.includes('leadership')) return STEADFAST_PILLAR_MAP['staffing strategy'];
-  if (key.includes('industry') || key.includes('commentary')) return STEADFAST_PILLAR_MAP['industry commentary'];
-  if (key.includes('lead') && key.includes('magnet')) return STEADFAST_PILLAR_MAP['lead magnet'];
+  if (PILLAR_MAP[key]) return PILLAR_MAP[key];
+  // Fuzzy fall-throughs for renamed pillars
+  if (key.includes('build')) return PILLAR_MAP['build log'];
+  if (key.includes('deep dive') || key.includes('platform')) return PILLAR_MAP['platform deep dives'];
+  if (key.includes('architecture') || key.includes('pattern')) return PILLAR_MAP['architecture patterns'];
+  if (key.includes('ecosystem') || key.includes('news')) return PILLAR_MAP['ecosystem news'];
+  if (key.includes('use case') || key.includes('breakdown')) return PILLAR_MAP['use case breakdowns'];
+  if (key.includes('career') || key.includes('craft')) return PILLAR_MAP['career & craft'];
   return null;
 }
 
-// Build a brief from the pillar config that injects cleanly into the user prompt.
 function pillarBrief(cfg) {
   if (!cfg) return '';
   const beatList = cfg.beats.map((b, i) => `${i + 1}. ${b}`).join('\n');
-  return `\n\nPILLAR FRAMEWORK (Steadfast Storytelling Outline):
+  return `\n\nPILLAR FRAMEWORK:
 - Default framework: ${cfg.framework}
 - Best hook formulas for this pillar: ${cfg.bestHooks.map((h) => HOOK_FORMULAS[h].name).join(', ')}
 - Narrative arc: ${cfg.arc}
@@ -720,7 +678,7 @@ function pillarBrief(cfg) {
 ${beatList}`;
 }
 
-// ─── PROMPT BUILDERS (Steadfast framework) ───
+// ─── PROMPT BUILDERS ───
 export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, formatting } = {}) {
   const toneMap = {
     authoritative: 'Direct, authoritative, data-driven voice. You are the expert.',
@@ -738,30 +696,22 @@ export function buildSystemPrompt(brand, platform, { tone, ctaType, useEmoji, fo
   };
 
   const bn = brand.name || 'the client';
-  const isSteadfast = /steadfast/i.test(bn);
-  const brandRef = isSteadfast ? 'Steadfast' : bn;
-  // Brand-specific storytelling ingredients. Steadfast keeps its tuned wording
-  // byte-for-byte; other presets supply their own via brand.voiceExamples and
-  // brand.vocabulary, with neutral fallbacks.
+  const brandRef = bn;
+  // Storytelling ingredients come from the brand preset (voiceExamples,
+  // vocabulary), with neutral fallbacks for a blank/custom brand.
   const ve = brand.voiceExamples || {};
-  const readerWorld = isSteadfast ? 'THEIR life, THEIR hospital, THEIR career, THEIR decisions' : (ve.readerWorld || 'THEIR life, THEIR work, THEIR career, THEIR decisions');
-  const badExample = isSteadfast ? 'Steadfast helps hospitals close coverage gaps.' : (ve.bad || `${bn} shares insights about the industry.`);
-  const goodExample = isSteadfast ? 'POV: You just lost a hospitalist with two weeks notice.' : (ve.good || "POV: the reader's exact problem, named in one line.");
-  const registerLine = isSteadfast ? 'That is me. That is my hospital. That is my problem.' : 'That is me. That is my world. That is my problem.';
-  const vocabRules = isSteadfast
-    ? `- Always say "coverage gaps" not "open positions".
-- Always say "physicians" not "providers".
-- Always say "hospital CMOs and administrators" not "clients".
-- Always say "locum tenens" not "temps" or "temporary staff".
-- Always say "proactive coverage model" not "backup plan".
-- Always say "credentialed and vetted" not "qualified".
-- Always say "physician workforce strategy" not "staffing solution".`
-    : (Array.isArray(brand.vocabulary) && brand.vocabulary.length ? brand.vocabulary.map((v) => `- ${v}`).join('\n') : '- Plain, precise language. No filler jargon.');
-  const timelessExample = isSteadfast ? ' (e.g. "86,000 projected physician shortage by 2036")' : '';
-  const emDashWrong = isSteadfast ? 'Most physicians still love patient care — it is the system around it that wore them down.' : 'The dashboard looked fine — the numbers behind it were three days stale.';
-  const emDashRight1 = isSteadfast ? 'Most physicians still love patient care.' : 'The dashboard looked fine.';
-  const emDashRight2 = isSteadfast ? 'It is the system around it that wore them down.' : 'The numbers behind it were three days stale.';
-  // Optional brand-level blocks (Steadfast has neither, so its prompt is unchanged).
+  const readerWorld = ve.readerWorld || 'THEIR life, THEIR work, THEIR career, THEIR decisions';
+  const badExample = ve.bad || `${bn} shares insights about the industry.`;
+  const goodExample = ve.good || "POV: the reader's exact problem, named in one line.";
+  const registerLine = 'That is me. That is my world. That is my problem.';
+  const vocabRules = Array.isArray(brand.vocabulary) && brand.vocabulary.length
+    ? brand.vocabulary.map((v) => `- ${v}`).join('\n')
+    : '- Plain, precise language. No filler jargon.';
+  const timelessExample = '';
+  const emDashWrong = 'The dashboard looked fine — the numbers behind it were three days stale.';
+  const emDashRight1 = 'The dashboard looked fine.';
+  const emDashRight2 = 'The numbers behind it were three days stale.';
+  // Optional brand-level blocks.
   const positioningBlock = brand.positioning ? `
 STRATEGIC INTENT (the reason every post exists — never state it in the post, SHOW it)
 ${brand.positioning}
@@ -783,7 +733,7 @@ VOICE & TONE
 ${toneMap[tone] || toneMap.authoritative}
 
 ═══════════════════════════════════════════════════════════════════
-${isSteadfast ? 'STEADFAST' : bn.toUpperCase()} STORYTELLING PRINCIPLES (Part 1 — apply to EVERY post)
+${bn.toUpperCase()} STORYTELLING PRINCIPLES (apply to EVERY post)
 ═══════════════════════════════════════════════════════════════════
 
 1.1 THE READER IS THE MAIN CHARACTER
@@ -856,15 +806,11 @@ DATE ACCURACY
 The current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. The only exception is verified timeless statistics that are still accurate today${timelessExample}. If you cannot verify a story is current, do not use it.`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, fridayPostType, brandName, sourceNotes } = {}) {
-  // FRIDAY BRANCH — completely different rules from Mon-Thu.
-  if (fridayPostType && FRIDAY_POST_TYPES[fridayPostType]) {
-    return buildFridayUserPrompt(audience, topic, { keywords, keyPhrases, avoidTopics, trendingTopic, fridayPostType });
-  }
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, brandName, sourceNotes } = {}) {
 
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
 
-  // Inject Steadfast pillar framework (Part 2 of the storytelling outline)
+  // Inject the pillar framework
   const cfg = getPillarConfig(pillar.name);
   if (cfg) p += pillarBrief(cfg);
 
@@ -925,162 +871,6 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
 }
 
 
-// ─── FRIDAY USER PROMPT BUILDER ───
-// Spec-grade Friday attention post prompt. Skips pillar/SLAY/PASS/7-beat
-// sequence — Friday has its own rules. Includes: 2026 date accuracy guard,
-// share/comment drivers, what kills engagement, AI photo guidance,
-// vocabulary + rhythm rules, brand-safety check.
-function buildFridayUserPrompt(audience, topic, { keywords, keyPhrases, avoidTopics, trendingTopic, fridayPostType }) {
-  const ft = FRIDAY_POST_TYPES[fridayPostType];
-  let p = `# STEADFAST PHYSICIAN PARTNERS — FRIDAY POST GENERATION
-
-You are generating one LinkedIn post for Steadfast Physician Partners, a locum tenens physician staffing company. This post publishes on Friday. Its sole purpose is to generate shares and comments. That is the only measure of success.
-
----
-## CRITICAL: DATE ACCURACY RULE
-The current year is 2026. You must ONLY reference events, news, data, and stories from the current week or the past 30 days. Never reference anything older than 30 days unless it is a verified, timeless statistic that is still accurate today.
-Before including any story, event, or data point, verify:
-- Is this from 2026?
-- Did this happen within the last 30 days?
-- Is this still current and relevant right now?
-If you cannot verify that a story is current, do not use it. Old news presented as current destroys credibility instantly.
-
----
-## THE COMPANY
-Steadfast Physician Partners is a locum tenens physician staffing company. We help hospitals eliminate physician coverage gaps in emergency medicine, hospitalist medicine, anesthesiology, surgery, radiology, and psychiatry.
-Category of one: The company that helps hospitals eliminate physician coverage gaps before they become crises.
-Brand voice: Direct, intelligent, honest. Like an industry insider who has been in the room. Never corporate, never salesy.
-Tagline: Reliable physician coverage. Deployed fast.
-
-Audience for THIS post: ${audience || 'Both hospital leaders AND physicians'}.
-
----
-## THE ONLY GOAL: SHARES AND COMMENTS
-
-Optimize for shares and comments. Not likes. Not impressions. Shares and comments.
-
-DRIVES SHARES:
-- Specific insight, framework, or prediction colleagues have not seen yet.
-- Names a specific company, trend, or executive so people tag others.
-- Articulates clearly something people already believe but never seen said.
-- Unsolicited strategic advice to a named company — bold and useful.
-- Short, sharp statements under 100 words that people screenshot and repost.
-
-DRIVES COMMENTS:
-- Controversial or contrarian takes people feel compelled to react to.
-- Specific (not generic) open-ended questions inviting expertise.
-- Tagging executives or companies by name — the tagged person often responds.
-- Statements that are 80% right and 20% debatable. People comment to add nuance.
-- Predictions. People love to agree, disagree, or add their own.
-- Ranking or comparison statements. "X matters more than Y" generates debate.
-
-KILLS SHARES AND COMMENTS:
-- Generic motivational content with no specific insight.
-- Content that reads like AI. Avoid anything templated or formulaic.
-- Engagement bait ("comment below if you agree"). LinkedIn penalizes these in 2026.
-- Em dashes. Never. Use a comma, a period, or rewrite.
-- Posts over 200 words. Friday under 150. Hot takes under 100.
-- No tie-back to healthcare staffing or physician workforce.
-
----
-## THIS POST TYPE: ${ft.name.toUpperCase()}
-
-${ft.brief}
-
-How this type works:
-${ft.rules}
-
-Length cap: under ${ft.lengthCap} words. Counted in actual words. Shorter is better.`;
-
-  if (ft.needsTag) {
-    p += `\n\n## TAGGING
-This post type tags a specific executive or original poster to extend reach. You do NOT know real names — use clearly-marked placeholders the user will fill in before publishing:
-- "@[CMO Name, Health System Name]"
-- "@[CEO Name]"
-- "@[Original Poster Name]"
-Tag at the start of a sentence, not buried mid-paragraph.`;
-  }
-
-  p += `\n\n## THE TIE-BACK TEST (mandatory)
-Every Friday post must connect to physician workforce, healthcare staffing, or hospital leadership. State the bridge in ONE sentence. If it takes more than one sentence, the connection is too weak — pick a different topic.
-
-Bridge categories to choose from:
-${FRIDAY_BRIDGES.map((b, i) => `${i + 1}. ${b}`).join('\n')}
-
-Good bridge: "When a major employer leaves a community, the local hospital loses insured patients within 6 months and physician coverage gaps follow."
-Bad bridge: "This celebrity controversy reminds me that in healthcare, people also face difficult situations, which is why staffing matters."
-If your bridge sounds like the bad example, discard it.`;
-
-  p += `\n\n## BRAND SAFETY CHECK
-A hospital CMO is considering contracting with Steadfast. They see this post. Does it make them more likely to trust Steadfast, or give them a reason to hesitate?
-If any hesitation, rewrite or discard.
-
-NEVER:
-- Personal attacks on named individuals (criticize STRATEGY and DECISIONS, never the person)
-- Partisan political alignment (healthcare policy commentary is fine; political alignment is not)
-- Mocking physicians, patients, or healthcare workers
-- Engagement bait phrases
-- Content older than 30 days presented as current
-- Anything that feels manufactured to go viral`;
-
-  // Trending topic / topic seed
-  if (trendingTopic) {
-    p += `\n\n## SEED TOPIC (current within last 30 days)
-Title: ${trendingTopic.topic}
-Angle: ${trendingTopic.angle}
-Why it's trending: ${trendingTopic.whyTrending}`;
-    if (trendingTopic.suggestedHook) p += `\nSuggested hook: ${trendingTopic.suggestedHook}`;
-  } else if (topic) {
-    p += `\n\n## SEED TOPIC\n${topic}`;
-  } else if (fridayPostType !== 'hot_take') {
-    p += `\n\n## SOURCE MATERIAL
-No seed provided. Identify a viral story, trending healthcare moment, recent company news (within last 30 days), or pattern that fits the assigned type. Verify the story is current before using it.`;
-  }
-
-  if (keywords && keywords.length) p += `\n\nKeywords to weave in naturally (do not force them): ${keywords.join(', ')}`;
-  if (keyPhrases && keyPhrases.length) p += `\n\nKey phrases to riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
-
-  if (avoidTopics && avoidTopics.length) {
-    const list = avoidTopics.map((t, i) => `${i + 1}. ${t}`).join('\n');
-    p += `\n\n## TOPICS ALREADY COVERED THIS WEEK — DO NOT REPEAT
-${list}
-
-This Friday post must address a topic DIFFERENT from every item above. Different news event, statistic, or angle. Not a rephrasing.`;
-  }
-
-  p += `\n\n## VOCABULARY RULES (mandatory)
-- Say "coverage gaps" not "open positions"
-- Say "physicians" not "providers"
-- Say "hospital CMOs and administrators" not "clients"
-- Say "locum tenens" not "temps" or "temporary staff"
-- Say "proactive coverage model" not "backup plan"
-- Say "credentialed and vetted" not "qualified"
-- Say "physician workforce strategy" not "staffing solution"
-- Never use em dashes — use a comma, a period, a colon, or rewrite.`;
-
-  p += `\n\n## RHYTHM RULES (mandatory)
-Short lines. Frequent line breaks. Vary sentence length.
-One sentence on its own line has more weight than the same sentence buried in a paragraph.
-The first word of every line matters. It is what scanners read.
-Maximum two sentences per paragraph. One is often stronger.
-Friday posts feel punchy, direct, and fast. Not polished. Not produced. Real.`;
-
-  p += `\n\n## HARD CONSTRAINTS
-- ZERO em dashes (—, –, --). Comma, period, colon, or rewrite.
-- Under ${ft.lengthCap} words. Counted in actual words.
-- Bridge to physician workforce must be natural, not forced.
-- No engagement bait, no partisan alignment, no personal attacks.
-- Brand-safe by the CMO hesitation test.
-- Vocabulary rules above are non-negotiable.
-- ${ft.needsTag ? 'Include a [PLACEHOLDER] exec tag at the start of a sentence.' : 'No tagging required for this post type.'}`;
-
-  p += `\n\nUNIQUENESS SEED: ${Math.random().toString(36).substring(2, 8)}. Write something FRESH and ORIGINAL.`;
-
-  p += `\n\n## OUTPUT
-Return ONLY the raw post text — no labels, no meta commentary, no "why this generates engagement" notes, no headers like "Post:" or "Caption:". Use **bold** sparingly for 1-2 key phrases at most. Hashtags optional on Friday (text-only is acceptable).`;
-
-  return p;
-}
 
 export function buildImagePrompt(brand, pillar, style) {
   const c = brand.colors || {};

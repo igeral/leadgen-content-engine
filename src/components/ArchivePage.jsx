@@ -306,7 +306,7 @@ export default function ArchivePage({ savedPosts, setSavedPosts, showToast }) {
           if (dayFilter !== 'all' && dayFilter !== day) return null;
           const posts = byDay[day];
           // Weekend sections only appear when they have content (the Databricks
-          // lane posts Saturdays; Steadfast doesn't) — no empty noise.
+          // schedule posts Saturdays) so empty weekend sections stay hidden.
           if ((day === 'Saturday' || day === 'Sunday') && posts.length === 0 && dayFilter === 'all') return null;
           const accent = DAY_ACCENTS[day];
           return (

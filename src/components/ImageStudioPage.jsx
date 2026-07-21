@@ -6,23 +6,23 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
   const [tab, setTab] = useState('branded');
   const [style, setStyle] = useState('stat');
   const [stat, setStat] = useState('86,000');
-  const [label, setLabel] = useState('Projected U.S. physician shortage by 2036.');
-  const [subtitle, setSubtitle] = useState('The gap is real. The time to plan is now.');
-  const [category, setCategory] = useState('PHYSICIAN WORKFORCE INSIGHT');
-  const [quote, setQuote] = useState("A strong locum tenens strategy is not a backup plan. It's a competitive advantage.");
-  const [context, setContext] = useState('Reactive staffing model:\nHigher rates. More admin load.\n\nProactive staffing model:\nLower cost. Better integration.');
-  const [closingLine, setClosingLine] = useState('Pay less. Every time.');
-  const [multiTitle, setMultiTitle] = useState('$1M+');
-  const [multiSub, setMultiSub] = useState('Lost annually per unfilled physician position.');
-  const [multiTopic, setMultiTopic] = useState('THE COST OF DOING NOTHING');
-  const [multiTag, setMultiTag] = useState('WORKFORCE DATA');
+  const [label, setLabel] = useState('Of pipeline cost came from one unpartitioned table.');
+  const [subtitle, setSubtitle] = useState('One partition key. Six figures of compute.');
+  const [category, setCategory] = useState('LAKEHOUSE COST INSIGHT');
+  const [quote, setQuote] = useState("The dashboard is never the deliverable. The decision it changes is.");
+  const [context, setContext] = useState('One notebook, end to end:\nEvery change reprocesses everything.\n\nReal layer boundaries:\nIncremental at every hop.');
+  const [closingLine, setClosingLine] = useState('The bill is a symptom.');
+  const [multiTitle, setMultiTitle] = useState('68%');
+  const [multiSub, setMultiSub] = useState('Of compute spend traced to one job.');
+  const [multiTopic, setMultiTopic] = useState('WHERE THE COMPUTE GOES');
+  const [multiTag, setMultiTag] = useState('LAKEHOUSE DATA');
   const [cardNum, setCardNum] = useState('1');
   // Data chart card inputs. Defaults use a real, citable series.
   const [chartType, setChartType] = useState('bar');
-  const [chartKicker, setChartKicker] = useState('PHYSICIAN WORKFORCE DATA');
-  const [chartTitle, setChartTitle] = useState('The physician shortage keeps widening');
+  const [chartKicker, setChartKicker] = useState('LAKEHOUSE BENCHMARK');
+  const [chartTitle, setChartTitle] = useState('Where the compute bill actually goes');
   const [chartRows, setChartRows] = useState('2026: 37800\n2031: 61000\n2036: 86000');
-  const [chartSource, setChartSource] = useState('Source: AAMC physician workforce projections');
+  const [chartSource, setChartSource] = useState('Source: your own run logs. Replace before posting.');
   const [chartPrefix, setChartPrefix] = useState('');
   const [chartSuffix, setChartSuffix] = useState('');
   const [chartVariant, setChartVariant] = useState('dark');
@@ -98,15 +98,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
     if (tab === 'branded') makeBranded();
   }, [style, tab]);
 
-  // Example prompts follow the loaded brand so the Databricks lane never sees
-  // healthcare boilerplate (and vice versa).
-  const isSteadfastBrand = /steadfast/i.test(brand.name || '');
-  const QUICK_PROMPTS = isSteadfastBrand ? [
-    { l: 'Stat Card', p: `Professional dark navy infographic card for ${brand.name}. One large bold stat "86,000". Clean, modern. "Projected U.S. physician shortage by 2036" below. 16:9.` },
-    { l: 'Quote Card', p: 'Thought leadership social media card. Steel blue gradient. Large quotation mark. "A strong locum tenens strategy is not a backup plan." Split layout. 16:9.' },
-    { l: 'Hospital Scene', p: 'Modern hospital corridor, physician in white coat walking confidently. Warm, hopeful. Natural candid composition. Landscape 16:9.' },
-    { l: 'Data Viz', p: 'Clean data visualization on dark background. Upward trend line. Blue/teal palette. "Physician Demand Forecast 2024-2036". Elegant, LinkedIn-ready. 16:9.' },
-  ] : [
+  const QUICK_PROMPTS = [
     { l: 'Stat Card', p: `Professional dark infographic card for ${brand.name || 'a data professional'}. One large bold stat. Clean, modern, data-engineering aesthetic. Accent color ${brand.colors?.accent || '#3b82f6'}. 16:9.` },
     { l: 'Quote Card', p: 'Thought leadership social media card. Dark gradient. Large quotation mark. A sharp one-line opinion about data engineering. Split layout. 16:9.' },
     { l: 'Pipeline Scene', p: 'Abstract visualization of a modern data pipeline: bronze, silver, gold layered flow. Dark background, glowing accents. Elegant, technical. Landscape 16:9.' },

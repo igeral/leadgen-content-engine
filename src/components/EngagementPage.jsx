@@ -1,22 +1,18 @@
 import { useState, useEffect } from 'react';
 import Icon from './Icon';
 
-// One saved DM template per lane/identity. Steadfast services the 1099 Starter
-// Kit comment trigger; Databricks services "comment DATA and I'll send the
-// pattern/repo" posts on Victor's personal profile.
-const DEFAULT_TEMPLATES = {
-  steadfast:
-    'Hi {{name}},\n\nThanks for commenting on my post. Here is the Locum Physician 1099 Starter Kit:\n[PASTE LEAD MAGNET LINK HERE, e.g. a Google Drive share link]\n\nLet me know if you have any questions!',
-  databricks:
-    'Hey {{name}},\n\nThanks for the comment. Here is the repo/pattern from the post:\n[PASTE GITHUB OR DRIVE LINK HERE]\n\nIf you build on it or would have done it differently, I genuinely want to hear how it goes.',
-};
-const templateKey = (lane) => `leadgen.engagement.template.${lane}`;
+// The DM template services "comment DATA and I'll send the repo/pattern"
+// posts. Edits are saved locally.
+const DEFAULT_TEMPLATE =
+  'Hey {{name}},\n\nThanks for the comment. Here is the repo/pattern from the post:\n[PASTE GITHUB OR DRIVE LINK HERE]\n\nIf you build on it or would have done it differently, I genuinely want to hear how it goes.';
+const TEMPLATE_KEY = 'leadgen.engagement.template.v2';
 const SESSION_KEY = 'leadgen.engagement.session.v1';
 
 export default function EngagementPage({ showToast }) {
   const [rawInput, setRawInput] = useState('');
-  const [lane, setLane] = useState('steadfast');
-  const [messageTemplate, setMessageTemplate] = useState(DEFAULT_TEMPLATES.steadfast);
+  const [messageTemplate, setMessageTemplate] = useState(() => {
+    try { return localStorage.getItem(TEMPLATE_KEY) || DEFAULT_TEMPLATE; } catch (e) { return DEFAULT_TEMPLATE; }
+  });
   // Leads + processed status survive a page refresh: losing track of who was
   // already DM'd mid-session means double-messaging prospects.
   const [leads, setLeads] = useState(() => {
@@ -52,16 +48,9 @@ export default function EngagementPage({ showToast }) {
     showToast('Lead list cleared.');
   };
 
-  // Load the active lane's template from localStorage (legacy single-template
-  // key migrates into the steadfast lane).
-  useEffect(() => {
-    const cached = localStorage.getItem(templateKey(lane)) || (lane === 'steadfast' ? localStorage.getItem('leadgen.engagement.template') : null);
-    setMessageTemplate(cached || DEFAULT_TEMPLATES[lane]);
-  }, [lane]);
-
   const handleTemplateChange = (e) => {
     setMessageTemplate(e.target.value);
-    localStorage.setItem(templateKey(lane), e.target.value);
+    try { localStorage.setItem(TEMPLATE_KEY, e.target.value); } catch (err) { /* quota */ }
   };
 
   const parseComments = () => {
@@ -210,20 +199,6 @@ export default function EngagementPage({ showToast }) {
 
           <div className="card p-5">
             <h3 className="text-lg font-semibold text-white mb-3">2. Edit DM Template</h3>
-            <div className="flex gap-2 mb-3">
-              <button
-                className={`flex-1 text-xs px-3 py-2 rounded-lg font-semibold border transition-all ${lane === 'steadfast' ? 'border-blue-500 bg-blue-900 bg-opacity-20 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500'}`}
-                onClick={() => setLane('steadfast')}
-              >
-                <span className="inline-flex items-center gap-1.5 justify-center"><Icon name="building" size={13} /> Steadfast (1099 Kit)</span>
-              </button>
-              <button
-                className={`flex-1 text-xs px-3 py-2 rounded-lg font-semibold border transition-all ${lane === 'databricks' ? 'border-blue-500 bg-blue-900 bg-opacity-20 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500'}`}
-                onClick={() => setLane('databricks')}
-              >
-                <span className="inline-flex items-center gap-1.5 justify-center"><Icon name="package" size={13} /> Databricks (Personal)</span>
-              </button>
-            </div>
             <p className="text-xs text-gray-400 mb-3">
               Use <code className="text-blue-400">{"{{name}}"}</code> to insert the prospect's first name automatically.
             </p>

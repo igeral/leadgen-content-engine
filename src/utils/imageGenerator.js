@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-//  STEADFAST-STYLE BRANDED CARDS
+//  BRANDED CARDS
 //  Typography-led. No icons, no clip art, no decorative borders.
 //  - System A: Single Stat Card
 //  - System B: Editorial / Quote Card
@@ -36,13 +36,12 @@ const STYLE = {
   },
 };
 
-// Brand-aware palette. Steadfast (or missing brand colors) keeps the tuned
-// STYLE exactly; other brands derive the same light/dark card variants from
-// their preset colors so each lane's cards carry its own identity.
-const STEADFAST_PRIMARY = '#1a365d';
+// Brand-aware palette. A brand without colors falls back to the base STYLE;
+// otherwise the light/dark card variants derive from the preset's colors so
+// every card carries the brand's identity.
 function resolveStyle(variant, brandColors) {
   const c = brandColors || {};
-  if (!c.primary || String(c.primary).toLowerCase() === STEADFAST_PRIMARY) return STYLE[variant];
+  if (!c.primary) return STYLE[variant];
   const accent = c.accent || c.primary;
   const soft = c.light || '#e2e8f0';
   if (variant === 'light') {

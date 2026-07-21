@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt, FRIDAY_POST_TYPES } from '../utils/openrouter';
+import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
 
@@ -111,7 +111,7 @@ function shortenWords(s, max) {
 
 // Detect lines that are made up only of hashtag-style or CamelCase tag words
 // (with or without a leading '#'). The model sometimes drops bare tag tokens
-// like "HospitalLeadership PhysicianShortage" or just "HospitalLeadership"
+// like "DataEngineering Lakehouse" or just "DataEngineering"
 // alone on a line — these are pillar/audience labels meant for our internal
 // tracking, not for display on the card. Drop them before they reach the
 // closing-line, hook, or subtitle of any card.
@@ -404,7 +404,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // ctx.slotImageStyle / ctx.slotVariant override the user's UI selection
   // when a fixed schedule is dictating the image system per slot.
   const makeBrandedCard = (postText, cardIndex, totalCards, ctx) => {
-    // Text-only posts (e.g. Friday attention posts) skip card generation.
+    // Text-only slots skip card generation.
     if (ctx && ctx.noImage) {
       return { url: null, pages: [], textOnly: true, prompt: 'Text-only post (no card)', error: null };
     }
@@ -669,16 +669,6 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
         const failedSlots = [];
         const seenTopicHints = [...userAvoid];
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-        // FRIDAY: pick 2 DIFFERENT post types from the 5 available types,
-        // one per Friday slot (Fri 10am and Fri 12pm). Shuffle so each Generate
-        // click rotates which two types land that week.
-        const fridaySlotIndices = SCHEDULE.map((s, i) => (s.friday ? i : -1)).filter((i) => i >= 0);
-        const FRIDAY_KEYS = Object.keys(FRIDAY_POST_TYPES);
-        const shuffledFridayTypes = [...FRIDAY_KEYS].sort(() => Math.random() - 0.5);
-        const fridayTypeBySlotIdx = {};
-        fridaySlotIndices.forEach((slotIdx, i) => {
-          fridayTypeBySlotIdx[slotIdx] = shuffledFridayTypes[i % shuffledFridayTypes.length];
-        });
         // Try one slot; retry once after a longer delay if the first attempt fails.
         const tryOnce = async (slot, slotPillar, slotContentOpts) => {
           return await callOpenRouter(
@@ -698,14 +688,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             trendingTopic: trendingForThisSlot,
             avoidTopics: seenTopicHints,
             hookFormula: slot.hookFormula,
-            fridayPostType: slot.friday ? fridayTypeBySlotIdx[i] : null,
           };
-          // Genphase: show Friday post type when applicable so the user sees
-          // 'Friday 10:00 AM · Hot Take' instead of generic 'Friday Newsjack'.
-          if (slot.friday) {
-            const ft = FRIDAY_POST_TYPES[fridayTypeBySlotIdx[i]];
-            setGenPhase(`${slot.day} ${slot.time} \u00B7 Friday ${ft ? ft.name : 'Newsjack'} (${i + 1}/${SCHEDULE.length})...`);
-          }
           let text = null;
           let lastError = null;
           for (let attempt = 0; attempt < 2; attempt++) {
@@ -778,7 +761,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       slotImageStyle: slot.imageStyle,
       slotVariant: slot.variant,
       slotPillarName: slot.pillar,
-      noImage: slot.friday === true || slot.imageStyle == null,
+      noImage: slot.imageStyle == null,
     }));
     const imgResults = makeBrandedImagesForPosts(postTexts, { trending: activeTrending, topicHint: topic }, perPostCtx) || [];
 
@@ -869,11 +852,11 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   // ─── STATICS BANK ───
   // Batch-generates evergreen posts (not tied to news or builds) straight to
   // Saved. They're the fallback buffer: any week the build doesn't happen,
-  // post from the bank and the lane never goes dark.
+  // post from the bank and the feed never goes dark.
   const generateStaticsBank = async () => {
     if (!live) { showToast('Add an OpenRouter API key first.'); return; }
     const BANK_SIZE = 8;
-    const pillarName = brand.presetId === 'databricks' ? 'Career & Craft' : 'Physician Lifestyle';
+    const pillarName = 'Career & Craft';
     const bankPillar = brand.pillars.find((p) => p.name === pillarName) || brand.pillars[0];
     setBankLoading(true);
     const texts = [];
@@ -1149,7 +1132,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {!selectedTrending && (
             <>
               <label className="block text-sm font-medium text-gray-300 mb-1">Topic / Angle <span className="text-gray-500">{'(optional, or use trending above)'}</span></label>
-              <textarea className="input-field mb-3" placeholder={brand.presetId === 'databricks' ? 'e.g., What the AI data-center buildout looks like in real grid data...' : 'e.g., The hidden cost of reactive physician staffing...'} value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+              <textarea className="input-field mb-3" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
             </>
           )}
 
@@ -1224,7 +1207,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
               {/* Keywords */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Keywords <span className="text-gray-500">(comma-separated)</span></label>
-                <input className="input-field" placeholder="e.g., locum tenens, physician shortage, staffing ROI" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+                <input className="input-field" placeholder="e.g., lakehouse, Unity Catalog, pipeline cost" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
               </div>
               {/* Key Phrases */}
               <div>
@@ -1292,9 +1275,10 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             ) : (
               <>{'\u26A1'} {(() => {
                 const total = brand.schedule && brand.schedule.length > 0 ? brand.schedule.length : IMAGE_COUNT;
-                // Day range derived from schedule slots (Mon-Fri if any Friday slot exists, else Mon-Thu).
+                // Day range spans whatever days the schedule actually uses.
                 const sched = brand.schedule || [];
-                const dayRange = sched.some((s) => s.day === 'Friday') ? 'Mon-Fri' : (sched.length > 0 ? 'Mon-Thu' : 'Mon-Fri');
+                const days = [...new Set(sched.map((s) => s.day))];
+                const dayRange = days.length ? days.map((d) => d.slice(0, 3)).join('/') : 'week';
                 return autoTrending && live
                   ? `Find Trend + Fill ${dayRange} (${total} Posts)`
                   : `Generate Full Week (${total} Posts, ${dayRange})`;
@@ -1417,7 +1401,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                 ) : images[selectedImg]?.textOnly ? (
                   <div className="w-full rounded-lg bg-amber-900/30 border border-amber-700/40 p-8 text-center">
                     <div className="text-amber-300 text-sm font-bold tracking-wider mb-1">TEXT-ONLY POST</div>
-                    <div className="text-amber-200/70 text-xs">Friday attention posts are text-only by design. No card image.</div>
+                    <div className="text-amber-200/70 text-xs">This slot is text-only by design. No card image.</div>
                     <div className="text-amber-200/50 text-xs mt-2">{selectedImg + 1} of {images.length}</div>
                   </div>
                 ) : null}

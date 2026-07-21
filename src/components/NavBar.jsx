@@ -1,33 +1,21 @@
 import { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import Icon from './Icon';
 
-// Navigation adapts to the active lane: each identity only shows the pages
-// its workflow actually uses. Build Radar is the Databricks lane's front door
-// (weekend-build discovery), so it sits right after Generate there and is
-// hidden for Steadfast.
-const ITEMS = {
-  steadfast: [
-    { id: 'generate', label: 'Generate', icon: 'zap' },
-    { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-    { id: 'archive', label: 'Archive', icon: 'archive' },
-    { id: 'engagement', label: 'Engagement', icon: 'message' },
-    { id: 'images', label: 'Images', icon: 'image' },
-    { id: 'settings', label: 'Settings', icon: 'sliders' },
-  ],
-  databricks: [
-    { id: 'radar', label: 'Build Radar', icon: 'radar' },
-    { id: 'generate', label: 'Generate', icon: 'zap' },
-    { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-    { id: 'archive', label: 'Archive', icon: 'archive' },
-    { id: 'engagement', label: 'Engagement', icon: 'message' },
-    { id: 'images', label: 'Images', icon: 'image' },
-    { id: 'settings', label: 'Settings', icon: 'sliders' },
-  ],
-};
+// Ordered by the actual weekly workflow: find a build (Radar), write from the
+// build notes (Generate), see the week (Calendar), manage drafts (Archive),
+// work the comments (Engagement), make cards (Images), configure (Settings).
+const NAV_ITEMS = [
+  { id: 'radar', label: 'Build Radar', icon: 'radar' },
+  { id: 'generate', label: 'Generate', icon: 'zap' },
+  { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+  { id: 'archive', label: 'Archive', icon: 'archive' },
+  { id: 'engagement', label: 'Engagement', icon: 'message' },
+  { id: 'images', label: 'Images', icon: 'image' },
+  { id: 'settings', label: 'Settings', icon: 'sliders' },
+];
 
-export default function NavBar({ page, setPage, brand }) {
-  const lane = brand?.presetId === 'databricks' ? 'databricks' : 'steadfast';
-  const items = ITEMS[lane];
+// The active pill physically travels between tabs (measured, not faked).
+export default function NavBar({ page, setPage }) {
   const btnRefs = useRef({});
   const [pill, setPill] = useState(null);
 
@@ -37,7 +25,7 @@ export default function NavBar({ page, setPage, brand }) {
     else setPill(null);
   };
 
-  useLayoutEffect(measure, [page, lane]);
+  useLayoutEffect(measure, [page]);
   useEffect(() => {
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
@@ -51,7 +39,7 @@ export default function NavBar({ page, setPage, brand }) {
           style={{ transform: `translate(${pill.left}px, ${pill.top}px)`, width: pill.width, height: pill.height }}
         />
       )}
-      {items.map((n) => (
+      {NAV_ITEMS.map((n) => (
         <button
           key={n.id}
           ref={(el) => { btnRefs.current[n.id] = el; }}

@@ -4,14 +4,16 @@ AI-powered social media content generator for LinkedIn & Facebook lead generatio
 
 ## Features
 
-- **AI Content Generation** — Uses OpenRouter API to generate platform-optimized posts via Claude, GPT-4o, Gemini, Llama, and more
-- **AI Image Generation** — Generate images with GPT Image 1, FLUX 1.1 Pro, Gemini Flash, Stable Diffusion 3.5, and FLUX Schnell
-- **Branded Image Cards** — Canvas-based stat cards, quote cards, and multi-image sets with your brand colors
-- **Dual Image Mode** — Switch between instant branded cards and AI-generated images
-- **Content Calendar** — Weekly posting schedule with engagement checklist
-- **Brand Presets** — Comes with Steadfast Physician Partners preset; customize for any business
-- **Live/Demo Mode** — Works without an API key (demo mode) or with your OpenRouter key (live AI)
-- **Save & Export** — Save generated posts and export as JSON
+- **AI Content Generation**: uses the OpenRouter API to generate platform-optimized posts via Claude, GPT-4o, Gemini, Llama, and more
+- **Build Radar**: scans for trending, data-attachable topics and pairs each with a real public dataset and a weekend build idea
+- **Source-notes mode**: posts can be written strictly from your real notes, so the engine never invents first-person experience
+- **AI Image Generation**: GPT Image 1, FLUX 1.1 Pro, Gemini Flash, Stable Diffusion 3.5, FLUX Schnell
+- **Branded Image Cards**: canvas-based stat, quote, carousel, and data chart cards (bar/line) in your brand colors
+- **Content Calendar**: weekly posting schedule with an operating checklist
+- **Engagement Studio**: paste post comments, get parsed leads and templated DMs
+- **Brand Presets**: ships with a personal-brand preset; customize for any business
+- **Live/Demo Mode**: works without an API key (demo mode) or with your OpenRouter key (live AI)
+- **Save & Export**: archive generated posts, export as JSON or text
 
 ## Quick Start
 
@@ -55,20 +57,23 @@ leadgen-content-engine/
 │   └── favicon.svg
 ├── src/
 │   ├── components/
+│   │   ├── ArchivePage.jsx
+│   │   ├── BuildRadarPage.jsx
 │   │   ├── CalendarPage.jsx
+│   │   ├── EngagementPage.jsx
 │   │   ├── GeneratePage.jsx
 │   │   ├── Header.jsx
+│   │   ├── Icon.jsx
 │   │   ├── ImageStudioPage.jsx
 │   │   ├── NavBar.jsx
-│   │   ├── SavedPage.jsx
 │   │   ├── SettingsPage.jsx
 │   │   └── Toast.jsx
 │   ├── hooks/
 │   │   └── useToast.js
 │   ├── presets/
 │   │   ├── blank.js
-│   │   ├── mockPosts.js
-│   │   └── steadfast.js
+│   │   ├── databricks.js
+│   │   └── mockPosts.js
 │   ├── styles/
 │   │   └── index.css
 │   ├── utils/

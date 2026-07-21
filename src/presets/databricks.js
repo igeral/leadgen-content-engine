@@ -1,13 +1,11 @@
-// Victor's personal-LinkedIn brand preset (career lane, separate identity from
-// the Steadfast company page — same engine, different lane).
-// Rules for this lane: PUBLIC knowledge only — docs, release notes, blogs,
-// conference talks, published case studies. NEVER employer internals, client
-// names, colleagues, or anything learned on the job that is not already public.
-// Light cadence by design (2 slots/week): this is a second-priority track.
-// NOTE: pillar names deliberately avoid the fuzzy matches in
-// openrouter.js getPillarConfig() ("workforce", "physician lifestyle",
-// "staffing"/"leadership", "industry"/"commentary", "lead magnet") so the
-// Steadfast hospital-flavored frameworks never get injected into these posts.
+// Victor's personal-LinkedIn brand preset. This is the career lane: the goal
+// is to make his Databricks skill publicly verifiable.
+// Hard rules: PUBLIC knowledge only, meaning docs, release notes, blogs,
+// conference talks, and published case studies. NEVER employer internals,
+// client names, colleagues, or anything learned on the job that is not
+// already public. The day job must never be put at risk.
+// Cadence is deliberately light (3 slots/week) and build-first: Build Log
+// posts require Victor's real notes from a weekend build.
 export const DATABRICKS_PRESET = {
   presetId: 'databricks',
   name: 'Victor Anirah',
@@ -21,7 +19,7 @@ export const DATABRICKS_PRESET = {
     bg: '#1B3139',
     text: '#ffffff',
   },
-  // Consumed by buildSystemPrompt for non-Steadfast brands.
+  // Consumed by buildSystemPrompt.
   positioning: `This is Victor's personal brand, and it exists to do one thing: make him so publicly, verifiably good at the Databricks ecosystem that $200k+ analytics engineering and analytics manager roles come to him, and the Databricks community itself takes notice.
 Every post should read like it was written by someone a hiring manager would shortlist on the spot:
 - Enterprise-grade thinking: governance (Unity Catalog), medallion data layers, cost control, security, team skill ramp. Speak to the problems enterprises actually hire $200k+ people to solve.

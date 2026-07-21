@@ -26,16 +26,9 @@ function timeMinutes(t) {
   return h * 60 + parseInt(m[2], 10);
 }
 
-// Lane-specific operating checklists — these mirror the actual strategy docs,
-// not generic social-media advice.
-const CHECKLIST_STEADFAST = [
-  { t: 'Before posting', d: 'Comment as the page on 2-3 large physician/hospital-leadership posts. Warm the algorithm, get the page seen.' },
-  { t: 'First hour', d: 'Reply to every comment fast. Early comments multiply reach ~5x.' },
-  { t: 'Thursday (magnet day)', d: 'Watch for "TAX" comments on the lead-magnet post. Run them through Engagement Studio the same evening.' },
-  { t: 'Monthly (2nd Saturday)', d: 'Invite ritual: page invites + engager invites + follower log. Calendar reminder is set; process in strategy/linkedin-page-growth-ritual.md.' },
-];
-
-const CHECKLIST_DATABRICKS = [
+// The operating checklist mirrors the build-to-post process doc, not generic
+// social-media advice.
+const CHECKLIST = [
   { t: 'Weekend', d: 'One 2-3h build on Databricks Free Edition (pick it in Build Radar). Jot rough notes; paste them into Generate. The build feeds the whole week.' },
   { t: 'Before posting', d: 'Spend 10 min leaving 2 genuinely expert comments on big data-engineering posts. Peers notice peers.' },
   { t: 'First hour', d: 'Reply to every comment, ask a follow-up back. WHO comments matters more than how many.' },
@@ -44,9 +37,7 @@ const CHECKLIST_DATABRICKS = [
 
 export default function CalendarPage({ brand }) {
   const sched = Array.isArray(brand.schedule) ? brand.schedule : [];
-  const isDatabricks = brand.presetId === 'databricks';
   const days = WEEK.filter((d) => sched.some((s) => s.day === d));
-  const checklist = isDatabricks ? CHECKLIST_DATABRICKS : CHECKLIST_STEADFAST;
 
   if (!sched.length) {
     return (
@@ -66,9 +57,7 @@ export default function CalendarPage({ brand }) {
           <Icon name="calendar" size={22} strokeWidth={2.2} /> Weekly Content Calendar
         </h2>
         <p className="text-sm text-gray-400 mt-1">
-          {brand.name} · {sched.length} posts/week · {isDatabricks
-            ? 'build-first personal lane: Tue build story, Thu pattern, Sat ecosystem take'
-            : 'heartbeat cadence: one post per weekday, Friday runs the attention engine'}
+          {brand.name} · {sched.length} posts/week · build-first: Tue build story, Thu pattern, Sat ecosystem take
         </p>
       </div>
 
@@ -111,9 +100,9 @@ export default function CalendarPage({ brand }) {
 
       <div className="card p-6">
         <h3 className="text-lg font-bold text-white mb-1">Operating checklist</h3>
-        <p className="text-xs text-gray-500 mb-4">{isDatabricks ? 'The weekly loop for the personal Databricks lane.' : 'The weekly loop for the Steadfast page.'}</p>
+        <p className="text-xs text-gray-500 mb-4">The weekly loop. Full process in strategy/databricks-build-to-post-process.md.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {checklist.map((item, i) => (
+          {CHECKLIST.map((item, i) => (
             <div key={i} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <div className="text-blue-400 font-bold text-sm mb-1">{item.t}</div>
               <div className="text-gray-300 text-sm">{item.d}</div>
