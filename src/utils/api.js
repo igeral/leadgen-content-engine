@@ -42,7 +42,7 @@ function apiHeaders(key) {
     'Authorization': `Bearer ${key}`,
     'Content-Type': 'application/json',
     'HTTP-Referer': window.location.href,
-    'X-Title': 'LeadGen Content Engine',
+    'X-Title': 'Architect OS',
   };
 }
 
@@ -290,7 +290,7 @@ For each opportunity return:
 - targetBrand: The specific enterprise brand this prototype is "Inspired By"
 - buildIdea: what to build on the backend (Databricks medallion/API) AND the frontend (React/PowerApp).
 - postAngle: the one-line hook the resulting LinkedIn post would open with
-- audienceMatch: "Founders / CTOs"
+- audienceMatch: strict enum, either "data-leaders" or "general viral" based on technical depth
 - effortHours: realistic estimate (3-4)
 
 Rank by heat. Return ONLY a valid JSON array, no markdown fences.

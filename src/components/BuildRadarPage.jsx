@@ -189,7 +189,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
               <div className="flex items-start justify-between gap-2">
                 <h3 className="text-base font-bold text-[var(--text-1)] leading-snug">{idea.topic}</h3>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap border ${idea.audienceMatch === 'data-leaders' ? 'bg-green-900/40 text-green-500 border-green-700/50' : 'bg-yellow-900/30 text-yellow-500 border-yellow-700/50'}`}>
-                  {idea.audienceMatch === 'data-leaders' ? 'data leaders' : 'general viral'}
+                  {idea.audienceMatch === 'data-leaders' ? 'data leaders' : idea.audienceMatch === 'general viral' ? 'general viral' : (idea.audienceMatch || 'general viral').toLowerCase()}
                 </span>
               </div>
               <p className="text-xs text-[var(--text-2)]">{idea.whyHot}</p>
