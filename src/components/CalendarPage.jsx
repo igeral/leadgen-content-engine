@@ -38,7 +38,7 @@ export default function CalendarPage() {
         <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
           <Icon name="calendar" size={22} strokeWidth={2.2} /> Bi-Weekly Sprint View
         </h2>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-[var(--text-2)] mt-1">
           AI Data Product Architect operating rhythm. One build fuels the entire week's content.
         </p>
       </div>

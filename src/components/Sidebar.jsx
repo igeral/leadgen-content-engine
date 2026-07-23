@@ -38,10 +38,24 @@ const MENU_GROUPS = [
   }
 ];
 
-export default function Sidebar({ page, setPage }) {
+export default function Sidebar({ page, setPage, isMobileMenuOpen, setIsMobileMenuOpen }) {
   return (
-    <aside className="w-64 border-r border-[var(--card-border)] bg-[var(--surface-2)] flex flex-col h-full overflow-y-auto custom-scrollbar flex-shrink-0">
-      <div className="p-4 flex-1">
+    <>
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      
+      <aside className={`
+        fixed md:relative w-64 h-[calc(100vh-73px)] md:h-full z-30 
+        border-r border-[var(--card-border)] bg-[var(--surface-2)] 
+        flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
         {MENU_GROUPS.map((group, gIdx) => (
           <div key={gIdx} className="mb-6">
             <h3 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-wider mb-2 px-3">
@@ -75,5 +89,6 @@ export default function Sidebar({ page, setPage }) {
         AI Data Product Architect
       </div>
     </aside>
+    </>
   );
 }

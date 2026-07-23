@@ -1,7 +1,38 @@
-import { TEXT_MODELS, IMAGE_MODELS, isUsingEnvKey } from '../utils/openrouter';
+import { useState, useEffect } from 'react';
+import { TEXT_MODELS, IMAGE_MODELS, isUsingEnvKey, getApiKey } from '../utils/openrouter';
 
 export default function SettingsPage({ manualKey, setManualKey, selModel, setSelModel, selImgModel, setSelImgModel, live }) {
   const usingEnv = isUsingEnvKey(manualKey);
+  const [validating, setValidating] = useState(false);
+  const [keyInfo, setKeyInfo] = useState(null);
+  const [keyError, setKeyError] = useState('');
+
+  const validateKey = async () => {
+    const key = getApiKey(manualKey);
+    if (!key) {
+      setKeyError('No key provided to validate.');
+      return;
+    }
+    
+    setValidating(true);
+    setKeyError('');
+    setKeyInfo(null);
+    
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      if (!res.ok) {
+        throw new Error(`Invalid Key (Status: ${res.status})`);
+      }
+      const json = await res.json();
+      setKeyInfo(json.data);
+    } catch (e) {
+      setKeyError(e.message);
+    } finally {
+      setValidating(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -9,7 +40,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
         <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
           <span className="text-xl">⚙️</span> System Settings
         </h2>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-[var(--text-2)] mt-1">
           Configure API keys and model selections for the AI Data Product Architect engine.
         </p>
       </div>
@@ -24,14 +55,47 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
               {live ? (usingEnv ? 'Live Mode — using .env key' : 'Live Mode — using manual key') : 'Demo Mode — no API key detected'}
             </span>
           </div>
-          {!live && <p className="text-xs text-gray-400 mt-1 ml-5">Add VITE_OPENROUTER_API_KEY to your .env file, or paste a key in the header.</p>}
+          {!live && <p className="text-xs text-[var(--text-2)] mt-1 ml-5">Add VITE_OPENROUTER_API_KEY to your .env file, or paste a key in the header.</p>}
         </div>
 
-        <label className="block text-sm font-medium text-gray-300 mb-1">Manual API Key Override</label>
-        <input type="password" className="input-field mb-1" placeholder={usingEnv ? '.env key active — override here' : 'sk-or-...'} value={manualKey} onChange={(e) => setManualKey(e.target.value)} />
-        <p className="text-xs text-gray-500 mb-6">Get your key at openrouter.ai/keys</p>
+        <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Manual API Key Override</label>
+        <div className="flex gap-2 mb-1">
+          <input type="password" className="input-field flex-1" placeholder={usingEnv ? '.env key active — override here' : 'sk-or-...'} value={manualKey} onChange={(e) => setManualKey(e.target.value)} />
+          <button 
+            className="btn-secondary whitespace-nowrap" 
+            onClick={validateKey}
+            disabled={validating || !live}
+          >
+            {validating ? 'Validating...' : 'Validate Key'}
+          </button>
+        </div>
+        <p className="text-xs text-[var(--text-3)] mb-6">Get your key at openrouter.ai/keys</p>
 
-        <label className="block text-sm font-medium text-gray-300 mb-1">Content Writing Model</label>
+        {keyError && (
+          <div className="mb-6 p-3 rounded bg-red-900/30 border border-red-700 text-sm text-red-300">
+            {keyError}
+          </div>
+        )}
+        
+        {keyInfo && (
+          <div className="mb-6 p-4 rounded-lg bg-[var(--surface)] border border-[var(--card-border)] text-sm space-y-2">
+            <h4 className="font-bold text-[var(--accent)] mb-3">Key Details</h4>
+            <div className="flex justify-between">
+              <span className="text-[var(--text-2)]">Label:</span>
+              <span className="text-white font-medium">{keyInfo.label}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--text-2)]">Tier:</span>
+              <span className="text-white font-medium">{keyInfo.is_free_tier ? 'Free' : 'Paid'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--text-2)]">Usage:</span>
+              <span className="text-white font-medium">${(keyInfo.usage || 0).toFixed(4)} / {keyInfo.limit ? `$${keyInfo.limit}` : 'No Limit'}</span>
+            </div>
+          </div>
+        )}
+
+        <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Content Writing Model</label>
         <select className="input-field mb-4" value={selModel} onChange={(e) => setSelModel(e.target.value)}>
           <optgroup label="Premium">
             {TEXT_MODELS.filter((m) => m.tier === 'premium').map((m) => (
@@ -45,7 +109,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
           </optgroup>
         </select>
 
-        <label className="block text-sm font-medium text-gray-300 mb-1">Image Generation Model</label>
+        <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Image Generation Model</label>
         <select className="input-field" value={selImgModel} onChange={(e) => setSelImgModel(e.target.value)}>
           {IMAGE_MODELS.map((m) => (
             <option key={m.id} value={m.id}>{m.name}</option>
@@ -55,7 +119,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
 
       <div className="card p-5">
         <h3 className="text-lg font-bold text-white mb-2">Architect Persona Locked</h3>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-[var(--text-2)]">
           The brand identity forms have been removed to enforce the strict "AI Data Product Architect" persona across all tools in the suite. This ensures consistent, high-ticket positioning.
         </p>
       </div>

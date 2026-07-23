@@ -29,7 +29,7 @@ export default function BuildRadarPage({ manualKey, selModel, live, showToast, o
     } catch (e) { /* ignore corrupt cache */ }
   }, []);
 
-  const scan = async () => {
+  const scan = async (useExcel = false) => {
     if (!live) {
       showToast('Add an OpenRouter API key first (Settings).');
       return;
@@ -38,29 +38,51 @@ export default function BuildRadarPage({ manualKey, selModel, live, showToast, o
     setError('');
     try {
       let excelIdeas = [];
-      try {
-        const res = await fetch('/Databricks Ideas.xlsx');
-        if (res.ok) {
+      if (useExcel) {
+        try {
+          const res = await fetch('/Databricks Ideas.xlsx');
+          if (!res.ok) throw new Error('File not found');
           const buffer = await res.arrayBuffer();
           excelIdeas = await parseExcelIdeas(buffer);
+          if (excelIdeas.length === 0) throw new Error('No ideas found in Excel');
+          showToast(`Loaded ${excelIdeas.length} ideas from Excel.`);
+        } catch (e) {
+          console.warn('Failed to load excel ideas:', e);
+          setError(`Failed to load Excel: ${e.message}`);
+          setScanning(false);
+          return;
         }
-      } catch (e) {
-        console.warn('Failed to load excel ideas:', e);
       }
 
       const { ideas: found, live: usedWeb } = await fetchBuildIdeas(manualKey, selModel, 5, excelIdeas);
-      setIdeas(found);
+      
+      // Basic dataset URL validation
+      const validatedFound = found.map(idea => {
+        let validLink = idea.dataset?.access;
+        if (validLink && !/^https?:\/\//i.test(validLink)) {
+          if (validLink.includes('.')) {
+            validLink = `https://${validLink}`;
+            idea.dataset.access = validLink;
+          } else {
+            idea.dataset.verified = false; // Not a valid URL
+          }
+        }
+        return idea;
+      });
+
+      setIdeas(validatedFound);
       setLiveScan(usedWeb);
       const at = new Date().toISOString();
       setScannedAt(at);
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ideas: found, live: usedWeb, at })); } catch (e) {}
-      showToast(`Found ${found.length} build opportunities${usedWeb ? ' (live web scan)' : ''}`);
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ideas: validatedFound, live: usedWeb, at })); } catch (e) {}
+      showToast(`Found ${validatedFound.length} build opportunities${usedWeb ? ' (live web scan)' : ''}`);
     } catch (e) {
       setError(e.message);
     } finally {
       setScanning(false);
     }
   };
+
 
   const clearIdeas = () => {
     setIdeas([]);
@@ -114,12 +136,32 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
       )}
 
       {scannedAt && (
-        <p className="text-xs text-gray-500 mb-4">
+        <p className="text-xs text-[var(--text-3)] mb-4">
           Last scan: {new Date(scannedAt).toLocaleString()} {liveScan === false && '(from model knowledge, not live web search. Double-check "why it\'s hot" claims before posting.)'}
         </p>
       )}
 
-      {ideas.length === 0 && !scanning ? (
+      {scanning ? (
+        <div className="space-y-6 mt-6">
+          <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--card-border)] animate-pulse flex gap-4 h-20">
+             <div className="w-6 h-6 bg-[var(--surface-3)] rounded-full"></div>
+             <div className="flex-1 space-y-2 py-1">
+               <div className="h-4 bg-[var(--surface-3)] rounded w-1/4"></div>
+               <div className="h-3 bg-[var(--surface-3)] rounded w-3/4"></div>
+             </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="card p-5 flex flex-col gap-3 animate-pulse h-64">
+                <div className="h-5 bg-[var(--surface-3)] rounded w-3/4"></div>
+                <div className="h-4 bg-[var(--surface-3)] rounded w-full mt-2"></div>
+                <div className="h-4 bg-[var(--surface-3)] rounded w-5/6"></div>
+                <div className="h-20 bg-[var(--surface-3)] rounded-lg mt-2"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : ideas.length === 0 ? (
         <div className="card p-10 flex flex-col items-center text-center mt-6">
           <span className="mb-4 text-[var(--text-3)]"><Icon name="radar" size={52} strokeWidth={1.5} /></span>
           <h4 className="text-base font-medium text-[var(--text-2)] mb-1">No scan yet</h4>
@@ -128,8 +170,8 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
             Ideas ranked data-leaders-first: reach that impresses hiring managers beats reach that impresses strangers.
           </p>
           <div className="mt-8 flex gap-3">
-            <button className="btn-secondary text-xs" onClick={() => scan()}>Scan Current Trends</button>
-            <button className="btn-secondary text-xs" onClick={() => scan()}>Scan Databricks Ideas</button>
+            <button className="btn-secondary text-xs" onClick={() => scan(false)}>Scan Current Trends</button>
+            <button className="btn-secondary text-xs" onClick={() => scan(true)}>Scan Databricks Ideas</button>
           </div>
         </div>
       ) : (

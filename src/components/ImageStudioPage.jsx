@@ -140,7 +140,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
           <div>
             <div className="flex gap-2 mb-4">
               {[{ id: 'chart', l: '📊 Data Chart' }, { id: 'multi', l: '📑 Carousel' }].map((s) => (
-                <button key={s.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${style === s.id ? 'bg-[var(--accent)] bg-opacity-20 text-[var(--accent)]' : 'bg-gray-800 text-gray-400'}`} onClick={() => setStyle(s.id)}>
+                <button key={s.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${style === s.id ? 'bg-[var(--accent)] bg-opacity-20 text-[var(--accent)]' : 'bg-[var(--surface-2)] text-[var(--text-2)]'}`} onClick={() => setStyle(s.id)}>
                   {s.l}
                 </button>
               ))}
@@ -148,19 +148,19 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
 
             {style === 'multi' && (
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-300">Card #</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Card #</label>
                 <div className="flex gap-2">
                   {['1', '2', '3'].map((n) => (
-                    <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`} onClick={() => setCardNum(n)}>Card {n}</button>
+                    <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${cardNum === n ? 'bg-gray-700 text-white' : 'bg-[var(--surface-2)] text-[var(--text-2)]'}`} onClick={() => setCardNum(n)}>Card {n}</button>
                   ))}
                 </div>
-                <label className="block text-sm font-medium text-gray-300">Topic</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Topic</label>
                 <input className="input-field" value={multiTopic} onChange={(e) => setMultiTopic(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Title</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Title</label>
                 <input className="input-field" value={multiTitle} onChange={(e) => setMultiTitle(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Subtitle</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Subtitle</label>
                 <input className="input-field" value={multiSub} onChange={(e) => setMultiSub(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Tag</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Tag</label>
                 <input className="input-field" value={multiTag} onChange={(e) => setMultiTag(e.target.value)} />
               </div>
             )}
@@ -168,29 +168,29 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
               <div className="space-y-3">
                 <div className="flex gap-2">
                   {[{ id: 'bar', l: 'Bar chart' }, { id: 'line', l: 'Line chart' }].map((t) => (
-                    <button key={t.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${chartType === t.id ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`} onClick={() => setChartType(t.id)}>{t.l}</button>
+                    <button key={t.id} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${chartType === t.id ? 'bg-gray-700 text-white' : 'bg-[var(--surface-2)] text-[var(--text-2)]'}`} onClick={() => setChartType(t.id)}>{t.l}</button>
                   ))}
                   {[{ id: 'dark', l: 'Dark' }, { id: 'light', l: 'Light' }].map((v) => (
-                    <button key={v.id} className={`py-2 px-4 rounded-lg text-sm font-semibold ${chartVariant === v.id ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`} onClick={() => setChartVariant(v.id)}>{v.l}</button>
+                    <button key={v.id} className={`py-2 px-4 rounded-lg text-sm font-semibold ${chartVariant === v.id ? 'bg-gray-700 text-white' : 'bg-[var(--surface-2)] text-[var(--text-2)]'}`} onClick={() => setChartVariant(v.id)}>{v.l}</button>
                   ))}
                 </div>
-                <label className="block text-sm font-medium text-gray-300">Kicker (small top label)</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Kicker (small top label)</label>
                 <input className="input-field" value={chartKicker} onChange={(e) => setChartKicker(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Title</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Title</label>
                 <input className="input-field" value={chartTitle} onChange={(e) => setChartTitle(e.target.value)} />
-                <label className="block text-sm font-medium text-gray-300">Data (one per line: Label: value)</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Data (one per line: Label: value)</label>
                 <textarea className="input-field font-mono text-sm" value={chartRows} onChange={(e) => setChartRows(e.target.value)} rows={5} placeholder={'2026: 37800\n2031: 61000\n2036: 86000'} />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Value prefix</label>
+                    <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Value prefix</label>
                     <input className="input-field" value={chartPrefix} onChange={(e) => setChartPrefix(e.target.value)} placeholder="$" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Value suffix</label>
+                    <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Value suffix</label>
                     <input className="input-field" value={chartSuffix} onChange={(e) => setChartSuffix(e.target.value)} placeholder="%" />
                   </div>
                 </div>
-                <label className="block text-sm font-medium text-gray-300">Source (required: a data card without a source is a rumor)</label>
+                <label className="block text-sm font-medium text-[var(--text-2)]">Source (required: a data card without a source is a rumor)</label>
                 <input className="input-field" value={chartSource} onChange={(e) => setChartSource(e.target.value)} />
               </div>
             )}
@@ -201,12 +201,12 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
         {/* AI controls */}
         {tab === 'ai' && (
           <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-300 mb-1">Image Model</label>
+            <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Image Model</label>
             <select className="input-field" value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
               {IMAGE_MODELS.map((m) => (<option key={m.id} value={m.id}>{m.name}</option>))}
             </select>
 
-            <label className="block text-sm font-medium text-gray-300 mb-1">Images to Generate</label>
+            <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Images to Generate</label>
             <div className="flex gap-2">
               {[1, 3, 5].map((n) => (
                 <button key={n} className={`flex-1 py-2 rounded-lg text-sm font-semibold ${imgCount === n ? 'tab-active' : 'tab-inactive'}`} onClick={() => setImgCount(n)}>
@@ -215,18 +215,18 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
               ))}
             </div>
 
-            <label className="block text-sm font-medium text-gray-300 mb-2">Quick Templates</label>
+            <label className="block text-sm font-medium text-[var(--text-2)] mb-2">Quick Templates</label>
             <div className="grid grid-cols-2 gap-2">
               {QUICK_PROMPTS.map((q, i) => (<button key={i} className="btn-ghost text-xs text-left py-2" onClick={() => setAiPrompt(q.p)}>{q.l}</button>))}
             </div>
 
-            <label className="block text-sm font-medium text-gray-300 mb-1">Image Prompt</label>
+            <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Image Prompt</label>
             <textarea className="input-field" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={6} placeholder="Describe the image you want... variations will be auto-generated for multiple images." />
             {aiError && <p className="text-red-400 text-sm">Error: {aiError}</p>}
             <button className="btn-primary w-full py-3" onClick={makeAI} disabled={aiLoading || !live}>
               {aiLoading ? (aiProgress || 'Generating...') : !live ? 'API Key Required' : `\uD83E\uDD16 Generate ${imgCount} AI Image${imgCount > 1 ? 's' : ''}`}
             </button>
-            {!live && <p className="text-xs text-gray-500 text-center">Set your OpenRouter API key in .env or paste in the header bar.</p>}
+            {!live && <p className="text-xs text-[var(--text-3)] text-center">Set your OpenRouter API key in .env or paste in the header bar.</p>}
           </div>
         )}
       </div>
@@ -236,7 +236,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-white">
             Preview
-            {successfulImages.length > 1 && <span className="text-sm font-normal text-gray-400 ml-2">({successfulImages.length} images)</span>}
+            {successfulImages.length > 1 && <span className="text-sm font-normal text-[var(--text-2)] ml-2">({successfulImages.length} images)</span>}
           </h2>
           {successfulImages.length > 0 && (
             <div className="flex gap-2">
@@ -263,9 +263,9 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
         <canvas ref={cvRef} style={{ display: 'none' }} />
 
         {aiLoading ? (
-          <div className="text-center py-20 text-gray-500">
+          <div className="text-center py-20 text-[var(--text-3)]">
             <div className="spinner mx-auto mb-4" style={{ width: 48, height: 48 }} />
-            <p className="font-medium text-gray-300">{aiProgress || 'Generating...'}</p>
+            <p className="font-medium text-[var(--text-2)]">{aiProgress || 'Generating...'}</p>
             <p className="text-sm mt-1">{imgCount > 1 ? `Creating ${imgCount} image variations` : '10-30 seconds typically'}</p>
           </div>
         ) : successfulImages.length > 0 ? (
@@ -287,7 +287,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
                   <button
                     key={i}
                     className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-video ${
-                      selectedImg === i ? 'border-blue-500' : 'border-gray-600 hover:border-gray-400'
+                      selectedImg === i ? 'border-blue-500' : 'border-[var(--input-border)] hover:border-gray-400'
                     } ${!img.url ? 'opacity-40' : ''}`}
                     onClick={() => img.url && setSelectedImg(i)}
                     disabled={!img.url}
@@ -295,7 +295,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
                     {img.url ? (
                       <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i + 1}`} />
                     ) : (
-                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-red-400">{'\u2717'}</div>
+                      <div className="w-full h-full bg-[var(--surface-2)] flex items-center justify-center text-xs text-red-400">{'\u2717'}</div>
                     )}
                   </button>
                 ))}
@@ -303,7 +303,7 @@ export default function ImageStudioPage({ brand, manualKey, selImgModel, live, s
             )}
           </div>
         ) : (
-          <div className="text-center py-20 text-gray-500">
+          <div className="text-center py-20 text-[var(--text-3)]">
             <div className="text-5xl mb-3">{tab === 'ai' ? '\uD83E\uDD16' : '\uD83C\uDFA8'}</div>
             <p>Click Generate to create your images</p>
           </div>

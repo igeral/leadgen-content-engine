@@ -8,7 +8,7 @@ export default function Toast({ message, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="toast fixed bottom-8 right-8 z-50">
+    <div className="toast pointer-events-auto">
       <span className="toast-check"><Icon name="check" size={13} strokeWidth={3} /></span>
       {message}
     </div>

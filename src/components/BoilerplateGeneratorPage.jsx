@@ -1,120 +1,171 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import JSZip from 'jszip';
 import Icon from './Icon';
+import { callOpenRouter } from '../utils/openrouter';
 
-export default function BoilerplateGeneratorPage() {
+export default function BoilerplateGeneratorPage({ manualKey, selModel, live, showToast, radarDraft }) {
   const [appName, setAppName] = useState('');
   const [complexity, setComplexity] = useState('intermediate');
   const [code, setCode] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const generateBoilerplate = () => {
-    let components = '';
-    if (complexity === 'beginner') {
-      components = `
-        <div className="bg-[var(--surface)] p-6 rounded-xl border border-[var(--card-border)] text-center">
-          <h2 className="text-xl font-semibold mb-4 text-[var(--text-1)]">Basic Chart</h2>
-          <p className="text-[var(--text-2)] mb-4">Paste your dataset here to render a basic visualization.</p>
-          <div className="h-48 bg-[var(--surface-2)] rounded border border-[var(--input-border)] flex items-center justify-center text-[var(--text-3)]">
-            [Simple Chart]
-          </div>
-        </div>`;
-    } else if (complexity === 'intermediate') {
-      components = `
-        <div className="col-span-2 bg-[var(--surface)] p-6 rounded-xl border border-[var(--card-border)]">
-          <h2 className="text-xl font-semibold mb-4 text-[var(--text-1)]">Core Telemetry / Insights</h2>
-          <div className="h-64 bg-[var(--surface-2)] rounded border border-[var(--input-border)] flex items-center justify-center text-[var(--text-3)]">
-            <span className="text-[var(--text-3)]">[Chart Component Here]</span>
-          </div>
-        </div>
-        
-        <div className="bg-[var(--surface)] p-6 rounded-xl border border-[var(--card-border)] space-y-6">
-          <div>
-            <h3 className="text-sm uppercase text-[var(--text-3)] font-bold tracking-wider mb-2">Key Metric 1</h3>
-            <p className="text-4xl font-light text-green-500">$2.4M</p>
-          </div>
-          <div>
-            <h3 className="text-sm uppercase text-[var(--text-3)] font-bold tracking-wider mb-2">Key Metric 2</h3>
-            <p className="text-4xl font-light text-blue-500">14,200</p>
-          </div>
-          <div>
-            <button className="w-full bg-[var(--accent)] hover:opacity-90 text-white font-bold py-3 rounded">
-              Generate Report
-            </button>
-          </div>
-        </div>`;
-    } else {
-      components = `
-        <div className="col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-           <div className="bg-[var(--surface)] p-4 rounded-xl border border-[var(--card-border)]">
-             <div className="text-xs text-[var(--text-3)] uppercase font-bold mb-1">Latency</div>
-             <div className="text-2xl font-semibold text-[var(--text-1)]">12ms</div>
-           </div>
-           <div className="bg-[var(--surface)] p-4 rounded-xl border border-[var(--card-border)]">
-             <div className="text-xs text-[var(--text-3)] uppercase font-bold mb-1">Throughput</div>
-             <div className="text-2xl font-semibold text-[var(--text-1)]">45k req/s</div>
-           </div>
-           <div className="bg-[var(--surface)] p-4 rounded-xl border border-[var(--card-border)]">
-             <div className="text-xs text-[var(--text-3)] uppercase font-bold mb-1">Error Rate</div>
-             <div className="text-2xl font-semibold text-red-400">0.01%</div>
-           </div>
-           <div className="bg-[var(--surface)] p-4 rounded-xl border border-[var(--card-border)]">
-             <div className="text-xs text-[var(--text-3)] uppercase font-bold mb-1">Compute Cost</div>
-             <div className="text-2xl font-semibold text-green-400">$12.40/hr</div>
-           </div>
-        </div>
-        <div className="col-span-3 bg-[var(--surface)] p-6 rounded-xl border border-[var(--card-border)]">
-          <h2 className="text-xl font-semibold mb-4 text-[var(--text-1)]">Real-time Architecture Topology</h2>
-          <div className="h-80 bg-[var(--surface-2)] rounded border border-[var(--input-border)] flex items-center justify-center text-[var(--text-3)]">
-            <span className="text-[var(--text-3)]">[Complex Network/Node Graph Here]</span>
-          </div>
-        </div>`;
+  useEffect(() => {
+    if (radarDraft && radarDraft.topic) {
+      setAppName(`${radarDraft.targetBrand || 'Enterprise'} ${radarDraft.topic} UI`);
     }
+  }, [radarDraft]);
 
-    setCode(`// Run: npx create-vite@latest ${appName.toLowerCase().replace(/\\s+/g, '-') || 'my-data-app'} --template react
-// Install: npm install tailwindcss postcss autoprefixer react-chartjs-2 chart.js
-// --- App.jsx Boilerplate ---
+  const generateBoilerplate = async () => {
+    if (!appName.trim()) {
+      if (showToast) showToast('Please enter an app name.');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const sysPrompt = `You are a Senior Frontend Architect. Generate ONLY valid React/Tailwind JSX code for a single-file prototype dashboard.
+Do not include markdown fences. Do not include explanations. Do not include import statements unless absolutely necessary.
+Just output the raw code for the React component that can be copy-pasted.`;
 
-import React from 'react';
+      const radarContext = radarDraft ? `\nContext: This app is inspired by ${radarDraft.targetBrand}. Topic: ${radarDraft.topic}.` : '';
 
-export default function App() {
-  return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text-1)] p-8">
-      <header className="mb-8 border-b border-[var(--card-border)] pb-4">
-        <h1 className="text-3xl font-bold">${appName || 'Data Product Showcase'}</h1>
-        <p className="text-[var(--text-2)] mt-2">Powered by Databricks Lakehouse architecture.</p>
-      </header>
+      const userPrompt = `Generate a modern, beautiful React dashboard component named 'App' using Tailwind CSS.
+App Name: ${appName}
+Complexity Level: ${complexity} (beginner = simple chart, intermediate = KPIs + charts, expert = Network topology + KPIs)${radarContext}
+
+Use a dark mode color palette (slate-900 backgrounds, glowing accents).
+Return ONLY the raw JSX code.`;
+
+      const raw = await callOpenRouter(manualKey, selModel, sysPrompt, userPrompt);
+      const cleaned = raw.replace(/^```(?:jsx|javascript|tsx)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      setCode(cleaned);
+      if (showToast) showToast('Boilerplate generated!');
+    } catch (err) {
+      console.error(err);
+      if (showToast) showToast(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadZip = async () => {
+    if (!code) return;
+    try {
+      const zip = new JSZip();
       
-      <main className="grid grid-cols-1 md:grid-cols-3 gap-6">
-${components}
-      </main>
-    </div>
-  );
-}
-`);
+      const packageJson = {
+        "name": appName.toLowerCase().replace(/\\s+/g, '-') || "prototype-ui",
+        "private": true,
+        "version": "0.0.0",
+        "type": "module",
+        "scripts": {
+          "dev": "vite",
+          "build": "vite build",
+          "preview": "vite preview"
+        },
+        "dependencies": {
+          "lucide-react": "^0.300.0",
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0"
+        },
+        "devDependencies": {
+          "@vitejs/plugin-react": "^4.2.1",
+          "autoprefixer": "^10.4.16",
+          "postcss": "^8.4.32",
+          "tailwindcss": "^3.4.0",
+          "vite": "^5.0.8"
+        }
+      };
+
+      const tailwindConfig = `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`;
+
+      const indexCss = `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0f172a;
+  color: #f8fafc;
+}`;
+
+      const mainJsx = `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)`;
+
+      const indexHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${appName}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>`;
+
+      zip.file("package.json", JSON.stringify(packageJson, null, 2));
+      zip.file("tailwind.config.js", tailwindConfig);
+      zip.file("postcss.config.js", "export default { plugins: { tailwindcss: {}, autoprefixer: {}, }, }");
+      zip.file("index.html", indexHtml);
+      zip.folder("src").file("index.css", indexCss);
+      zip.folder("src").file("main.jsx", mainJsx);
+      zip.folder("src").file("App.jsx", code);
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${appName.toLowerCase().replace(/\\s+/g, '-') || 'boilerplate'}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      if (showToast) showToast(`ZIP Error: ${e.message}`);
+    }
   };
 
   return (
-    <div className="animate-fade-in text-[var(--text-1)] max-w-4xl">
+    <div className="animate-fade-in text-[var(--text-1)] max-w-4xl mx-auto md:p-8 p-4">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-[var(--text-1)] flex items-center gap-2.5">
-            <Icon name="code" size={22} strokeWidth={2.2} /> Code Boilerplate
+          <h2 className="text-2xl md:text-3xl font-bold text-[var(--text-1)] flex items-center gap-2.5">
+            <Icon name="code" size={26} strokeWidth={2.2} /> Code Boilerplate
           </h2>
-          <p className="text-sm text-[var(--text-2)] mt-1 max-w-2xl">
-            Generate instant React + Tailwind starter code for your weekend frontend builds to save setup time.
-            Control the complexity of the UI to match the scope of your data product.
+          <p className="text-sm md:text-base text-[var(--text-2)] mt-2 max-w-2xl">
+            Generate an AI-powered React + Tailwind starter dashboard for your weekend builds.
           </p>
         </div>
       </div>
       
-      <div className="card p-6 mb-8">
+      <div className="bg-[var(--surface-2)] border border-[var(--card-border)] rounded-xl p-6 mb-8">
         <div className="mb-6">
-          <label className="block text-xs font-bold text-[var(--text-3)] uppercase tracking-wider mb-2">Target App Name</label>
+          <label className="block text-xs font-bold text-[var(--text-3)] uppercase tracking-wider mb-2">Target App Name / Focus</label>
           <input 
             type="text" 
             value={appName}
             onChange={(e) => setAppName(e.target.value)}
             placeholder="e.g., Visa Telemetry Dashboard"
-            className="input-field w-full"
+            className="w-full bg-[var(--surface)] border border-[var(--card-border)] rounded p-3 text-[var(--text-1)] focus:outline-none focus:border-[var(--accent)]"
           />
         </div>
 
@@ -141,21 +192,30 @@ ${components}
 
         <button 
           onClick={generateBoilerplate}
-          className="btn-primary w-full py-3"
+          disabled={loading || !live}
+          className="bg-[var(--accent)] hover:brightness-110 disabled:opacity-50 text-white font-bold w-full py-3 rounded transition-all"
         >
-          Generate React Boilerplate
+          {loading ? 'Writing Code...' : !live ? 'Need API Key' : 'Generate React Boilerplate'}
         </button>
       </div>
 
       {code && (
-        <div className="bg-[#0f172a] p-6 rounded-xl border border-slate-700 relative shadow-2xl">
-          <button 
-            onClick={() => navigator.clipboard.writeText(code)}
-            className="absolute top-4 right-4 btn-secondary text-xs flex items-center gap-2 bg-slate-800 border-slate-600 text-slate-300 hover:text-white"
-          >
-            <Icon name="copy" size={14} /> Copy Code
-          </button>
-          <pre className="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap font-mono mt-4">
+        <div className="bg-[var(--surface-2)] p-6 rounded-xl border border-[var(--card-border)] relative shadow-2xl overflow-hidden">
+          <div className="absolute top-4 right-4 flex gap-2">
+            <button 
+              onClick={() => navigator.clipboard.writeText(code)}
+              className="btn-secondary text-xs flex items-center gap-2 bg-[var(--surface-3)] border-slate-600 text-[var(--text-2)] hover:text-white"
+            >
+              <Icon name="copy" size={14} /> Copy
+            </button>
+            <button 
+              onClick={downloadZip}
+              className="btn-primary text-xs flex items-center gap-2 bg-blue-600 hover:bg-blue-500 border-none text-white"
+            >
+              <Icon name="download" size={14} /> Download ZIP
+            </button>
+          </div>
+          <pre className="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap font-mono mt-10">
             {code}
           </pre>
         </div>
