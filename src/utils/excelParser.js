@@ -11,12 +11,13 @@ export const parseExcelIdeas = async (fileBuffer) => {
       const data = XLSX.utils.sheet_to_json(sheet);
       
       data.forEach(row => {
-        if (row.Company || row.Brand || row.Name) {
+        const brand = row.Company || row.Brand || row.Name || row['Company Name'];
+        if (brand) {
           ideas.push({
             sheet: sheetName,
-            brand: row.Company || row.Brand || row.Name,
+            brand: brand,
             industry: row.Industry || sheetName,
-            data_context: row.Data || row.Context || 'Enterprise Data'
+            data_context: row.Data || row.Context || row['Data Engineering & Databricks Ideas'] || 'Enterprise Data'
           });
         }
       });
