@@ -21,6 +21,7 @@ const STORAGE_KEY = 'leadgen.savedPosts.v1';
 const KEY_STORAGE_KEY = 'leadgen.manualKey.v1';
 const BRAND_STORAGE_KEY = 'leadgen.brand.v2';
 const MODEL_STORAGE_KEY = 'leadgen.models.v1';
+const THEME_STORAGE_KEY = 'leadgen.theme.v1';
 
 // We now use localforage for savedPosts to avoid localStorage quotas
 async function loadSavedPosts() {
