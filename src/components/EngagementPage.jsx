@@ -171,7 +171,7 @@ export default function EngagementPage({ showToast }) {
     <div className="animate-fade-in text-[var(--text-1)]">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-[var(--text-1)] flex items-center gap-2.5">
-          <Icon name="message" size={22} strokeWidth={2.2} /> Repo Distribution
+          <Icon name="message" size={22} strokeWidth={2.2} /> Comments to DMs
         </h2>
         <p className="text-sm text-[var(--text-2)] mt-1">
           A risk-free, 100% compliant way to automate sending Lead Magnets. No browser bots or APIs needed.

@@ -147,11 +147,48 @@ const PATHS = {
       <polyline points="8 6 2 12 8 18" />
     </>
   ),
+  // A missing name renders nothing, which silently produces invisible
+  // buttons. These three were exactly that: the mobile menu toggle and the
+  // Archive import control had no glyph at all.
+  menu: (
+    <>
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </>
+  ),
+  x: (
+    <>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </>
+  ),
 };
+
+export const ICON_NAMES = Object.keys(PATHS);
 
 export default function Icon({ name, size = 16, strokeWidth = 2, className = '', style }) {
   const path = PATHS[name];
-  if (!path) return null;
+  if (!path) {
+    // Returning null here is how the mobile menu button and the Archive
+    // import button ended up invisible. Warn loudly and draw a placeholder so
+    // the control stays clickable and the gap is obvious in review.
+    if (typeof console !== 'undefined') console.warn(`[Icon] unknown icon "${name}". Add it to Icon.jsx.`);
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+        className={className} style={{ flexShrink: 0, opacity: 0.6, ...style }} aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="3" strokeDasharray="3 3" />
+      </svg>
+    );
+  }
   return (
     <svg
       width={size}

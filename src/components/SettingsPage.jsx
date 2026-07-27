@@ -52,7 +52,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-full ${live ? 'bg-green-400' : 'bg-yellow-400'}`} />
             <span className={`text-sm font-medium ${live ? 'text-green-300' : 'text-yellow-300'}`}>
-              {live ? (usingEnv ? 'Live Mode — using .env key' : 'Live Mode — using manual key') : 'Demo Mode — no API key detected'}
+              {live ? (usingEnv ? 'Live Mode: using .env key' : 'Live Mode: using manual key') : 'Demo Mode: no API key detected'}
             </span>
           </div>
           {!live && <p className="text-xs text-[var(--text-2)] mt-1 ml-5">Add VITE_OPENROUTER_API_KEY to your .env file, or paste a key in the header.</p>}
@@ -60,7 +60,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
 
         <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Manual API Key Override</label>
         <div className="flex gap-2 mb-1">
-          <input type="password" className="input-field flex-1" placeholder={usingEnv ? '.env key active — override here' : 'sk-or-...'} value={manualKey} onChange={(e) => setManualKey(e.target.value)} />
+          <input type="password" className="input-field flex-1" placeholder={usingEnv ? '.env key active, override here' : 'sk-or-...'} value={manualKey} onChange={(e) => setManualKey(e.target.value)} />
           <button 
             className="btn-secondary whitespace-nowrap" 
             onClick={validateKey}

@@ -387,7 +387,18 @@ select.input-field {
   border: 1px solid rgba(234, 179, 8, 0.45);
   color: #fde047;
 }
-:root[data-theme='light'] .mode-pill-demo { color: #a16207; }
+/* Darker text plus a stronger tint: the default yellow-on-pale-yellow was
+   close to unreadable on the light header. */
+:root[data-theme='light'] .mode-pill-demo {
+  color: #713f12;
+  background: rgba(234, 179, 8, 0.22);
+  border-color: rgba(161, 98, 7, 0.5);
+}
+:root[data-theme='light'] .mode-pill-live {
+  color: #14532d;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(21, 128, 61, 0.5);
+}
 
 .purple-active {
   background: linear-gradient(135deg, #7c3aed, #8b5cf6);
