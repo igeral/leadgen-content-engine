@@ -854,19 +854,39 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             </>
           )}
 
-          {/* Source notes — real-work material for practitioner posts (Build Log etc.).
-              The prompt treats these as the ONLY allowed source of first-person claims. */}
-          <label className="block text-sm font-medium text-[var(--text-2)] mb-1">
-            My notes from real work <span className="text-[var(--text-3)]">(optional — required for Build Log posts)</span>
-          </label>
-          <textarea
-            className="input-field mb-1"
-            placeholder="Paste rough notes from what you actually built: what you made, what broke, the numbers. The post will only claim what's in here."
-            value={sourceNotes}
-            onChange={(e) => setSourceNotes(e.target.value)}
-            rows={3}
-          />
-          <p className="text-xs text-[var(--text-3)] mb-3">Posts never invent first-person experiences. No notes = no "I built this" claims.</p>
+          {/* Source notes: the ONLY allowed source of first-person claims. The
+              list of pillars that demand them is read off the preset, so a
+              pillar rename can never leave this label naming something stale. */}
+          {(() => {
+            const notePillars = (brand.pillars || []).filter((p) => p.requiresNotes).map((p) => p.name);
+            const scheduleNeedsNotes = (brand.schedule || []).some((s) => notePillars.includes(s.pillar));
+            const missing = scheduleNeedsNotes && !sourceNotes.trim();
+            return (
+              <>
+                <label className="block text-sm font-medium text-[var(--text-2)] mb-1">
+                  My notes from real work{' '}
+                  <span className="text-[var(--text-3)]">
+                    {notePillars.length ? `(required for ${notePillars.join(' and ')})` : '(optional)'}
+                  </span>
+                </label>
+                <textarea
+                  className="input-field mb-1"
+                  style={missing ? { borderColor: 'rgb(234 179 8 / 0.55)' } : undefined}
+                  placeholder="Paste rough notes from the build: what you made, what broke, the row counts, the runtime, the cost. The post will only claim what is in here."
+                  value={sourceNotes}
+                  onChange={(e) => setSourceNotes(e.target.value)}
+                  rows={4}
+                />
+                {missing ? (
+                  <p className="text-xs text-yellow-500 mb-3">
+                    No notes yet. {notePillars.join(' and ')} will be written as "what I am building next" plans instead of build reports. That is deliberate: the engine never invents experience.
+                  </p>
+                ) : (
+                  <p className="text-xs text-[var(--text-3)] mb-3">Posts never invent first-person experiences. No notes means no "I built this" claims.</p>
+                )}
+              </>
+            );
+          })()}
 
           {/* Advanced toggle */}
           <button
