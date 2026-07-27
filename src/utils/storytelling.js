@@ -18,6 +18,51 @@ export const FRAMEWORKS = {
 
 // Pillar-specific outlines. Keys match brand.pillars[].name (case-insensitive).
 export const PILLAR_MAP = {
+  'architecture teardown': {
+    framework: 'SLAY',
+    bestHooks: ['story_opener', 'pov_scenario'],
+    arc: 'Drop the reader inside the build → the decision that mattered → what broke → what the numbers said → invite better approaches.',
+    feeling: 'This person actually builds. I want to see the repo.',
+    beats: [
+      'Open mid-action, inside the build. A decision, a constraint, or the thing that broke. Never open with a feature announcement.',
+      'State what you set out to make and which real public dataset you pointed at it. One or two lines.',
+      'Walk the architecture as decisions, not as a diagram description: where the layer boundaries sit, what runs incrementally, where governance lives, and why each choice was made.',
+      'The friction: what failed, what surprised you, what the docs did not say. Only someone who built it can write this part.',
+      'The numbers: rows processed, runtime, cost, rows dropped. Specific figures from the notes, never invented.',
+      'The trade-off you accepted, and where this design stops working at larger scale.',
+      'Mention the repo or notebook is linked in the comments. Never a link in the caption.',
+      'Close with ONE expertise invite: if you would have built this differently, say how.',
+    ],
+  },
+  'ui showcase': {
+    framework: 'SLAY',
+    bestHooks: ['reframe', 'pov_scenario'],
+    arc: 'The moment the data became usable → what the user can now do → the one hard part of the last mile → what you would change → invite counter-approaches.',
+    feeling: 'The pipeline is only half the job, and this person finished the other half.',
+    beats: [
+      'Open on the gap: a pipeline nobody can use is a cost centre. Put the reader in front of the dashboard nobody opens.',
+      'Show what the interface actually does in one concrete user action. Specific, not "improves visibility".',
+      'Explain how the frontend consumes the data: the serving layer, the query path, what is cached, what is live.',
+      'The hard part of the last mile: latency, auth, shaping the payload, or the query that was fine in SQL and terrible behind a click.',
+      'What you would change in v2, stated plainly.',
+      'Note the screen recording or repo is in the comments.',
+      'Close with ONE expertise invite about their own serving layer choices.',
+    ],
+  },
+  'business value': {
+    framework: 'PASS',
+    bestHooks: ['contrarian', 'bold_stat'],
+    arc: 'Name the cost the business is already paying → make it concrete → what the architecture changes → the honest limit → invite their numbers.',
+    feeling: 'This person thinks about money, not just pipelines. I would put them in front of an exec.',
+    beats: [
+      'Open with the cost the business is already absorbing without seeing it: rework, stale decisions, duplicated spend, an audit that failed.',
+      'Make it concrete for the sector, not for one company. Use a real public figure where you have one, and cite it.',
+      'State what the architecture actually changes, in the language a budget owner uses.',
+      'Show the mechanism briefly so it is credible to a technical reader, without becoming a code post.',
+      'The honest limit: when this is not worth the build, and what has to be true for the ROI to hold.',
+      'Close with ONE expertise invite asking what this costs at their scale.',
+    ],
+  },
   'build log': {
     framework: 'SLAY',
     bestHooks: ['story_opener', 'pov_scenario'],
@@ -110,7 +155,11 @@ export function getPillarConfig(pillarName) {
   if (!pillarName) return null;
   const key = String(pillarName).toLowerCase().trim();
   if (PILLAR_MAP[key]) return PILLAR_MAP[key];
-  // Fuzzy fall-throughs for renamed pillars
+  // Fuzzy fall-throughs so a pillar rename degrades gracefully instead of
+  // silently dropping the whole storytelling framework from the prompt.
+  if (key.includes('teardown')) return PILLAR_MAP['architecture teardown'];
+  if (key.includes('ui') || key.includes('showcase') || key.includes('frontend')) return PILLAR_MAP['ui showcase'];
+  if (key.includes('business') || key.includes('value') || key.includes('roi')) return PILLAR_MAP['business value'];
   if (key.includes('build')) return PILLAR_MAP['build log'];
   if (key.includes('deep dive') || key.includes('platform')) return PILLAR_MAP['platform deep dives'];
   if (key.includes('architecture') || key.includes('pattern')) return PILLAR_MAP['architecture patterns'];

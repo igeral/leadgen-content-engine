@@ -22,7 +22,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const [pillarIdx, setPillarIdx] = useState(0);
   const [audience, setAudience] = useState('');
   const [topic, setTopic] = useState('');
-  const [targetBrand, setTargetBrand] = useState('');
+  const [industry, setIndustry] = useState('');
   const [sourceNotes, setSourceNotes] = useState('');
 
   // Build Radar handoff: when an idea is sent over, pre-fill topic + notes.
@@ -30,7 +30,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     if (!radarDraft) return;
     setTopic(radarDraft.topic || '');
     setSourceNotes(radarDraft.notes || '');
-    setTargetBrand(radarDraft.targetBrand || '');
+    setIndustry(radarDraft.industry || '');
   }, [radarDraft]);
 
   // ─── TRENDING TOPICS ───
@@ -325,7 +325,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
       keyPhrases: parseList(keyPhrases),
       trendingTopic: null,
       sourceNotes,
-      targetBrand,
+      industry,
     };
 
     let activeTrending = forcedTrending || selectedTrending;
@@ -561,8 +561,12 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const generateStaticsBank = async () => {
     if (!live) { showToast('Add an OpenRouter API key first.'); return; }
     const BANK_SIZE = 8;
-    const pillarName = 'Career & Craft';
-    const bankPillar = brand.pillars.find((p) => p.name === pillarName) || brand.pillars[0];
+    // Evergreen posts must come from a pillar that makes no build claims,
+    // otherwise the bank would need real notes it does not have. Prefer
+    // Career & Craft, then any non-build pillar, and never a requiresNotes one.
+    const bankPillar = brand.pillars.find((p) => /career|craft/i.test(p.name))
+      || brand.pillars.find((p) => !p.requiresNotes)
+      || brand.pillars[0];
     setBankLoading(true);
     const texts = [];
     const avoid = [];
@@ -836,8 +840,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           {/* Topic (manual - shown when no trending selected) */}
           {!selectedTrending && (
             <>
-              <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Target Brand (Enterprise) <span className="text-[var(--text-3)]">{'(optional)'}</span></label>
-              <input className="input-field mb-3" placeholder="e.g. Visa, Tesla, Netflix" value={targetBrand} onChange={(e) => setTargetBrand(e.target.value)} />
+              <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Industry / Sector <span className="text-[var(--text-3)]">{'(optional)'}</span></label>
+              <input className="input-field mb-1" placeholder="e.g. Energy & Grid, Financial Services, Telecom" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+              <p className="text-xs text-[var(--text-3)] mb-3">Name the sector, not a company. Naming a brand you have no access to reads as spec work.</p>
               
               <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Topic / Angle <span className="text-[var(--text-3)]">{'(optional, or use trending above)'}</span></label>
               <textarea className="input-field mb-2" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />

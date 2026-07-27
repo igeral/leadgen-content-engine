@@ -85,7 +85,7 @@ ENGAGEMENT STRATEGY (when this conflicts with the CTA style above, this wins)
 ${brand.engagementStrategy}
 ` : '';
 
-  return `You are an AI Data Product Architect and expert social media content strategist writing on ${platform} for ${bn}. You target Founding Engineers, Fractional CTOs, and enterprise data leaders. Your goal is to showcase architecture teardowns, UI showcases, and production-ready data product blueprints rather than basic tutorials.
+  return `You are a Data & Lakehouse Architect and expert social media content strategist writing on ${platform} for ${bn}. You target data leaders, architects, and the hiring managers who fill senior data architecture roles. Your goal is to show architecture decisions, working "Last Mile" interfaces, and honest build reports rather than basic tutorials.
 
 BRAND
 - Name: ${bn}
@@ -170,7 +170,7 @@ DATE ACCURACY
 The current year is 2026. Only reference events, news, data, and stories from the current week or the past 30 days. The only exception is verified timeless statistics that are still accurate today${timelessExample}. If you cannot verify a story is current, do not use it.`;
 }
 
-export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, brandName, sourceNotes, targetBrand } = {}) {
+export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle, { keywords, keyPhrases, avoidTopics, trendingTopic, hookFormula, brandName, sourceNotes, industry } = {}) {
 
   let p = `Write a ${pillar.name} post targeting ${audience || pillar.audience}.`;
 
@@ -192,11 +192,16 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   // source of experiential claims. Without notes, first-person build stories
   // are forbidden (a fabricated "I built this" is credibility suicide the
   // first time a reader asks a follow-up question).
-  const isBuildLog = /build\s*log/i.test(pillar.name || '');
+  // Which pillars make first-person build claims is declared on the preset
+  // (`requiresNotes`), NOT inferred from the pillar's name. Name matching broke
+  // silently the moment pillars were renamed, which switched this guard off
+  // without any error. The name test is kept only as a fallback for presets
+  // that predate the flag.
+  const needsNotes = pillar.requiresNotes === true || /build\s*log/i.test(pillar.name || '');
   if (sourceNotes && sourceNotes.trim()) {
     p += `\n\nSOURCE NOTES (the author's real notes — the ONLY source of experiential claims):\n"""\n${sourceNotes.trim()}\n"""\nRULES FOR USING THE NOTES:\n- Every first-person claim (what was built, what broke, what it cost, what the numbers were) MUST come from these notes.\n- Do NOT invent tools, error messages, metrics, timelines, or outcomes that are not in the notes.\n- You may polish wording, structure, and add public general knowledge for context, but the experience itself is only what the notes say.\n- If the notes are thin on some detail, write around it. Never fill the gap with fiction.`;
-  } else if (isBuildLog) {
-    p += `\n\nNO SOURCE NOTES PROVIDED. This is a Build Log pillar, so you MUST NOT write a first-person "I built this" story — there is no real build to report. Instead, frame the post as forward-looking or analytical: what the author is planning to build next and why, or a breakdown of how one WOULD approach it, clearly framed as a plan, not a completed project. Zero fabricated experiences.`;
+  } else if (needsNotes) {
+    p += `\n\nNO SOURCE NOTES PROVIDED. The "${pillar.name}" pillar reports on a real build, so you MUST NOT write a first-person "I built this" story. There is no build to report. Instead, frame the post as forward-looking or analytical: what the author is planning to build next and why, or how one WOULD approach it, clearly framed as a plan rather than a completed project. Zero fabricated experiences, zero invented metrics.`;
   }
 
   // Trending topic takes priority as the main angle
@@ -207,7 +212,10 @@ export function buildUserPrompt(pillar, audience, topic, dataPoints, imageStyle,
   }
 
   if (topic && !trendingTopic) p += `\n\nTopic/Angle: ${topic}`;
-  if (targetBrand) p += `\n\nTARGET ENTERPRISE BRAND TO MIMIC:\nThis post should frame the project as "Inspired by ${targetBrand}" or refer to a challenge specifically faced by ${targetBrand}.`;
+  // Industry framing, never company framing. Naming a company you have no
+  // access to reads as spec work to senior practitioners and invites questions
+  // about constraints (scale, compliance, legacy) you cannot answer.
+  if (industry) p += `\n\nINDUSTRY CONTEXT: ${industry}.\nFrame the problem as one this whole sector has. Do NOT name a specific company as the subject of the build. Referring to a named company is only acceptable when citing something they have published publicly, with the source.`;
   if (keywords?.length) p += `\n\nKeywords to weave in naturally (don't force them): ${keywords.join(', ')}`;
   if (keyPhrases?.length) p += `\n\nKey phrases to include or riff on:\n${keyPhrases.map((k) => `- "${k}"`).join('\n')}`;
   if (avoidTopics?.length) {
