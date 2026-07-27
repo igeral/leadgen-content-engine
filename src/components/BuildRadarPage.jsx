@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchBuildIdeas } from '../utils/openrouter';
 import { parseExcelIdeas } from '../utils/excelParser';
 import Icon from './Icon';
+import ThisWeekPanel from './ThisWeekPanel';
 
 // Build Radar — the Databricks personal-brand lane's topic scanner.
 // Finds what's being discussed RIGHT NOW that a public dataset can be attached
@@ -110,12 +111,17 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
 
   return (
     <div className="animate-fade-in text-[var(--text-1)]">
+      {/* The planned sprint comes first. The scanner below is for when you want
+          to deviate from the plan, not the default path. */}
+      <ThisWeekPanel onUseIdea={onUseIdea} showToast={showToast} />
+
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-1)] flex items-center gap-2.5"><Icon name="radar" size={22} strokeWidth={2.2} /> Build Radar</h2>
           <p className="text-sm text-[var(--text-2)] mt-1 max-w-2xl">
-            Scans what data people are talking about right now and pairs each topic with a real public dataset
-            and a 2-3 hour Databricks Free Edition build. Pick one per weekend. The post comes from the build,
+            Off-plan ideas. Scans what data people are talking about right now and pairs each topic with a real
+            public dataset and a 2-3 hour Databricks Free Edition build. The sprint above is the default path;
+            use this when something more timely shows up. The post always comes from the build,
             never the other way around.
           </p>
         </div>

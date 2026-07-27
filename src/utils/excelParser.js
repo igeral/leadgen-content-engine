@@ -9,13 +9,42 @@ import * as XLSX from 'xlsx';
 // "Build Plan" is the human-facing sprint queue, not an idea bank, so it is
 // skipped here. Example Companies is illustrative context only: it must never
 // drive the framing of a post (name the industry, not the company).
-const SKIP_SHEETS = ['build plan'];
+// Neither of these is an idea bank. "Build Plan" is the local master's sprint
+// queue plus a private plan header (never published). "Build Queue" is the
+// sanitized, published version of just the sprints, read by parseBuildQueue.
+const SKIP_SHEETS = ['build plan', 'build queue'];
 
 const pick = (row, names) => {
   for (const n of names) {
     if (row[n] !== undefined && String(row[n]).trim() !== '') return String(row[n]).trim();
   }
   return '';
+};
+
+// Reads the sequenced sprint queue. Returns [] when the sheet is absent, so an
+// older workbook simply shows no plan rather than breaking the page.
+export const parseBuildQueue = async (fileBuffer) => {
+  try {
+    const workbook = XLSX.read(fileBuffer, { type: 'array' });
+    const name = workbook.SheetNames.find((n) => n.toLowerCase().trim() === 'build queue');
+    if (!name) return [];
+    return XLSX.utils.sheet_to_json(workbook.Sheets[name])
+      .map((row) => ({
+        sprint: Number(pick(row, ['Sprint'])) || 0,
+        industry: pick(row, ['Industry']),
+        question: pick(row, ['Question', 'Problem']),
+        dataset: pick(row, ['Dataset']),
+        datasetUrl: pick(row, ['Dataset URL', 'URL']),
+        backend: pick(row, ['Backend']),
+        frontend: pick(row, ['Frontend']),
+        postAngle: pick(row, ['Post Angle']),
+      }))
+      .filter((r) => r.sprint && r.question)
+      .sort((a, b) => a.sprint - b.sprint);
+  } catch (error) {
+    console.error('Failed to parse build queue', error);
+    return [];
+  }
 };
 
 export const parseExcelIdeas = async (fileBuffer) => {

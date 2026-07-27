@@ -1,39 +1,50 @@
 import { useState } from 'react';
 import Icon from './Icon';
 
+// Groups are numbered because the weekly loop is a sequence, not a menu of
+// equal choices: pick the sprint, build it, write the posts, work the comments.
+// Labels say what the page does, not what it is branded as.
 const MENU_GROUPS = [
   {
-    title: 'IDEATION',
+    title: '1 · PLAN',
     items: [
       { id: 'radar', label: 'Build Radar', icon: 'radar' },
       { id: 'calendar', label: 'Sprint Calendar', icon: 'calendar' },
     ]
   },
   {
-    title: 'THE BUILD',
+    title: '2 · BUILD',
     items: [
-      { id: 'boilerplate', label: 'Code Boilerplate', icon: 'code' },
-      { id: 'images', label: 'Architecture Visuals', icon: 'image' },
+      { id: 'boilerplate', label: 'Frontend Scaffold', icon: 'code' },
+      { id: 'images', label: 'Cards & Charts', icon: 'image' },
     ]
   },
   {
-    title: 'THE CONTENT',
+    title: '3 · WRITE',
     items: [
-      { id: 'youtube', label: 'YouTube Studio', icon: 'video' },
-      { id: 'generate', label: 'LinkedIn Posts', icon: 'zap' },
+      { id: 'generate', label: 'Generate Posts', icon: 'zap' },
     ]
   },
   {
-    title: 'DISTRIBUTION',
+    title: '4 · AFTER POSTING',
     items: [
-      { id: 'engagement', label: 'Repo Distribution', icon: 'message' },
-      { id: 'archive', label: 'Knowledge Base', icon: 'archive' },
+      { id: 'engagement', label: 'Comments to DMs', icon: 'message' },
+      { id: 'archive', label: 'Post Archive', icon: 'archive' },
     ]
   },
   {
     title: 'SYSTEM',
     items: [
       { id: 'settings', label: 'Settings', icon: 'sliders' },
+    ]
+  },
+  {
+    // Parked, not deleted. YouTube is a separate audience curve measured in
+    // years and reaches learners rather than hirers. See strategy_overview.md.
+    title: 'PARKED',
+    muted: true,
+    items: [
+      { id: 'youtube', label: 'YouTube Studio', icon: 'video' },
     ]
   }
 ];
@@ -57,10 +68,15 @@ export default function Sidebar({ page, setPage, isMobileMenuOpen, setIsMobileMe
       `}>
         <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
         {MENU_GROUPS.map((group, gIdx) => (
-          <div key={gIdx} className="mb-6">
+          <div key={gIdx} className={`mb-6 ${group.muted ? 'opacity-50' : ''}`}>
             <h3 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-wider mb-2 px-3">
               {group.title}
             </h3>
+            {group.muted && (
+              <p className="text-[10px] text-[var(--text-3)] px-3 mb-2 leading-snug">
+                Not part of the current plan. Short native clips go on the Thursday post instead.
+              </p>
+            )}
             <ul className="space-y-1">
               {group.items.map((item) => {
                 const isActive = page === item.id;
