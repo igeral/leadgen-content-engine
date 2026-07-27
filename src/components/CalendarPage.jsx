@@ -1,33 +1,36 @@
 import Icon from './Icon';
 
+// Mirrors strategy/databricks-build-to-post-process.md. Posting is weekly at
+// 3 posts; building is every other week, so a slipped build never empties the
+// feed. YouTube is deliberately parked: short native clips only.
 const SPRINT_SCHEDULE = [
   {
     phase: 'Phase 1: The Build',
-    day: 'Weekend',
+    day: 'Every other weekend',
     focus: 'Databricks Free Edition',
-    description: 'Pick an enterprise problem from Build Radar. Build a 2-3 hour solution. Jot rough notes, what broke, and performance metrics.',
+    description: 'Take the next row from the Build Plan sheet, or scan Build Radar. Confirm the dataset is real, then build for 2-3 hours. Jot rough notes as you go: what broke, the row counts, the runtime, the cost.',
     type: 'Code & Architecture'
   },
   {
-    phase: 'Phase 2: The Breakdown',
+    phase: 'Phase 2: Architecture Teardown',
     day: 'Tuesday',
-    focus: 'YouTube Teardown',
-    description: 'Use YouTube Studio to script a 5-10 minute whiteboard teardown or screen-share of the weekend build.',
-    type: 'Long-form Video'
-  },
-  {
-    phase: 'Phase 3: The Assets',
-    day: 'Thursday',
-    focus: 'LinkedIn Carousel',
-    description: 'Generate an architecture diagram or benchmark chart in Image Studio. Pair with a LinkedIn post explaining the ROI of the build.',
+    focus: 'LinkedIn carousel',
+    description: 'Paste your build notes into Generate. Walk the architecture as decisions: where the layer boundaries sit, what runs incrementally, the trade-off you accepted. Requires real notes, the engine will not invent a build.',
     type: 'Visual & Text'
   },
   {
-    phase: 'Phase 4: The Takeaway',
+    phase: 'Phase 3: UI Showcase',
+    day: 'Thursday',
+    focus: 'The Last Mile',
+    description: 'Show the frontend consuming the data. Attach a real screenshot or a 60-120 second screen recording posted natively. This is the differentiator: most data people never finish this half.',
+    type: 'Screenshot or short clip'
+  },
+  {
+    phase: 'Phase 4: Business Value',
     day: 'Saturday',
-    focus: 'Text & Boilerplate',
-    description: 'Post the Boilerplate generator code or a high-level text post discussing the strategy behind the architecture.',
-    type: 'Text Only'
+    focus: 'ROI for the sector',
+    description: 'No build required, so this post lands even on an off week. What the cost of not having this architecture looks like, in budget-owner language. Frame by industry, never by a named company.',
+    type: 'Stat card & text'
   }
 ];
 
@@ -39,7 +42,7 @@ export default function CalendarPage() {
           <Icon name="calendar" size={22} strokeWidth={2.2} /> Bi-Weekly Sprint View
         </h2>
         <p className="text-sm text-[var(--text-2)] mt-1">
-          AI Data Product Architect operating rhythm. One build fuels the entire week's content.
+          Data & Lakehouse Architect operating rhythm. One build every two weeks fuels the technical posts.
         </p>
       </div>
 

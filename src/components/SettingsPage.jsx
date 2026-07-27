@@ -41,7 +41,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
           <span className="text-xl">⚙️</span> System Settings
         </h2>
         <p className="text-sm text-[var(--text-2)] mt-1">
-          Configure API keys and model selections for the AI Data Product Architect engine.
+          Configure API keys and model selections for the content engine.
         </p>
       </div>
 
@@ -120,7 +120,7 @@ export default function SettingsPage({ manualKey, setManualKey, selModel, setSel
       <div className="card p-5">
         <h3 className="text-lg font-bold text-white mb-2">Architect Persona Locked</h3>
         <p className="text-sm text-[var(--text-2)]">
-          The brand identity forms have been removed to enforce the strict "AI Data Product Architect" persona across all tools in the suite. This ensures consistent, high-ticket positioning.
+          Brand identity is locked to the Data & Lakehouse Architect positioning in src/presets/databricks.js so every tool speaks with one voice. Edit the preset to change it.
         </p>
       </div>
     </div>

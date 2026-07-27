@@ -26,7 +26,7 @@ export default function Header({ brand, manualKey, setManualKey, live, theme, se
               className="inline-block w-2 h-2 rounded-full bg-[var(--accent)]"
               style={{ boxShadow: `0 0 6px var(--accent)` }}
             />
-            AI Data Product Architect
+            Data & Lakehouse Architect
             {live ? (
               <span className="badge mode-pill-live border border-green-500/30 hidden sm:inline-flex">
                 {usingEnv ? 'Live (.env)' : 'Live (manual key)'}

@@ -86,7 +86,7 @@ export default function Sidebar({ page, setPage, isMobileMenuOpen, setIsMobileMe
         ))}
       </div>
       <div className="p-4 border-t border-[var(--card-border)] text-xs text-[var(--text-3)] text-center">
-        AI Data Product Architect
+        Data & Lakehouse Architect
       </div>
     </aside>
     </>
