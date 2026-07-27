@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { callOpenRouter, callOpenRouterMultiPost, fetchTrendingTopics, buildSystemPrompt, buildUserPrompt } from '../utils/openrouter';
 import { generateStatCard, generateQuoteCard, generateMultiCard } from '../utils/imageGenerator';
 import { MOCK_POSTS } from '../presets/mockPosts';
+import Icon from './Icon';
 
 import {
   FormattedPost,
@@ -41,6 +42,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
 
   // ─── ADVANCED CONTENT CONTROLS ───
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showTargeting, setShowTargeting] = useState(false);
   const [tone, setTone] = useState('storytelling');
   const [ctaType, setCtaType] = useState('question');
   const [formatting, setFormatting] = useState('balanced');
@@ -76,6 +78,15 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
   const cvRef = useRef(null);
 
   const pillar = brand.pillars[pillarIdx] || brand.pillars[0];
+  // With a schedule, pillar/audience/card type are dictated per slot, so those
+  // controls are hidden rather than shown disabled.
+  const hasSchedule = !!(brand.schedule && brand.schedule.length > 0);
+  // What a Generate click actually produces. IMAGE_COUNT is the legacy
+  // no-schedule default (posts/day x weekdays) and must not be shown when a
+  // schedule exists, or the UI promises 15 posts and delivers 3.
+  const expectedPosts = hasSchedule ? brand.schedule.length : IMAGE_COUNT;
+  const expectedCards = hasSchedule ? brand.schedule.filter((s) => s.imageStyle).length : IMAGE_COUNT;
+  const scheduleDays = hasSchedule ? [...new Set(brand.schedule.map((s) => s.day))].map((d) => d.slice(0, 3)).join('/') : 'Mon-Fri';
 
   // Em-dash stripper for single-post calls (multi-post calls already strip).
   const stripEmDashesClient = (txt) => {
@@ -719,139 +730,49 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
       {/* ═══════════ LEFT: CONTROLS ═══════════ */}
       <div className="space-y-4">
+        {/* ══════ PRIMARY: this week ══════
+            The schedule already dictates pillar, audience, hook formula and
+            card type per slot, so the only input that actually varies week to
+            week is the build notes. Everything else lives under Options. */}
         <div className="card p-5">
-          <h2 className="text-lg font-bold text-white mb-4">{'\u26A1'} Generate Content + Images</h2>
+          <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+            <Icon name="zap" size={18} strokeWidth={2.3} /> Generate this week
+          </h2>
+          <p className="text-xs text-[var(--text-3)] mb-4">
+            The schedule sets the pillar, audience, hook and card type for every slot. Paste your build notes and go.
+          </p>
 
-          {/* Platform */}
-          <div className="flex gap-2 mb-4">
-            {['LinkedIn', 'Facebook'].map((p) => (
-              <button key={p} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${platform === p ? 'tab-active' : 'tab-inactive'}`} onClick={() => setPlatform(p)}>
-                {p === 'LinkedIn' ? '\uD83D\uDCBC' : '\uD83D\uDC65'} {p}
-              </button>
-            ))}
-          </div>
-
-          {/* Pillar — when a fixed schedule exists, this becomes a reference
-              only because each slot's pillar is dictated by the schedule. */}
-          <label className="block text-sm font-medium text-[var(--text-2)] mb-1">
-            Content Pillar
-            {brand.schedule && brand.schedule.length > 0 && (
-              <span className="text-xs text-amber-300 font-normal ml-2">(schedule overrides: each slot uses its own pillar)</span>
-            )}
-          </label>
-          <select
-            className="input-field mb-3"
-            value={pillarIdx}
-            onChange={(e) => setPillarIdx(Number(e.target.value))}
-            disabled={!!(brand.schedule && brand.schedule.length > 0)}
-            title={brand.schedule && brand.schedule.length > 0 ? 'Pillar is set per slot by the schedule' : ''}
-          >
-            {brand.pillars.map((p, i) => (
-              <option key={i} value={i}>{`${p.name} (${p.audience})`}</option>
-            ))}
-          </select>
-
-          {/* Audience */}
-          <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Target Audience <span className="text-[var(--text-3)]">(optional)</span></label>
-          <input className="input-field mb-3" placeholder={pillar.audience} value={audience} onChange={(e) => setAudience(e.target.value)} />
-
-          {/* ─── TRENDING TOPICS SECTION ─── */}
-          <div className="mb-4 p-4 rounded-lg border border-indigo-800 bg-indigo-900 bg-opacity-20">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-bold text-indigo-300">{'\uD83D\uDD25'} Trending Topics</h3>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-1.5 text-xs text-[var(--text-2)] cursor-pointer">
-                  <span>Auto-discover</span>
-                  <button
-                    className={`relative w-9 h-5 rounded-full transition-all ${autoTrending ? 'bg-indigo-600' : 'bg-gray-700'}`}
-                    onClick={() => setAutoTrending(!autoTrending)}
-                  >
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${autoTrending ? 'left-4' : 'left-0.5'}`} />
-                  </button>
-                </label>
-                <button
-                  className="btn-ghost text-xs py-1 px-2"
-                  onClick={loadTrending}
-                  disabled={trendingLoading || !live}
-                >
-                  {trendingLoading ? 'Searching...' : '\uD83D\uDD0D Find Now'}
-                </button>
-              </div>
-            </div>
-
-            {!live && <p className="text-xs text-[var(--text-3)]">Add API key to enable trending topic discovery</p>}
-
-            {autoTrending && live && trendingTopics.length === 0 && !trendingLoading && (
-              <p className="text-xs text-indigo-400">Trending topics will be auto-discovered when you generate</p>
-            )}
-
-            {trendingLoading && (
-              <div className="flex items-center gap-2 py-2">
-                <span className="spinner" style={{ width: 16, height: 16 }} />
-                <span className="text-xs text-indigo-300">Searching for trending topics in your niche...</span>
-              </div>
-            )}
-
-            {trendingTopics.length > 0 && (
-              <div className="space-y-2 mt-2 max-h-64 overflow-y-auto">
-                {trendingTopics.map((t, i) => (
-                  <button
+          {/* What this run will produce */}
+          {hasSchedule && (
+            <div className="mb-4 rounded-lg border border-[var(--card-border)] overflow-hidden">
+              {brand.schedule.map((s, i) => {
+                const p = brand.pillars.find((x) => x.name === s.pillar);
+                const needs = !!(p && p.requiresNotes);
+                return (
+                  <div
                     key={i}
-                    className={`w-full text-left p-3 rounded-lg transition-all ${
-                      selectedTrending === t
-                        ? 'bg-indigo-700 border border-indigo-500'
-                        : 'bg-[var(--surface-2)] bg-opacity-60 border border-[var(--card-border)] hover:border-indigo-500'
-                    }`}
-                    onClick={() => setSelectedTrending(selectedTrending === t ? null : t)}
+                    className="flex items-center justify-between gap-3 px-3 py-2 text-xs bg-[var(--surface-2)] border-b border-[var(--card-border)] last:border-b-0"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="text-sm font-semibold text-white leading-tight">{t.topic}</div>
-                        <div className="text-xs text-[var(--text-2)] mt-1">{t.angle}</div>
-                      </div>
-                      <EngagementBadge level={t.engagementPotential} />
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold text-[var(--text-1)] w-16 shrink-0">{s.day.slice(0, 3)}</span>
+                      <span className="text-[var(--text-2)] truncate">{s.pillar}</span>
                     </div>
-                    <div className="text-xs text-[var(--text-3)] mt-1.5">{t.whyTrending}</div>
-                    {selectedTrending === t && t.suggestedHook && (
-                      <div className="text-xs text-indigo-300 mt-2 pt-2 border-t border-indigo-700">
-                        {'\uD83C\uDFA3'} Hook: "{t.suggestedHook}"
-                      </div>
-                    )}
-                  </button>
-                ))}
-                <button
-                  className="w-full py-2 px-3 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  onClick={generateAllTrending}
-                  disabled={loading || imgLoading || !live}
-                  title="Generate one full post + 5 images for every trending topic, auto-saved across the week"
-                >
-                  {'\u26A1\u26A1'} Generate all {trendingTopics.length} as posts (auto-spread Mon\u2192Fri)
-                </button>
-                <button
-                  className="text-xs text-indigo-400 hover:text-indigo-300 w-full text-center py-1"
-                  onClick={() => { setSelectedTrending(null); setTrendingTopics([]); }}
-                >
-                  Clear trending topics (use manual topic instead)
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Topic (manual - shown when no trending selected) */}
-          {!selectedTrending && (
-            <>
-              <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Industry / Sector <span className="text-[var(--text-3)]">{'(optional)'}</span></label>
-              <input className="input-field mb-1" placeholder="e.g. Energy & Grid, Financial Services, Telecom" value={industry} onChange={(e) => setIndustry(e.target.value)} />
-              <p className="text-xs text-[var(--text-3)] mb-3">Name the sector, not a company. Naming a brand you have no access to reads as spec work.</p>
-              
-              <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Topic / Angle <span className="text-[var(--text-3)]">{'(optional, or use trending above)'}</span></label>
-              <textarea className="input-field mb-2" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
-              <div className="flex gap-2 mb-4 flex-wrap">
-                <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Contrarian Hook: Why [conventional wisdom] is wrong about [topic]")}>Contrarian Hook</button>
-                <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Story Hook: How we solved [problem] using [dataset/tech]")}>Story Hook</button>
-                <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Trend Hook: What no one realizes about the rise of [trend]")}>Trend Hook</button>
-              </div>
-            </>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {needs && (
+                        <span
+                          className={`badge text-[10px] ${sourceNotes.trim()
+                            ? 'bg-green-900/40 text-green-300 border border-green-700'
+                            : 'bg-yellow-900/30 text-yellow-400 border border-yellow-700'}`}
+                        >
+                          {sourceNotes.trim() ? 'from notes' : 'needs notes'}
+                        </span>
+                      )}
+                      <span className="text-[var(--text-3)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{s.time}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {/* Source notes: the ONLY allowed source of first-person claims. The
@@ -875,7 +796,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
                   placeholder="Paste rough notes from the build: what you made, what broke, the row counts, the runtime, the cost. The post will only claim what is in here."
                   value={sourceNotes}
                   onChange={(e) => setSourceNotes(e.target.value)}
-                  rows={4}
+                  rows={5}
                 />
                 {missing ? (
                   <p className="text-xs text-yellow-500 mb-3">
@@ -888,13 +809,203 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             );
           })()}
 
+          {/* Generate button */}
+          <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading || bankLoading}>
+            {loading ? (
+              <><span className="spinner" /> {genPhase || 'Generating...'}</>
+            ) : imgLoading ? (
+              <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
+            ) : (
+              <>{'⚡'} {(() => {
+                const total = brand.schedule && brand.schedule.length > 0 ? brand.schedule.length : IMAGE_COUNT;
+                // Day range spans whatever days the schedule actually uses.
+                const sched = brand.schedule || [];
+                const days = [...new Set(sched.map((s) => s.day))];
+                const dayRange = days.length ? days.map((d) => d.slice(0, 3)).join('/') : 'week';
+                return autoTrending && live
+                  ? `Find Trend + Generate ${total} Posts (${dayRange})`
+                  : `Generate ${total} Posts (${dayRange})`;
+              })()}</>
+            )}
+          </button>
+          {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}
+          {selectedTrending && (
+            <p className="text-xs text-indigo-400 mt-2">
+              Using trending topic: "{selectedTrending.topic}". Clear it under Options to write from the schedule instead.
+            </p>
+          )}
+        </div>
+
+        {/* ══════ OPTIONS: everything that rarely changes ══════ */}
+        <div className="card p-5">
+          <button
+            className="w-full flex items-center justify-between text-sm font-semibold text-[var(--text-1)]"
+            onClick={() => setShowTargeting(!showTargeting)}
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="radar" size={15} /> Topic &amp; targeting
+              <span className="text-xs font-normal text-[var(--text-3)]">
+                {selectedTrending ? 'trending topic selected' : (topic || industry) ? 'custom topic set' : 'following the schedule'}
+              </span>
+            </span>
+            <span className={`transition-transform ${showTargeting ? 'rotate-180' : ''}`}>{'▼'}</span>
+          </button>
+
+          {showTargeting && (
+            <div className="mt-4">
+              {/* Platform */}
+              <div className="flex gap-2 mb-4">
+                {['LinkedIn', 'Facebook'].map((p) => (
+                  <button key={p} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${platform === p ? 'tab-active' : 'tab-inactive'}`} onClick={() => setPlatform(p)}>
+                    {p === 'LinkedIn' ? '💼' : '👥'} {p}
+                  </button>
+                ))}
+              </div>
+
+              {/* ─── TRENDING TOPICS SECTION ─── */}
+              <div className="mb-4 p-4 rounded-lg border border-indigo-800 bg-indigo-900 bg-opacity-20">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-bold text-indigo-300">{'🔥'} Trending Topics</h3>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-xs text-[var(--text-2)] cursor-pointer">
+                      <span>Auto-discover</span>
+                      <button
+                        className={`relative w-9 h-5 rounded-full transition-all ${autoTrending ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                        onClick={() => setAutoTrending(!autoTrending)}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${autoTrending ? 'left-4' : 'left-0.5'}`} />
+                      </button>
+                    </label>
+                    <button
+                      className="btn-ghost text-xs py-1 px-2"
+                      onClick={loadTrending}
+                      disabled={trendingLoading || !live}
+                    >
+                      {trendingLoading ? 'Searching...' : '🔍 Find Now'}
+                    </button>
+                  </div>
+                </div>
+
+                {!live && <p className="text-xs text-[var(--text-3)]">Add API key to enable trending topic discovery</p>}
+
+                {autoTrending && live && trendingTopics.length === 0 && !trendingLoading && (
+                  <p className="text-xs text-indigo-400">Trending topics will be auto-discovered when you generate</p>
+                )}
+
+                {trendingLoading && (
+                  <div className="flex items-center gap-2 py-2">
+                    <span className="spinner" style={{ width: 16, height: 16 }} />
+                    <span className="text-xs text-indigo-300">Searching for trending topics in your niche...</span>
+                  </div>
+                )}
+
+                {trendingTopics.length > 0 && (
+                  <div className="space-y-2 mt-2 max-h-64 overflow-y-auto">
+                    {trendingTopics.map((t, i) => (
+                      <button
+                        key={i}
+                        className={`w-full text-left p-3 rounded-lg transition-all ${
+                          selectedTrending === t
+                            ? 'bg-indigo-700 border border-indigo-500'
+                            : 'bg-[var(--surface-2)] bg-opacity-60 border border-[var(--card-border)] hover:border-indigo-500'
+                        }`}
+                        onClick={() => setSelectedTrending(selectedTrending === t ? null : t)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="text-sm font-semibold text-white leading-tight">{t.topic}</div>
+                            <div className="text-xs text-[var(--text-2)] mt-1">{t.angle}</div>
+                          </div>
+                          <EngagementBadge level={t.engagementPotential} />
+                        </div>
+                        <div className="text-xs text-[var(--text-3)] mt-1.5">{t.whyTrending}</div>
+                        {selectedTrending === t && t.suggestedHook && (
+                          <div className="text-xs text-indigo-300 mt-2 pt-2 border-t border-indigo-700">
+                            {'🎣'} Hook: "{t.suggestedHook}"
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    <button
+                      className="w-full py-2 px-3 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      onClick={generateAllTrending}
+                      disabled={loading || imgLoading || !live}
+                      title="Generate one full post + 5 images for every trending topic, auto-saved across the week"
+                    >
+                      {'⚡⚡'} Generate all {trendingTopics.length} as posts (auto-spread across the week)
+                    </button>
+                    <button
+                      className="text-xs text-indigo-400 hover:text-indigo-300 w-full text-center py-1"
+                      onClick={() => { setSelectedTrending(null); setTrendingTopics([]); }}
+                    >
+                      Clear trending topics (use manual topic instead)
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Topic (manual - shown when no trending selected) */}
+              {!selectedTrending && (
+                <>
+                  <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Industry / Sector <span className="text-[var(--text-3)]">{'(optional)'}</span></label>
+                  <input className="input-field mb-1" placeholder="e.g. Energy & Grid, Financial Services, Telecom" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+                  <p className="text-xs text-[var(--text-3)] mb-3">Name the sector, not a company. Naming a brand you have no access to reads as spec work.</p>
+
+                  <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Topic / Angle <span className="text-[var(--text-3)]">{'(optional, or use trending above)'}</span></label>
+                  <textarea className="input-field mb-2" placeholder="e.g., What the AI data-center buildout looks like in real grid data..." value={topic} onChange={(e) => setTopic(e.target.value)} rows={2} />
+                  <div className="flex gap-2 mb-4 flex-wrap">
+                    <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Contrarian Hook: Why [conventional wisdom] is wrong about [topic]")}>Contrarian Hook</button>
+                    <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Story Hook: How we solved [problem] using [dataset/tech]")}>Story Hook</button>
+                    <button className="btn-secondary text-[10px] py-1 px-2" onClick={() => setTopic("Trend Hook: What no one realizes about the rise of [trend]")}>Trend Hook</button>
+                  </div>
+                </>
+              )}
+
+              {/* Pillar and audience: only meaningful without a schedule. */}
+              {hasSchedule ? (
+                <p className="text-xs text-[var(--text-3)] mb-3">
+                  Pillar, audience and card type are set per slot by the schedule. Edit them in <code>src/presets/databricks.js</code>.
+                </p>
+              ) : (
+                <>
+                  <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Content Pillar</label>
+                  <select className="input-field mb-3" value={pillarIdx} onChange={(e) => setPillarIdx(Number(e.target.value))}>
+                    {brand.pillars.map((p, i) => (
+                      <option key={i} value={i}>{`${p.name} (${p.audience})`}</option>
+                    ))}
+                  </select>
+
+                  <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Target Audience <span className="text-[var(--text-3)]">(optional)</span></label>
+                  <input className="input-field mb-3" placeholder={pillar.audience} value={audience} onChange={(e) => setAudience(e.target.value)} />
+
+                  <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Image Style</label>
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {IMAGE_STYLES.map((s) => (
+                      <button
+                        key={s.id}
+                        className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-[var(--surface-2)] border border-[var(--input-border)] hover:border-gray-500'}`}
+                        onClick={() => setImageStyle(s.id)}
+                      >
+                        <div className="text-sm font-semibold">{s.l}</div>
+                        <div className="text-xs text-[var(--text-2)] mt-0.5">{s.d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Advanced toggle */}
           <button
-            className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg mb-3 text-sm font-medium transition-all bg-[var(--surface-2)] border border-[var(--input-border)] hover:border-gray-500 text-[var(--text-2)]"
+            className="w-full flex items-center justify-between text-sm font-semibold text-[var(--text-1)] mt-4 pt-4 border-t border-[var(--card-border)]"
             onClick={() => setShowAdvanced(!showAdvanced)}
           >
-            <span>{'\u2699\uFE0F'} Advanced Content Options</span>
-            <span className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>{'\u25BC'}</span>
+            <span className="flex items-center gap-2">
+              <Icon name="sliders" size={15} /> Voice &amp; formatting
+              <span className="text-xs font-normal text-[var(--text-3)]">{tone}, {ctaType} CTA</span>
+            </span>
+            <span className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>{'▼'}</span>
           </button>
 
           {showAdvanced && (
@@ -960,70 +1071,19 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             </div>
           )}
 
-          {/* Image options — schedule overrides per-slot */}
-          <label className="block text-sm font-medium text-[var(--text-2)] mb-1">
-            Image Style
-            {brand.schedule && brand.schedule.length > 0 && (
-              <span className="text-xs text-amber-300 font-normal ml-2">(schedule overrides — each slot uses its own image system A/B/C)</span>
-            )}
-          </label>
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            {IMAGE_STYLES.map((s) => {
-              const isLocked = !!(brand.schedule && brand.schedule.length > 0);
-              return (
-                <button
-                  key={s.id}
-                  className={`p-2.5 rounded-lg text-center transition-all ${imageStyle === s.id ? 'bg-blue-600 border-blue-500 border' : 'bg-[var(--surface-2)] border border-[var(--input-border)] hover:border-gray-500'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => { if (!isLocked) setImageStyle(s.id); }}
-                  disabled={isLocked}
-                  title={isLocked ? 'Image system is set per slot by the schedule' : ''}
-                >
-                  <div className="text-sm font-semibold">{s.l}</div>
-                  <div className="text-xs text-[var(--text-2)] mt-0.5">{s.d}</div>
-                </button>
-              );
-            })}
+
+          {/* Statics bank: evergreen fallback for weeks when the build slips. */}
+          <div className="mt-4 pt-4 border-t border-[var(--card-border)]">
+            <button
+              className="btn-secondary w-full text-sm flex items-center justify-center gap-2"
+              onClick={generateStaticsBank}
+              disabled={loading || imgLoading || bankLoading}
+              title="Batch-generate 8 evergreen posts to the Archive as a buffer for weeks when the build does not happen"
+            >
+              {bankLoading ? (<><span className="spinner" /> {genPhase || 'Filling bank...'}</>) : (<><Icon name="archive" size={14} /> Fill statics bank (8 evergreen posts)</>)}
+            </button>
+            <p className="text-xs text-[var(--text-3)] mt-2">Needs no build notes. Draws from the Career &amp; Craft pillar.</p>
           </div>
-
-          <label className="block text-sm font-medium text-[var(--text-2)] mb-1">
-            {brand.schedule && brand.schedule.length > 0
-              ? `Image Generation (${brand.schedule.length} cards across ${new Set(brand.schedule.map((s2) => s2.day)).size} days, schedule-driven)`
-              : `Image Generation (${POSTS_PER_DAY} posts × ${WEEKDAYS.length} weekdays = ${IMAGE_COUNT} branded cards)`}</label>
-          <div className="mb-4 px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--input-border)] text-[var(--text-2)] text-sm">
-            <span className="font-semibold">{'\uD83C\uDFA8'} Branded Cards</span>
-            <span className="text-xs opacity-70 ml-2">Canvas-based, instant, on-brand</span>
-          </div>
-
-          {/* Statics bank — evergreen fallback buffer */}
-          <button
-            className="btn-secondary w-full mb-3 text-sm flex items-center justify-center gap-2"
-            onClick={generateStaticsBank}
-            disabled={loading || imgLoading || bankLoading}
-            title="Batch-generate 8 evergreen posts to Saved — your fallback buffer for weeks when the build doesn't happen"
-          >
-            {bankLoading ? (<><span className="spinner" /> {genPhase || 'Filling bank...'}</>) : (<>{'🗃'} Fill Statics Bank (8 evergreen posts)</>)}
-          </button>
-
-          {/* Generate button */}
-          <button className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2" onClick={generate} disabled={loading || imgLoading || bankLoading}>
-            {loading ? (
-              <><span className="spinner" /> {genPhase || 'Generating...'}</>
-            ) : imgLoading ? (
-              <><span className="spinner" /> {imgProgress || 'Generating images...'}</>
-            ) : (
-              <>{'\u26A1'} {(() => {
-                const total = brand.schedule && brand.schedule.length > 0 ? brand.schedule.length : IMAGE_COUNT;
-                // Day range spans whatever days the schedule actually uses.
-                const sched = brand.schedule || [];
-                const days = [...new Set(sched.map((s) => s.day))];
-                const dayRange = days.length ? days.map((d) => d.slice(0, 3)).join('/') : 'week';
-                return autoTrending && live
-                  ? `Find Trend + Fill ${dayRange} (${total} Posts)`
-                  : `Generate Full Week (${total} Posts, ${dayRange})`;
-              })()}</>
-            )}
-          </button>
-          {error && <p className="text-red-400 text-sm mt-2">Error: {error}</p>}
         </div>
 
         {/* Data points */}
@@ -1092,7 +1152,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="text-center py-16 text-[var(--text-3)]">
               <div className="text-4xl mb-3">{'\u270D\uFE0F'}</div>
               <p>Your generated post will appear here</p>
-              <p className="text-sm mt-1">{live ? (autoTrending ? `AI will find a trend + write ${IMAGE_COUNT} posts` : `Live AI mode \u2014 ${IMAGE_COUNT} posts per click`) : 'Demo mode \u2014 add API key for live AI'}</p>
+              <p className="text-sm mt-1">{live ? (autoTrending ? `AI will find a trend and write ${expectedPosts} posts` : `Live AI mode: ${expectedPosts} posts per click`) : 'Demo mode: add API key for live AI'}</p>
             </div>
           )}
         </div>
@@ -1102,7 +1162,7 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">
               {'\uD83D\uDDBC'} Images
-              {successfulImages.length > 0 && <span className="text-sm font-normal text-[var(--text-2)] ml-2">({successfulImages.length}/{IMAGE_COUNT})</span>}
+              {successfulImages.length > 0 && <span className="text-sm font-normal text-[var(--text-2)] ml-2">({successfulImages.length}/{expectedCards})</span>}
             </h2>
             {successfulImages.length > 0 && (
               <div className="flex gap-2">
@@ -1117,9 +1177,9 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
             <div className="text-center py-14 text-[var(--text-3)]">
               <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
               <p className="font-medium text-[var(--text-2)]">{imgProgress || 'Generating images...'}</p>
-              <p className="text-sm mt-1">Generating {IMAGE_COUNT} posts across Mon-Fri and rendering paired cards</p>
+              <p className="text-sm mt-1">Generating {expectedPosts} posts across {scheduleDays} and rendering paired cards</p>
               <div className="flex justify-center gap-2 mt-4">
-                {Array.from({ length: IMAGE_COUNT }).map((_, i) => (
+                {Array.from({ length: expectedCards }).map((_, i) => (
                   <div key={i} className={`w-3 h-3 rounded-full transition-all ${
                     imgProgress.includes(`${i + 1}`) ? 'bg-blue-500 animate-pulse' :
                     imgProgress.includes(`${i + 2}`) || imgProgress.includes('Analyzing') ? 'bg-gray-600' : 'bg-green-500'
@@ -1182,7 +1242,18 @@ export default function GeneratePage({ brand, manualKey, selModel, selImgModel, 
           ) : (
             <div className="text-center py-12 text-[var(--text-3)]">
               <div className="text-4xl mb-3">{'\uD83D\uDDBC'}</div>
-              <p>{IMAGE_COUNT} unique images will be generated with your post</p>
+              {/* Count the slots that actually produce a card. Slots with a
+                  null imageStyle are text-only by design (UI Showcase carries
+                  a real screenshot instead). */}
+              <p>
+                {(() => {
+                  if (!hasSchedule) return `${IMAGE_COUNT} branded cards will be generated with your posts`;
+                  const withCards = brand.schedule.filter((s) => s.imageStyle).length;
+                  const textOnly = brand.schedule.length - withCards;
+                  return `${withCards} branded card${withCards === 1 ? '' : 's'} will be generated`
+                    + (textOnly ? `. ${textOnly} slot${textOnly === 1 ? '' : 's'} text-only by design.` : '');
+                })()}
+              </p>
             </div>
           )}
         </div>
