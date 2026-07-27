@@ -207,8 +207,8 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                 ) : (
                   <div className="text-[var(--text-3)] mt-1 break-all">{idea.dataset?.access}</div>
                 )}
-                {idea.targetBrand && (
-                  <div className="text-[var(--text-2)] mt-2"><span className="font-semibold text-purple-400">Target Brand:</span> {idea.targetBrand}</div>
+                {idea.industry && (
+                  <div className="text-[var(--text-2)] mt-2"><span className="font-semibold text-purple-400">Industry:</span> {idea.industry}</div>
                 )}
                 {idea.dataset?.verified === false && (
                   <div className="text-yellow-500 mt-1 font-semibold">{'⚠'} Unverified: confirm this dataset exists before building.</div>
@@ -222,7 +222,7 @@ After the build, paste your REAL notes (what you built, what broke, the numbers)
                 <button
                   className="btn-primary text-xs flex-1"
                   onClick={() => {
-                    onUseIdea && onUseIdea({ topic: idea.topic, notes: briefAsNotesSeed(idea), postAngle: idea.postAngle, targetBrand: idea.targetBrand });
+                    onUseIdea && onUseIdea({ topic: idea.topic, notes: briefAsNotesSeed(idea), postAngle: idea.postAngle, industry: idea.industry });
                     showToast('Sent to Generate. Topic and brief pre-filled.');
                   }}
                 >

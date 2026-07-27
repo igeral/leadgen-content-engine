@@ -8,7 +8,7 @@ export default function YouTubeStudioPage({ manualKey, selModel, live, showToast
 
   useEffect(() => {
     if (radarDraft && radarDraft.topic) {
-      setTopic(`${radarDraft.targetBrand || 'Enterprise'} - ${radarDraft.topic}`);
+      setTopic(`${radarDraft.industry || 'Enterprise'}: ${radarDraft.topic}`);
     }
   }, [radarDraft]);
 

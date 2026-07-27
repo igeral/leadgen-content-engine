@@ -11,7 +11,7 @@ export default function BoilerplateGeneratorPage({ manualKey, selModel, live, sh
 
   useEffect(() => {
     if (radarDraft && radarDraft.topic) {
-      setAppName(`${radarDraft.targetBrand || 'Enterprise'} ${radarDraft.topic} UI`);
+      setAppName(`${radarDraft.industry || 'Enterprise'} ${radarDraft.topic} UI`);
     }
   }, [radarDraft]);
 
@@ -27,7 +27,7 @@ export default function BoilerplateGeneratorPage({ manualKey, selModel, live, sh
 Do not include markdown fences. Do not include explanations. Do not include import statements unless absolutely necessary.
 Just output the raw code for the React component that can be copy-pasted.`;
 
-      const radarContext = radarDraft ? `\nContext: This app is inspired by ${radarDraft.targetBrand}. Topic: ${radarDraft.topic}.` : '';
+      const radarContext = radarDraft ? `\nContext: This app serves the ${radarDraft.industry || 'enterprise'} sector. Topic: ${radarDraft.topic}.` : '';
 
       const userPrompt = `Generate a modern, beautiful React dashboard component named 'App' using Tailwind CSS.
 App Name: ${appName}

@@ -270,31 +270,40 @@ export async function fetchBuildIdeas(manualKey, model, count = 5, excelIdeas = 
   const key = getApiKey(manualKey);
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   
-  const ideasContext = excelIdeas.length > 0 
-    ? `\nTARGET BRANDS & INDUSTRIES TO MIMIC (from Databricks Ideas spreadsheet):\n${excelIdeas.slice(0, 30).map(idea => `- Brand: ${idea.brand}, Industry: ${idea.industry}, Context: ${idea.data_context}`).join('\n')}\n` 
+  // Rows come from the workbook's idea banks. The problem and the dataset are
+  // what matter; example companies are context for picking, never for framing.
+  const ideasContext = excelIdeas.length > 0
+    ? `\nPROBLEM BANK (from Databricks Ideas.xlsx, best-fit rows first):\n${excelIdeas.slice(0, 30).map((i) => `- [${i.industry}] ${i.problem}${i.appIdea ? ` | App: ${i.appIdea}` : ''}${i.dataset ? ` | Dataset: ${i.dataset}` : ''}${i.exampleCompanies ? ` | Seen at: ${i.exampleCompanies}` : ''}`).join('\n')}\n`
     : '';
 
-  const prompt = `You are a hybrid trend analyst + senior AI Data Product Architect. Today is ${today}.
+  const prompt = `You are a hybrid trend analyst + senior data and lakehouse architect. Today is ${today}.
 
-You advise a technical architect who builds full-stack prototypes (Databricks backend + React/PowerApp frontend) every weekend. His goal is to post "Blueprint / Reverse Engineering" case studies on LinkedIn. He pairs trending business problems with a target enterprise brand to create a prototype "Inspired By" their challenges.
+You advise an architect who builds full-stack prototypes (Databricks backend plus a React or PowerApp frontend) on weekends and posts the results on LinkedIn. His audience is data leaders, architects, and hiring managers. He pairs a trending industry problem with a REAL public dataset.
 ${ideasContext}
-TASK: Identify the ${count} best "Blueprint" build opportunities RIGHT NOW. Each pairs (a) an enterprise AI or data bottleneck currently being discussed, with (b) a specific Target Brand (e.g., Visa, Tesla, or one from the list above) to "mimic", and (c) a 4-hour full-stack build.
+TASK: Identify the ${count} best build opportunities RIGHT NOW. Each pairs (a) an industry data or AI bottleneck currently being discussed, (b) a REAL public dataset, and (c) a 3-4 hour full-stack build.
+
+FRAMING RULES (important):
+- Frame every opportunity by INDUSTRY and PROBLEM, never by a single company. Say "card networks" or "grid operators", not "Visa" or "NextEra".
+- The postAngle must NOT name a specific company. Naming a brand you have no access to reads as spec work to senior practitioners and invites questions you cannot answer.
+- "Seen at" companies in the bank above are context to help you pick a real problem. Do not put them in the output.
 
 DATASET RULES:
-- Name datasets that REALLY exist and are freely downloadable or API-accessible (e.g. SEC EDGAR, EIA, Kaggle).
+- Only name datasets that REALLY exist and are freely downloadable or API-accessible (EIA, SEC EDGAR, NREL, Our World in Data, Kaggle, data.gov and similar).
+- The analysis must run on real data. Synthetic data is acceptable ONLY for cosmetic padding in the UI layer, never for the findings.
+- If you are not confident a dataset exists, set verified to false.
 
 For each opportunity return:
-- topic: specific enterprise bottleneck/challenge
+- topic: the specific industry bottleneck or question
+- industry: the industry or sector (e.g. "Energy & Grid", "Financial Services")
 - whyHot: 1 sentence on why this is being discussed right now
 - dataset: {name, source, access: exact URL or API name, verified: true|false}
-- targetBrand: The specific enterprise brand this prototype is "Inspired By"
-- buildIdea: what to build on the backend (Databricks medallion/API) AND the frontend (React/PowerApp).
-- postAngle: the one-line hook the resulting LinkedIn post would open with
+- buildIdea: what to build on the backend (Databricks medallion plus serving layer) AND the frontend
+- postAngle: the one-line hook the resulting LinkedIn post would open with, naming no company
 - audienceMatch: strict enum, either "data-leaders" or "general viral" based on technical depth
 - effortHours: realistic estimate (3-4)
 
-Rank by heat. Return ONLY a valid JSON array, no markdown fences.
-[{"topic":"...","whyHot":"...","dataset":{"name":"...","source":"...","access":"...","verified":true},"targetBrand":"...","buildIdea":"...","postAngle":"...","audienceMatch":"...","effortHours":3}]`;
+Rank by a combination of heat and audience match, data-leaders first. Return ONLY a valid JSON array, no markdown fences.
+[{"topic":"...","industry":"...","whyHot":"...","dataset":{"name":"...","source":"...","access":"...","verified":true},"buildIdea":"...","postAngle":"...","audienceMatch":"...","effortHours":3}]`;
 
   const callModel = async (modelId) => {
     const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
